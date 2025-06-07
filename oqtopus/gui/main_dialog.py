@@ -453,16 +453,7 @@ class MainDialog(QDialog, DIALOG_UI):
 
         logger.info(f"PUM config loaded from '{pumConfigFilename}'")
 
-        for parameter in self.__pum_config.parameters():
-            parameter_name = parameter.get("name", None)
-            if parameter_name is None:
-                continue
-
-            if parameter_name == "SRID":
-                default_srid = parameter.get("default", None)
-                if default_srid is not None:
-                    self.db_parameters_CRS_lineEdit.setText("")
-                    self.db_parameters_CRS_lineEdit.setPlaceholderText(str(default_srid))
+        self.parameters_groupbox.setParameters(self.__pum_config.parameters())
 
         sm = SchemaMigrations(self.__pum_config)
         migrationVersion = "0.0.0"
@@ -657,37 +648,18 @@ class MainDialog(QDialog, DIALOG_UI):
             ).exec()
             return
 
-        srid_string = self.db_parameters_CRS_lineEdit.text()
-        if srid_string == "":
-            srid_string = self.db_parameters_CRS_lineEdit.placeholderText()
-
-        if srid_string == "":
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please provide a valid SRID."), None, self
-            ).exec()
-            return
-
-        srid = int(srid_string)
+        parameters = self.parameters_groupbox.parameters()
 
         try:
             service_name = self.db_services_comboBox.currentText()
-            with psycopg.connect(f"service={service_name}") as connection:
-                # Check if the connection is successful
-                if not connection:
-                    raise Exception(
-                        f"Could not connect to the database using service: {service_name}"
-                    )
-
-                upgrader = Upgrader(config=self.__pum_config)
-                with OverrideCursor(Qt.CursorShape.WaitCursor):
-                    upgrader.install(
-                        connection=connection,
-                        parameters={"SRID": srid},
-                        roles=self.db_parameters_CreateAndGrantRoles_checkBox.isChecked(),
-                        grant=self.db_parameters_CreateAndGrantRoles_checkBox.isChecked(),
-                        demo_data=self.db_parameter_demoData_comboBox.currentData(),
-                        dir=self.__data_model_dir,
-                    )
+            upgrader = Upgrader(
+                pg_service=service_name,
+                config=self.__pum_config,
+                dir=self.__data_model_dir,
+                parameters=parameters,
+            )
+            with OverrideCursor(Qt.CursorShape.WaitCursor):
+                upgrader.install()
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"), self.tr("Can't install the module:"), exception, self
