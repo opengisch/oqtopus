@@ -1,3 +1,5 @@
+import logging
+
 from pum import ParameterDefinition, ParameterType
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
@@ -8,6 +10,8 @@ from qgis.PyQt.QtWidgets import (
     QLineEdit,
     QWidget,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ParameterWidget(QWidget):
@@ -47,6 +51,7 @@ class ParametersGroupBox(QGroupBox):
         self.parameter_widgets = {}
 
     def setParameters(self, parameters: list[ParameterDefinition]):
+        logger.info("Setting parameters in ParametersGroupBox (%s)", len(parameters))
         self.clean()
         self.parameters = parameters
         # Remove all widgets from the parameters_group_box layout
