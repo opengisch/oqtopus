@@ -121,6 +121,9 @@ class MainDialog(QDialog, DIALOG_UI):
 
         # Add menubar
         self.menubar = QMenuBar(self)
+        # On macOS, setNativeMenuBar(False) to show the menu bar inside the dialog window
+        if sys.platform == "darwin":
+            self.menubar.setNativeMenuBar(False)
         self.layout().setMenuBar(self.menubar)
 
         # Settings action

@@ -22,7 +22,7 @@ class ParameterWidget(QWidget):
         self.value = None
 
         if parameter_definition.type != ParameterType.BOOLEAN:
-            self.addWidget(QLabel(parameter_definition.name, self))
+            self.layout.addWidget(QLabel(parameter_definition.name, self))
 
         if parameter_definition.type == ParameterType.BOOLEAN:
             self.widget = QCheckBox(parameter_definition.name, self)
@@ -35,7 +35,7 @@ class ParameterWidget(QWidget):
             ParameterType.TEXT,
         ):
             self.widget = QLineEdit(self)
-            self.widget.setPlaceHolderText(parameter_definition.default)
+            self.widget.setPlaceholderText(parameter_definition.default.as_string())
             self.layout.addWidget(self.widget)
             if parameter_definition.type == ParameterType.TEXT:
                 self.value = lambda: self.widget.text()
