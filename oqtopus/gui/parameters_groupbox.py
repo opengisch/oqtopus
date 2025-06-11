@@ -37,10 +37,7 @@ class ParameterWidget(QWidget):
             self.widget = QLineEdit(self)
             self.widget.setPlaceholderText(parameter_definition.default.as_string())
             self.layout.addWidget(self.widget)
-            if parameter_definition.type == ParameterType.TEXT:
-                self.value = lambda: self.widget.text()
-            else:
-                self.value = lambda: self.widget.value()
+            self.value = lambda: self.widget.text()
 
 
 class ParametersGroupBox(QGroupBox):

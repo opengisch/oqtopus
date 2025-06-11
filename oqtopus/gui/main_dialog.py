@@ -183,6 +183,12 @@ class MainDialog(QDialog, DIALOG_UI):
 
         self.db_operations_toolButton.setMenu(db_operations_menu)
 
+        try:
+            self.__serviceChanged()
+        except Exception:
+            # Silence errors during dialog initialization
+            pass
+
     def __initGuiModuleInfo(self):
         QtUtils.setForegroundColor(self.moduleInfo_NoModuleFound_label, self.COLOR_WARNING)
         QtUtils.setFontItalic(self.moduleInfo_NoModuleFound_label, True)
@@ -472,14 +478,16 @@ class MainDialog(QDialog, DIALOG_UI):
         elif sm.exists(self.__database_connection):
             baseline_version = sm.baseline(self.__database_connection)
             self.db_moduleInfo_label.setText(self.tr(f"Version {baseline_version} found"))
-            self.db_upgrade_pushButton.setText(self.tr(f"Upgrade to {migrationVersion}"))
+            QtUtils.resetForegroundColor(self.db_moduleInfo_label)
+            self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {migrationVersion}"))
 
             self.moduleInfo_stackedWidget.setCurrentWidget(
                 self.moduleInfo_stackedWidget_pageUpgrade
             )
         else:
             self.db_moduleInfo_label.setText(self.tr("No module found"))
-            self.db_install_pushButton.setText(self.tr(f"Install {migrationVersion}"))
+            QtUtils.resetForegroundColor(self.db_moduleInfo_label)
+            self.moduleInfo_install_pushButton.setText(self.tr(f"Install {migrationVersion}"))
             self.moduleInfo_stackedWidget.setCurrentWidget(
                 self.moduleInfo_stackedWidget_pageInstall
             )
@@ -595,22 +603,22 @@ class MainDialog(QDialog, DIALOG_UI):
 
         self.__actionDuplicateDb.setEnabled(True)
 
-        # Try getting existing module
+        # Try connection
         try:
             self.__database_connection = psycopg.connect(service=service_name)
 
         except Exception as exception:
             self.__database_connection = None
 
-            QMessageBox.warning(
-                self,
-                self.tr("Can't connect to service"),
-                self.tr(f"Can't connect to service '{service_name}':\n{exception}."),
-            )
-
+            self.db_moduleInfo_label.setText("Can't connect to service.")
+            QtUtils.setForegroundColor(self.db_moduleInfo_label, self.COLOR_WARNING)
+            errorText = self.tr(f"Can't connect to service '{service_name}':\n{exception}.")
+            logger.error(errorText)
             return
 
-        self.__database_connection.cursor().execute("SELECT current_database()")
+        self.db_moduleInfo_label.setText("Connected.")
+        logger.info(f"Connected to service '{service_name}'.")
+        QtUtils.resetForegroundColor(self.db_moduleInfo_label)
 
     def __createDatabaseClicked(self):
         databaseCreateDialog = DatabaseCreateDialog(
@@ -661,17 +669,21 @@ class MainDialog(QDialog, DIALOG_UI):
             return
 
         parameters = self.parameters_groupbox.parameters_values()
-        demo_data_file = self.db_parameter_demoData_comboBox.currentData()
+        demo_data_name = self.db_parameter_demoData_comboBox.currentText()
 
         try:
-            service_name = self.db_services_comboBox.currentText()
+            self.db_services_comboBox.currentText()
             upgrader = Upgrader(
-                pg_service=service_name,
                 config=self.__pum_config,
-                dir=self.__data_model_dir,
             )
             with OverrideCursor(Qt.CursorShape.WaitCursor):
-                upgrader.install(parameters=parameters, demo_data=demo_data_file)
+                upgrader.install(
+                    parameters=parameters,
+                    connection=self.__database_connection,
+                    roles=self.db_parameters_CreateAndGrantRoles_checkBox.isChecked(),
+                    grant=self.db_parameters_CreateAndGrantRoles_checkBox.isChecked(),
+                    demo_data=demo_data_name,
+                )
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"), self.tr("Can't install the module:"), exception, self
