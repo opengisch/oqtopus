@@ -458,6 +458,12 @@ class MainDialog(QDialog, DIALOG_UI):
 
         self.parameters_groupbox.setParameters(self.__pum_config.parameters())
 
+        self.db_parameter_demoData_comboBox.clear()
+        self.db_parameter_demoData_comboBox.addItem(self.tr("Don't install demo data"), None)
+
+        for demo_data_name, demo_data_file in self.__pum_config.demo_data().items():
+            self.db_parameter_demoData_comboBox.addItem(demo_data_name, demo_data_file)
+
         sm = SchemaMigrations(self.__pum_config)
         migrationVersion = "0.0.0"
         if not self.__database_connection:
@@ -654,7 +660,8 @@ class MainDialog(QDialog, DIALOG_UI):
             ).exec()
             return
 
-        parameters = self.parameters_groupbox.parameters()
+        parameters = self.parameters_groupbox.parameters_values()
+        demo_data_file = self.db_parameter_demoData_comboBox.currentData()
 
         try:
             service_name = self.db_services_comboBox.currentText()
@@ -662,10 +669,9 @@ class MainDialog(QDialog, DIALOG_UI):
                 pg_service=service_name,
                 config=self.__pum_config,
                 dir=self.__data_model_dir,
-                parameters=parameters,
             )
             with OverrideCursor(Qt.CursorShape.WaitCursor):
-                upgrader.install()
+                upgrader.install(parameters=parameters, demo_data=demo_data_file)
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"), self.tr("Can't install the module:"), exception, self

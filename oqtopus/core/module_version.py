@@ -54,6 +54,8 @@ class ModuleVersion:
             f"https://github.com/{organisation}/{repository}/archive/refs/{type}/{self.branch}.zip"
         )
 
+        self.package_dir = None
+
     def display_name(self):
         if self.prerelease:
             return f"{self.name} (prerelease)"

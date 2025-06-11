@@ -22,8 +22,6 @@ class PackagePrepareTask(QThread):
         self.zip_file = None
         self.module_version = None
 
-        self.package_dir = None
-
         self.__canceled = False
         self.lastError = None
 
@@ -32,8 +30,6 @@ class PackagePrepareTask(QThread):
         self.zip_file = zip_file
         self.module_version = None
 
-        self.package_dir = None
-
         self.__canceled = False
         self.lastError = None
         self.start()
@@ -41,8 +37,6 @@ class PackagePrepareTask(QThread):
     def startFromModuleVersion(self, module_version):
         self.zip_file = None
         self.module_version = module_version
-
-        self.package_dir = None
 
         self.__canceled = False
         self.lastError = None
@@ -64,7 +58,7 @@ class PackagePrepareTask(QThread):
 
         except Exception as e:
             # Handle any exceptions that occur during processing
-            print(f"Erorr: {e}")
+            logger.critical(f"Package prepare task error: {e}")
             self.lastError = e
 
     def __download_module_assets(self, module_version):
