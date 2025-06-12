@@ -1,0 +1,73 @@
+site_name: PUM documentation
+
+repo_name: opengisch/oqtopus
+repo_url: https://github.com/opengisch/oqtopus
+edit_uri: https://github.com/opengisch/oqtopus/tree/master/docs/docs/
+
+theme:
+  name: "material"
+  logo: assets/images/oqtopus.png
+  favicon: assets/images/favicon.ico
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - navigation.tracking
+    - pymdownx.highlight:
+        anchor_linenums: true
+        line_spans: __span
+        pygments_lang_class: true
+    - pymdownx.inlinehilite
+    - pymdownx.snippets
+    - pymdownx.superfences
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_signature: true
+            show_signature_annotations: true
+            separate_signature: true
+
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - attr_list
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
+nav:
+  - About: index.md
+  - Getting Started: getting_started.md
+
+extra:
+  # Remove "Made with Material for MkDocs" from footer
+  generator: false
