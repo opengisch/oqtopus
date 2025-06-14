@@ -40,11 +40,11 @@ class ParameterWidget(QWidget):
             self.widget.setPlaceholderText(parameter_definition.default.as_string())
             self.layout.addWidget(self.widget)
             if parameter_definition.type == ParameterType.INTEGER:
-                self.value = lambda: int(self.widget.text() or self.widget.placeholderText()))
+                self.value = lambda: int(self.widget.text() or self.widget.placeholderText())
             elif parameter_definition.type == ParameterType.DECIMAL:
-                self.value = lambda: float(self.widget.text() or self.widget.placeholderText()))
+                self.value = lambda: float(self.widget.text() or self.widget.placeholderText())
             else:
-                self.value = lambda: self.widget.text() or self.widget.placeholderText())
+                self.value = lambda: self.widget.text() or self.widget.placeholderText()
 
 
 class ParametersGroupBox(QGroupBox):
@@ -65,17 +65,7 @@ class ParametersGroupBox(QGroupBox):
     def parameters_values(self):
         values = {}
         for parameter in self.parameters:
-            if self.parameter_widgets[parameter.name].valueSet():
-                values[parameter.name] = self.parameter_widgets[parameter.name].value()
-            else:
-                if parameter.type == ParameterType.BOOLEAN:
-                    values[parameter.name] = bool(parameter.default.as_string())
-                elif parameter.type == ParameterType.INTEGER:
-                    values[parameter.name] = int(parameter.default.as_string())
-                elif parameter.type == ParameterType.DECIMAL:
-                    values[parameter.name] = float(parameter.default.as_string())
-                # else:
-                #     values[parameter.name] = parameter.default
+            values[parameter.name] = self.parameter_widgets[parameter.name].value()
         return values
 
     def clean(self):
