@@ -40,34 +40,11 @@ class ParameterWidget(QWidget):
             self.widget.setPlaceholderText(parameter_definition.default.as_string())
             self.layout.addWidget(self.widget)
             if parameter_definition.type == ParameterType.INTEGER:
-                self.value = lambda: int(self.widget.text())
+                self.value = lambda: int(self.widget.text() or self.widget.placeholderText()))
             elif parameter_definition.type == ParameterType.DECIMAL:
-                self.value = lambda: float(self.widget.text())
+                self.value = lambda: float(self.widget.text() or self.widget.placeholderText()))
             else:
-                self.value = lambda: self.widget.text()
-
-    def valueSet(self):
-        """
-        Returns True if the value of the widget is set, False otherwise.
-        This is used to determine if the parameter has been modified by the user.
-        """
-        if self.widget is None:
-            return False
-
-        if isinstance(self.widget, QCheckBox):
-            return self.__valueChanged
-
-        if isinstance(self.widget, QLineEdit):
-            return bool(self.widget.text().strip())
-
-        return False
-
-    def __valueChanged(self):
-        """
-        This method is called when the value of the widget is changed for QCheckBox.
-        It sets the __valueChanged flag to True, indicating that the value has been modified.
-        """
-        self.__valueChanged = True
+                self.value = lambda: self.widget.text() or self.widget.placeholderText())
 
 
 class ParametersGroupBox(QGroupBox):
