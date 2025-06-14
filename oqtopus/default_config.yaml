@@ -1,13 +1,5 @@
 
 modules:
-  - name: "OPENGIS.ch Wastewater"
-    organisation: "opengisch"
-    repository: "wastewater"
-
   - name: "TEKSI Wastewater"
     organisation: "teksi"
     repository: "wastewater"
-
-  - name: "TEKSI District Heating"
-    organisation: "teksi"
-    repository: "district_heating"
