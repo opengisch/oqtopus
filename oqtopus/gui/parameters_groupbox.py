@@ -37,37 +37,15 @@ class ParameterWidget(QWidget):
             ParameterType.TEXT,
         ):
             self.widget = QLineEdit(self)
-            self.widget.setPlaceholderText(parameter_definition.default.as_string())
+            if parameter_definition.default is not None:
+                self.widget.setPlaceholderText(str(parameter_definition.default))
             self.layout.addWidget(self.widget)
             if parameter_definition.type == ParameterType.INTEGER:
-                self.value = lambda: int(self.widget.text())
+                self.value = lambda: int(self.widget.text() or self.widget.placeholderText())
             elif parameter_definition.type == ParameterType.DECIMAL:
-                self.value = lambda: float(self.widget.text())
+                self.value = lambda: float(self.widget.text() or self.widget.placeholderText())
             else:
-                self.value = lambda: self.widget.text()
-
-    def valueSet(self):
-        """
-        Returns True if the value of the widget is set, False otherwise.
-        This is used to determine if the parameter has been modified by the user.
-        """
-        if self.widget is None:
-            return False
-
-        if isinstance(self.widget, QCheckBox):
-            return self.__valueChanged
-
-        if isinstance(self.widget, QLineEdit):
-            return bool(self.widget.text().strip())
-
-        return False
-
-    def __valueChanged(self):
-        """
-        This method is called when the value of the widget is changed for QCheckBox.
-        It sets the __valueChanged flag to True, indicating that the value has been modified.
-        """
-        self.__valueChanged = True
+                self.value = lambda: self.widget.text() or self.widget.placeholderText()
 
 
 class ParametersGroupBox(QGroupBox):
@@ -88,17 +66,7 @@ class ParametersGroupBox(QGroupBox):
     def parameters_values(self):
         values = {}
         for parameter in self.parameters:
-            if self.parameter_widgets[parameter.name].valueSet():
-                values[parameter.name] = self.parameter_widgets[parameter.name].value()
-            else:
-                if parameter.type == ParameterType.BOOLEAN:
-                    values[parameter.name] = bool(parameter.default.as_string())
-                elif parameter.type == ParameterType.INTEGER:
-                    values[parameter.name] = int(parameter.default.as_string())
-                elif parameter.type == ParameterType.DECIMAL:
-                    values[parameter.name] = float(parameter.default.as_string())
-                # else:
-                #     values[parameter.name] = parameter.default
+            values[parameter.name] = self.parameter_widgets[parameter.name].value()
         return values
 
     def clean(self):
