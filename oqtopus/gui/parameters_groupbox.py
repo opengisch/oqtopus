@@ -37,7 +37,8 @@ class ParameterWidget(QWidget):
             ParameterType.TEXT,
         ):
             self.widget = QLineEdit(self)
-            self.widget.setPlaceholderText(parameter_definition.default.as_string())
+            if parameter_definition.default is not None:
+                self.widget.setPlaceholderText(str(parameter_definition.default))
             self.layout.addWidget(self.widget)
             if parameter_definition.type == ParameterType.INTEGER:
                 self.value = lambda: int(self.widget.text() or self.widget.placeholderText())
