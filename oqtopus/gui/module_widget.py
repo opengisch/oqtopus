@@ -22,6 +22,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
 
+        self.db_demoData_checkBox.clicked.connect(
+            lambda checked: self.db_demoData_comboBox.setEnabled(checked)
+        )
+
         self.moduleInfo_install_pushButton.clicked.connect(self.__installModuleClicked)
         self.moduleInfo_upgrade_pushButton.clicked.connect(self.__upgradeModuleClicked)
 
@@ -126,7 +130,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         parameters = self.parameters_groupbox.parameters_values()
 
         demo_data_name = None
-        if self.db_demoData_groupBox.isChecked():
+        if self.db_demoData_checkBox.isChecked():
             demo_data_name = self.db_demoData_comboBox.currentText()
 
         try:

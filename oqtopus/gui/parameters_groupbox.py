@@ -54,7 +54,7 @@ class ParametersGroupBox(QGroupBox):
         self.parameter_widgets = {}
 
     def setParameters(self, parameters: list[ParameterDefinition]):
-        logger.info("Setting parameters in ParametersGroupBox (%s)", len(parameters))
+        logger.info(f"Setting parameters in ParametersGroupBox ({len(parameters)})")
         self.clean()
         self.parameters = parameters
         # Remove all widgets from the parameters_group_box layout
