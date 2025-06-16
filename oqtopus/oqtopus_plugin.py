@@ -35,7 +35,7 @@ class OqtopusPlugin:
         self.actions = []
         self.main_menu_name = self.tr(f"&{PluginUtils.PLUGIN_NAME}")
 
-        conf_path = Path(__file__).parent / "oqtopus/default_config.yaml"
+        conf_path = Path(__file__).parent / "default_config.yaml"
 
         with conf_path.open() as f:
             data = yaml.safe_load(f)
