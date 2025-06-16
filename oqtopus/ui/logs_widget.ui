@@ -58,25 +58,7 @@
     </spacer>
    </item>
    <item row="0" column="0" rowspan="4">
-    <widget class="QTreeWidget" name="logs_treeWidget">
-     <property name="selectionMode">
-      <enum>QAbstractItemView::NoSelection</enum>
-     </property>
-     <column>
-      <property name="text">
-       <string>Level</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Module</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Message</string>
-      </property>
-     </column>
+    <widget class="QTreeView" name="logs_treeView">
     </widget>
    </item>
   </layout>
