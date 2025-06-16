@@ -1,6 +1,6 @@
 import logging
 
-from qgis.PyQt.QtCore import QAbstractItemModel, QModelIndex, Qt
+from qgis.PyQt.QtCore import QAbstractItemModel, QModelIndex, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtWidgets import QAbstractItemView, QApplication, QStyle, QWidget
 
 from ..utils.plugin_utils import LoggingBridge, PluginUtils
@@ -73,7 +73,25 @@ class LogsWidget(QWidget, DIALOG_UI):
             level=logging.NOTSET, excluded_modules=["urllib3.connectionpool"]
         )
         self.logs_model = LogModel(self)
-        self.logs_treeView.setModel(self.logs_model)
+
+        self.logs_level_comboBox.addItems(
+            [
+                "DEBUG",
+                "INFO",
+                "WARNING",
+                "ERROR",
+                "CRITICAL",
+            ]
+        )
+        self.logs_level_comboBox.setCurrentText("WARNING")
+
+        # Add a QSortFilterProxyModel for filtering
+        self.proxy_model = QSortFilterProxyModel(self)
+        self.proxy_model.setSourceModel(self.logs_model)
+        self.proxy_model.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.proxy_model.setFilterKeyColumn(3)
+
+        self.logs_treeView.setModel(self.proxy_model)
         self.logs_treeView.setAlternatingRowColors(True)
         self.logs_treeView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.logs_treeView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -94,6 +112,9 @@ class LogsWidget(QWidget, DIALOG_UI):
         self.logs_openFile_toolButton.clicked.connect(self.__logsOpenFileClicked)
         self.logs_openFolder_toolButton.clicked.connect(self.__logsOpenFolderClicked)
         self.logs_clear_toolButton.clicked.connect(self.__logsClearClicked)
+
+        # Connect the filter line edit to the proxy model
+        self.logs_filter_LineEdit.textChanged.connect(self.proxy_model.setFilterFixedString)
 
     def close(self):
         # uninstall the logging bridge
