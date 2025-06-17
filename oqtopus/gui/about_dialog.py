@@ -53,6 +53,9 @@ class AboutDialog(QDialog, DIALOG_UI):
         self.qgisMinimumVersionLabel.setText(qgisMinimumVersion)
 
         scaled_logo = QPixmap(PluginUtils.get_plugin_icon_path("oqtopus-logo.png")).scaled(
-            254, 254, aspectRatioMode=1, transformMode=Qt.TransformationMode.SmoothTransformation
+            254,
+            254,
+            aspectRatioMode=Qt.AspectRatioMode.KeepAspectRatio,
+            transformMode=Qt.TransformationMode.SmoothTransformation,
         )
         self.iconLabel.setPixmap(scaled_logo)

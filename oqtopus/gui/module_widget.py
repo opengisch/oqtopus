@@ -35,9 +35,11 @@ class ModuleWidget(QWidget, DIALOG_UI):
     def setModulePackage(self, module_package: Module):
         self.__current_module_package = module_package
         self.__packagePrepareGetPUMConfig()
+        self.__updateModuleInfo()
 
     def setDatabaseConnection(self, connection: psycopg.Connection):
         self.__database_connection = connection
+        self.__updateModuleInfo()
 
     def __packagePrepareGetPUMConfig(self):
         package_dir = self.__current_module_package.package_dir
@@ -84,28 +86,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.db_demoData_comboBox.clear()
         for demo_data_name, demo_data_file in self.__pum_config.demo_data().items():
             self.db_demoData_comboBox.addItem(demo_data_name, demo_data_file)
-
-        sm = SchemaMigrations(self.__pum_config)
-        migrationVersion = "0.0.0"
-        if not self.__database_connection:
-            self.moduleInfo_label.setText(self.tr("No database connection available"))
-            QtUtils.setForegroundColor(self.moduleInfo_label, PluginUtils.COLOR_WARNING)
-        elif sm.exists(self.__database_connection):
-            baseline_version = sm.baseline(self.__database_connection)
-            self.moduleInfo_label.setText(self.tr(f"Version {baseline_version} found"))
-            QtUtils.resetForegroundColor(self.moduleInfo_label)
-            self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {migrationVersion}"))
-
-            self.moduleInfo_stackedWidget.setCurrentWidget(
-                self.moduleInfo_stackedWidget_pageUpgrade
-            )
-        else:
-            self.moduleInfo_label.setText(self.tr("No module found"))
-            QtUtils.resetForegroundColor(self.moduleInfo_label)
-            self.moduleInfo_install_pushButton.setText(self.tr(f"Install {migrationVersion}"))
-            self.moduleInfo_stackedWidget.setCurrentWidget(
-                self.moduleInfo_stackedWidget_pageInstall
-            )
 
     def __installModuleClicked(self):
 
@@ -165,6 +145,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
             f"Module '{self.__current_module_package.module.name}' version '{self.__current_module_package.name}' has been successfully installed."
         )
 
+        self.__updateModuleInfo()
+
     def __upgradeModuleClicked(self):
         QMessageBox.critical(
             self,
@@ -172,3 +154,46 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.tr("Upgrade module is not implemented yet."),
         )
         return
+
+    def __updateModuleInfo(self):
+        if self.__current_module_package is None:
+            self.moduleInfo_label.setText(self.tr("No module package selected"))
+            QtUtils.setForegroundColor(self.moduleInfo_label, PluginUtils.COLOR_WARNING)
+            return
+
+        if self.__database_connection is None:
+            self.moduleInfo_label.setText(self.tr("No database connection available"))
+            QtUtils.setForegroundColor(self.moduleInfo_label, PluginUtils.COLOR_WARNING)
+            return
+
+        if self.__pum_config is None:
+            self.moduleInfo_label.setText(self.tr("No PUM config available"))
+            QtUtils.setForegroundColor(self.moduleInfo_label, PluginUtils.COLOR_WARNING)
+            return
+
+        migrationVersion = self.__pum_config.last_version()
+        sm = SchemaMigrations(self.__pum_config)
+
+        if sm.exists(self.__database_connection):
+            # Case upgrade
+            baseline_version = sm.baseline(self.__database_connection)
+            self.moduleInfo_label.setText(self.tr(f"Version {baseline_version} found"))
+            QtUtils.resetForegroundColor(self.moduleInfo_label)
+            self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {migrationVersion}"))
+
+            self.moduleInfo_stackedWidget.setCurrentWidget(
+                self.moduleInfo_stackedWidget_pageUpgrade
+            )
+
+            logger.info(
+                f"Migration table details: {sm.migration_details(self.__database_connection)}"
+            )
+
+        else:
+            # Case install
+            self.moduleInfo_label.setText(self.tr("No module found"))
+            QtUtils.resetForegroundColor(self.moduleInfo_label)
+            self.moduleInfo_install_pushButton.setText(self.tr(f"Install {migrationVersion}"))
+            self.moduleInfo_stackedWidget.setCurrentWidget(
+                self.moduleInfo_stackedWidget_pageInstall
+            )
