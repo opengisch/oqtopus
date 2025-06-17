@@ -1,6 +1,6 @@
 from qgis.PyQt.QtCore import Qt, QUrl, pyqtSignal
 from qgis.PyQt.QtGui import QDesktopServices
-from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox, QWidget
+from qgis.PyQt.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
 
 from ..core.module import Module
 from ..core.module_package import ModulePackage
@@ -83,8 +83,13 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         if self.__current_module is None:
             return
 
+        self.module_progressBar.setVisible(True)
+        QApplication.processEvents()
+
         try:
             with OverrideCursor(Qt.CursorShape.WaitCursor):
+                QApplication.processEvents()
+
                 if self.__current_module.versions == list():
                     self.__current_module.load_versions()
 
@@ -99,6 +104,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                     )
 
         except Exception as exception:
+            self.module_progressBar.setVisible(False)
             error_message = str(exception)
             if "rate limit exceeded for url" in error_message.lower():
                 CriticalMessageBox(
@@ -140,6 +146,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             self.tr("Load development branches"), self.module_package_SPECIAL_LOAD_DEVELOPMENT
         )
 
+        self.module_progressBar.setVisible(False)
         logger.info(f"Versions loaded for module '{self.__current_module.name}'.")
 
     def __moduleVersionChanged(self, index):
