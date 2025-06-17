@@ -1,7 +1,7 @@
 # Getting Started
 
-oQtopus is meant to deploy QGIS / PostgreSQL / postgis Module with QGIS plugins. 
-It can be installed as a QGIS plugin or as a python standalone executable.
+oQtopus is designed to deploy PostgreSQL modules managed by [pum](https://github.com/opengisch/pum/) along with a QGIS project and plugin. 
+It can be installed either as a QGIS plugin or as a standalone Python executable.
 
 ## oQtopus as a QGIS Plugin
 
