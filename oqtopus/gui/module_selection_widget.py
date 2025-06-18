@@ -4,9 +4,6 @@ from qgis.PyQt.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
 
 from ..core.module import Module
 from ..core.module_package import ModulePackage
-from ..core.module_version_loader import (
-    ModuleVersionLoader,
-)
 from ..core.package_prepare_task import PackagePrepareTask, PackagePrepareTaskCanceled
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, OverrideCursor, QtUtils
@@ -57,9 +54,6 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_seeChangeLog_pushButton.clicked.connect(self.__seeChangeLogClicked)
         self.module_browseZip_toolButton.clicked.connect(self.__moduleBrowseZipClicked)
 
-        self.__version_loader = ModuleVersionLoader(self)
-        self.__version_loader.finished.connect(self.__loadVersionsFinished)
-
         self.__packagePrepareTask = PackagePrepareTask(self)
         self.__packagePrepareTask.finished.connect(self.__packagePrepareTaskFinished)
         self.__packagePrepareTask.signalPackagingProgress.connect(
@@ -67,9 +61,6 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         )
 
     def close(self):
-        if self.__version_loader.isRunning():
-            self.__version_loader.wait()
-
         if self.__packagePrepareTask.isRunning():
             self.__packagePrepareTask.cancel()
             self.__packagePrepareTask.wait()
