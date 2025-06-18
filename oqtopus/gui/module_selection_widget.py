@@ -6,7 +6,6 @@ from ..core.module import Module
 from ..core.module_package import ModulePackage
 from ..core.module_version_loader import (
     ModuleVersionLoader,
-    ModuleVersionLoaderCanceled,
 )
 from ..core.package_prepare_task import PackagePrepareTask, PackagePrepareTaskCanceled
 from ..utils.plugin_utils import PluginUtils, logger
@@ -36,9 +35,14 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_module_comboBox.addItem(self.tr("Please select a module"), None)
         for config_module in self.__modules_config.modules:
             module = Module(
-                config_module.name, config_module.organisation, config_module.repository
+                name=config_module.name,
+                organisation=config_module.organisation,
+                repository=config_module.repository,
+                parent=self,
             )
             self.module_module_comboBox.addItem(module.name, module)
+            module.signal_versionsLoaded.connect(self.__loadVersionsFinished)
+            module.signal_developmentVersionsLoaded.connect(self.__loadDevelopmentVersionsFinished)
 
         self.module_latestVersion_label.setText("")
         QtUtils.setForegroundColor(self.module_latestVersion_label, PluginUtils.COLOR_GREEN)
@@ -93,13 +97,9 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         if self.__current_module is None:
             return
 
-        self.module_progressBar.setVisible(True)
-        QApplication.processEvents()
-
         if self.__current_module.versions == list():
-            self.__version_loader.start_load_versions(
-                module=self.__current_module, mode=ModuleVersionLoader.Mode.NORMAL
-            )
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            self.__current_module.start_load_versions()
 
     def __moduleVersionChanged(self, index):
 
@@ -145,21 +145,9 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         if self.__current_module is None:
             return
 
-        with OverrideCursor(Qt.CursorShape.WaitCursor):
-            self.__current_module.load_development_versions()
-
         if self.__current_module.development_versions == list():
-            QMessageBox.warning(
-                self,
-                self.tr("No development versions found"),
-                self.tr("No development versions found for this module."),
-            )
-            return
-
-        self.module_package_comboBox.removeItem(self.module_package_comboBox.count() - 1)
-
-        for module_package in self.__current_module.development_versions:
-            self.module_package_comboBox.addItem(module_package.display_name(), module_package)
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            self.__current_module.start_load_development_versions()
 
     def __moduleBrowseZipClicked(self):
         filename, format = QFileDialog.getOpenFileName(
@@ -271,49 +259,17 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         logger.info(f"Opening changelog URL: {changelog_url}")
         QDesktopServices.openUrl(QUrl(changelog_url))
 
-    def __loadVersionsFinished(self):
+    def __loadVersionsFinished(self, error):
         logger.info("Loading versions finished")
 
+        QApplication.restoreOverrideCursor()
         self.signal_loadingFinished.emit()
         self.module_progressBar.setVisible(False)
 
-        if isinstance(self.__version_loader.lastError, ModuleVersionLoaderCanceled):
-            logger.info("Load versions task was canceled by user.")
-            self.module_information_label.setText(self.tr("Versions loading canceled."))
-            QtUtils.setForegroundColor(self.module_information_label, PluginUtils.COLOR_WARNING)
-            return
-
-        if self.__version_loader.lastError is not None:
-            error_text = self.tr("Can't load module versions:")
-            CriticalMessageBox(
-                self.tr("Error"), error_text, self.__version_loader.lastError, self
-            ).exec()
-            self.module_information_label.setText(error_text)
-            QtUtils.setForegroundColor(self.module_information_label, PluginUtils.COLOR_WARNING)
-            return
-
-        try:
-            with OverrideCursor(Qt.CursorShape.WaitCursor):
-                QApplication.processEvents()
-
-                if self.__current_module.versions == list():
-                    self.__version_loader.start_load_versions()
-
-                for module_package in self.__current_module.versions:
-                    self.module_package_comboBox.addItem(
-                        module_package.display_name(), module_package
-                    )
-
-                if self.__current_module.latest_version is not None:
-                    self.module_latestVersion_label.setText(
-                        f"Latest: {self.__current_module.latest_version.name}"
-                    )
-
-        except Exception as exception:
-            self.module_progressBar.setVisible(False)
-            error_message = str(exception)
-            if "rate limit exceeded for url" in error_message.lower():
-                CriticalMessageBox(
+        if error:
+            if "rate limit exceeded for url" in error.lower():
+                QMessageBox.critical(
+                    self,
                     self.tr("GitHub API Rate Limit Exceeded"),
                     self.tr(
                         "Oqtopus needs to download release data from GitHub to work properly.<br><br>"
@@ -326,14 +282,22 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                         "2. Click <b>Generate new token</b> and select the <code>repo</code> scope.<br>"
                         "3. Copy the generated token and paste it in the Settings dialog of this application."
                     ),
-                    exception,
-                    self,
-                ).exec()
-            else:
-                CriticalMessageBox(
-                    self.tr("Error"), self.tr("Can't load module versions:"), exception, self
-                ).exec()
+                )
+                return
+
+            error_text = self.tr(f"Can't load module versions: {error}")
+            QMessageBox.critical(self, self.tr("Error"), error_text)
+            self.module_information_label.setText(error_text)
+            QtUtils.setForegroundColor(self.module_information_label, PluginUtils.COLOR_WARNING)
             return
+
+        for module_package in self.__current_module.versions:
+            self.module_package_comboBox.addItem(module_package.display_name(), module_package)
+
+        if self.__current_module.latest_version is not None:
+            self.module_latestVersion_label.setText(
+                f"Latest: {self.__current_module.latest_version.name}"
+            )
 
         self.module_package_comboBox.insertSeparator(self.module_package_comboBox.count())
         self.module_package_comboBox.addItem(
@@ -354,3 +318,49 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         self.module_progressBar.setVisible(False)
         logger.info(f"Versions loaded for module '{self.__current_module.name}'.")
+
+    def __loadDevelopmentVersionsFinished(self, error):
+        logger.info("Loading development versions finished")
+
+        QApplication.restoreOverrideCursor()
+        self.signal_loadingFinished.emit()
+        self.module_progressBar.setVisible(False)
+
+        if error:
+            if "rate limit exceeded for url" in error.lower():
+                QMessageBox.critical(
+                    self,
+                    self.tr("GitHub API Rate Limit Exceeded"),
+                    self.tr(
+                        "Oqtopus needs to download release data from GitHub to work properly.<br><br>"
+                        "GitHub limits the number of requests that can be made without authentication. "
+                        "You have reached the maximum number of requests allowed for unauthenticated users.<br><br>"
+                        "To continue using this feature, please create a free GitHub personal access token and enter it in the Settings dialog.<br><br>"
+                        "This will increase your request limit.<br><br>"
+                        "<b>How to get a token:</b><br>"
+                        "1. Go to <a href='https://github.com/settings/tokens'>GitHub Personal Access Tokens</a>.<br>"
+                        "2. Click <b>Generate new token</b> and select the <code>repo</code> scope.<br>"
+                        "3. Copy the generated token and paste it in the Settings dialog of this application."
+                    ),
+                )
+                return
+
+            error_text = self.tr(f"Can't load module versions: {error}")
+            QMessageBox.critical(self, self.tr("Error"), error_text)
+            self.module_information_label.setText(error_text)
+            QtUtils.setForegroundColor(self.module_information_label, PluginUtils.COLOR_WARNING)
+            return
+
+        if self.__current_module.development_versions == list():
+            QMessageBox.warning(
+                self,
+                self.tr("No development versions found"),
+                self.tr("No development versions found for this module."),
+            )
+            return
+
+        self.module_package_comboBox.removeItem(self.module_package_comboBox.count() - 1)
+        self.module_package_comboBox.setCurrentIndex(0)
+
+        for module_package in self.__current_module.development_versions:
+            self.module_package_comboBox.addItem(module_package.display_name(), module_package)
