@@ -17,7 +17,6 @@ def plugin_instance():
     plugin.unload()
 
 
-@pytest.mark.basic
 def test_plugin_load(plugin_instance):
     print(" [INFO] Validating plugin load...")
     assert plugin_instance.iface is not None
