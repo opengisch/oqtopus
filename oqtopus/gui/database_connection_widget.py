@@ -33,12 +33,15 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
 
         actionCreateDb = QAction(self.tr("Create database"), db_operations_menu)
         self.__actionDuplicateDb = QAction(self.tr("Duplicate database"), db_operations_menu)
+        actionReloadPgServices = QAction(self.tr("Reload PG Service config"), db_operations_menu)
 
         actionCreateDb.triggered.connect(self.__createDatabaseClicked)
         self.__actionDuplicateDb.triggered.connect(self.__duplicateDatabaseClicked)
+        actionReloadPgServices.triggered.connect(self.__loadDatabaseInformations)
 
         db_operations_menu.addAction(actionCreateDb)
         db_operations_menu.addAction(self.__actionDuplicateDb)
+        db_operations_menu.addAction(actionReloadPgServices)
 
         self.db_operations_toolButton.setMenu(db_operations_menu)
 
@@ -58,7 +61,10 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         return self.__database_connection
 
     def __loadDatabaseInformations(self):
-        self.db_servicesConfigFilePath_label.setText(pgserviceparser_conf_path().as_posix())
+        pg_service_conf_path = pgserviceparser_conf_path()
+        self.db_servicesConfigFilePath_label.setText(
+            f"<a href='file://{pg_service_conf_path.resolve()}'>{pg_service_conf_path.as_posix()}</a>"
+        )
 
         self.db_services_comboBox.clear()
 

@@ -22,13 +22,16 @@
 #
 # ---------------------------------------------------------------------
 
+import psycopg
 from pgserviceparser import service_config as pgserviceparser_service_config
 from pgserviceparser import service_names as pgserviceparser_service_names
 from pgserviceparser import write_service as pgserviceparser_write_service
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QDialog, QMessageBox
 
-from ..utils.plugin_utils import PluginUtils
+from oqtopus.utils.qt_utils import OverrideCursor
+
+from ..utils.plugin_utils import PluginUtils, logger
 
 DIALOG_UI = PluginUtils.get_ui_class("database_create_dialog.ui")
 
@@ -112,36 +115,71 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
             )
             return
 
-        if self.database_lineEdit.text() == "":
+        new_database_name = self.database_lineEdit.text()
+        if new_database_name == "":
             QMessageBox.critical(self, "Error", "Please enter a database name.")
             return
 
-        service_settings = self._get_service_settings()
+        database_connection = None
+        try:
+            with OverrideCursor(Qt.CursorShape.WaitCursor):
+                database_connection = psycopg.connect(**self._get_connection_parameters())
+                database_connection.autocommit = True
+                with database_connection.cursor() as cursor:
+                    cursor.execute(
+                        psycopg.sql.SQL("CREATE DATABASE {}").format(
+                            psycopg.sql.Identifier(new_database_name)
+                        )
+                    )
 
-        pgserviceparser_write_service(
-            service_name=service_name,
-            settings=service_settings,
-            create_if_not_found=True,
-        )
+        except Exception as e:
+            errorText = self.tr(f"Error creating the new database:\n{e}.")
+            logger.error(errorText)
+            QMessageBox.critical(self, "Error", errorText)
+            return
+
+        finally:
+            if database_connection:
+                database_connection.close()
+
+        # Proceed with writing the new service configuration
+        service_settings = self._get_new_service_settings()
+
+        try:
+            pgserviceparser_write_service(
+                service_name=service_name,
+                settings=service_settings,
+                create_if_not_found=True,
+            )
+        except Exception as e:
+            errorText = self.tr(f"Error writing the new service configuration:\n{e}.")
+            logger.error(errorText)
+            QMessageBox.critical(self, "Error", errorText)
+            return
 
         super().accept()
 
-    def _get_service_settings(self):
+    def _get_connection_parameters(self):
+        """
+        Returns a dictionary of connection parameters suitable for psycopg.connect().
+        Uses manual input if 'Enter manually' is checked, otherwise uses the selected service name.
+        """
+        settings = dict()
+        if self.enterManually_radioButton.isChecked():
+            settings.update(self._get_manual_connection_parameters())
+        else:
+            # Use the selected service name
+            service_name = self.existingService_comboBox.currentText()
+            if service_name:
+                settings["service"] = service_name
+
+        return settings
+
+    def _get_new_service_settings(self):
         settings = dict()
 
         if self.enterManually_radioButton.isChecked():
-            if self.parameters_host_lineEdit.text():
-                settings["host"] = self.parameters_host_lineEdit.text()
-            if self.parameters_port_lineEdit.text():
-                settings["port"] = self.parameters_port_lineEdit.text()
-            if self.parameters_ssl_comboBox.currentData():
-                settings["sslmode"] = self.parameters_ssl_comboBox.currentData()
-            if self.parameters_user_lineEdit.text():
-                settings["user"] = self.parameters_user_lineEdit.text()
-            if self.parameters_password_lineEdit.text():
-                settings["password"] = self.parameters_password_lineEdit.text()
-            if self.database_lineEdit.text():
-                settings["dbname"] = self.database_lineEdit.text()
+            settings.update(self._get_manual_connection_parameters())
         else:
             # Copy settings from the selected existing service
             service_name = self.existingService_comboBox.currentText()
@@ -152,3 +190,22 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
                 settings["dbname"] = self.database_lineEdit.text()
 
         return settings
+
+    def _get_manual_connection_parameters(self):
+        parameters = dict()
+
+        # Collect parameters from manual input fields
+        if self.parameters_host_lineEdit.text():
+            parameters["host"] = self.parameters_host_lineEdit.text()
+        if self.parameters_port_lineEdit.text():
+            parameters["port"] = self.parameters_port_lineEdit.text()
+        if self.parameters_ssl_comboBox.currentData():
+            parameters["sslmode"] = self.parameters_ssl_comboBox.currentData()
+        if self.parameters_user_lineEdit.text():
+            parameters["user"] = self.parameters_user_lineEdit.text()
+        if self.parameters_password_lineEdit.text():
+            parameters["password"] = self.parameters_password_lineEdit.text()
+        if self.database_lineEdit.text():
+            parameters["dbname"] = self.database_lineEdit.text()
+
+        return parameters
