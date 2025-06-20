@@ -1,0 +1,36 @@
+name: 🔌 Plugin | Run tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  QGIS_TEST_VERSION: latest
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        qgis_version: [latest, 3.34.14-noble]
+    env:
+      QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Unit tests
+        run:
+          docker run
+          -e PYTHONPATH=/usr/share/qgis/python/plugins
+          -v $(pwd):/usr/src
+          -w /usr/src qgis/qgis:${QGIS_TEST_VERSION}
+          sh -c 'pip3 install -r requirements.txt || pip3 install -r requirements.txt --break-system-packages;xvfb-run pytest'
