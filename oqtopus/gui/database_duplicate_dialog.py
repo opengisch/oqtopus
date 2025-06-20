@@ -68,7 +68,7 @@ class DatabaseDuplicateDialog(QDialog, DIALOG_UI):
         new_database_name = self.newDatabase_lineEdit.text()
         try:
             database_connection.autocommit = True
-            with OverrideCursor(Qt.WaitCursor):
+            with OverrideCursor(Qt.CursorShape.WaitCursor):
                 with database_connection.cursor() as cursor:
                     cursor.execute(
                         f"CREATE DATABASE {new_database_name} TEMPLATE {self.__existing_service_config.get('dbname')}"

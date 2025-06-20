@@ -33,7 +33,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
 
         actionCreateDb = QAction(self.tr("Create database"), db_operations_menu)
         self.__actionDuplicateDb = QAction(self.tr("Duplicate database"), db_operations_menu)
-        actionReloadPgServices = QAction(self.tr("Reload pg services"), db_operations_menu)
+        actionReloadPgServices = QAction(self.tr("Reload PG Service config"), db_operations_menu)
 
         actionCreateDb.triggered.connect(self.__createDatabaseClicked)
         self.__actionDuplicateDb.triggered.connect(self.__duplicateDatabaseClicked)
