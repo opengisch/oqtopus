@@ -4,7 +4,6 @@ from enum import Enum
 class ModuleAsset:
     class Type(Enum):
         PLUGIN = "oqtopus.plugin"
-        DATAMODEL = "oqtopus.datamodel"
         PROJECT = "oqtopus.project"
 
     def __init__(

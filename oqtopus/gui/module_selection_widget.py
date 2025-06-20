@@ -123,7 +123,6 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         QtUtils.resetForegroundColor(self.module_information_label)
         logger.info(loading_text)
 
-        self.module_informationDatamodel_label.setText("-")
         self.module_informationProject_label.setText("-")
         self.module_informationPlugin_label.setText("-")
 
@@ -195,12 +194,6 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         logger.info(f"Package loaded into '{package_dir}'")
         self.module_information_label.setText(package_dir)
         QtUtils.resetForegroundColor(self.module_information_label)
-
-        asset_datamodel = self.module_package_comboBox.currentData().asset_datamodel
-        if asset_datamodel:
-            self.module_informationDatamodel_label.setText(asset_datamodel.package_dir)
-        else:
-            self.module_informationDatamodel_label.setText("No asset available")
 
         asset_project = self.module_package_comboBox.currentData().asset_project
         if asset_project:

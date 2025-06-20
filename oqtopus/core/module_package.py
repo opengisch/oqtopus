@@ -32,7 +32,6 @@ class ModulePackage:
         self.prerelease = False
         self.html_url = None
 
-        self.asset_datamodel = None
         self.asset_project = None
         self.asset_plugin = None
 
@@ -96,11 +95,6 @@ class ModulePackage:
                 type=None,
             )
 
-            if asset.label == ModuleAsset.Type.DATAMODEL.value:
-                asset.type = ModuleAsset.Type.DATAMODEL
-                self.asset_datamodel = asset
-                continue
-
             if asset.label == ModuleAsset.Type.PROJECT.value:
                 asset.type = ModuleAsset.Type.PROJECT
                 self.asset_project = asset
@@ -111,7 +105,7 @@ class ModulePackage:
                 self.asset_plugin = asset
                 continue
 
-            if self.asset_datamodel and self.asset_project and self.asset_plugin:
+            if self.asset_project and self.asset_plugin:
                 # We already have all assets we need
                 break
 

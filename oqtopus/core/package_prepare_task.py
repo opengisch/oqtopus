@@ -71,15 +71,6 @@ class PackagePrepareTask(QThread):
 
         # Download the release assets
         self.__checkForCanceled()
-        if module_package.asset_datamodel is not None:
-            zip_file = self.__download_module_asset(
-                module_package.asset_datamodel.download_url,
-                module_package.asset_datamodel.type.value + ".zip",
-            )
-            package_dir = self.__extract_zip_file(zip_file)
-            module_package.asset_datamodel.package_dir = package_dir
-
-        self.__checkForCanceled()
         if module_package.asset_project is not None:
             zip_file = self.__download_module_asset(
                 module_package.asset_project.download_url,
