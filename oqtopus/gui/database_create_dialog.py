@@ -29,9 +29,8 @@ from pgserviceparser import write_service as pgserviceparser_write_service
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QDialog, QMessageBox
 
-from oqtopus.utils.qt_utils import OverrideCursor
-
 from ..utils.plugin_utils import PluginUtils, logger
+from ..utils.qt_utils import OverrideCursor
 
 DIALOG_UI = PluginUtils.get_ui_class("database_create_dialog.ui")
 
