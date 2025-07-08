@@ -133,7 +133,7 @@ class LogsWidget(QWidget, DIALOG_UI):
             ]
         )
         self.logs_level_comboBox.currentTextChanged.connect(self.proxy_model.setLevelFilter)
-        self.logs_level_comboBox.setCurrentText("WARNING")
+        self.logs_level_comboBox.setCurrentText("INFO")
 
         self.logs_openFile_toolButton.setIcon(
             QApplication.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon)
