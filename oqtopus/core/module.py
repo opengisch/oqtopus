@@ -34,9 +34,7 @@ class Module(QObject):
         reply.finished.connect(lambda: self._on_versions_reply(reply))
 
     def _on_versions_reply(self, reply):
-        if reply.error() is not QNetworkReply.NetworkError.NoError:
-            print(f"request sent: {reply.request().url()}")
-            print(f"reply error: {reply.error()}")
+        if reply.error() != QNetworkReply.NetworkError.NoError:
             self.signal_versionsLoaded.emit(reply.errorString())
             reply.deleteLater()
             return
@@ -94,7 +92,7 @@ class Module(QObject):
         reply.finished.connect(lambda: self._on_development_versions_reply(reply))
 
     def _on_development_versions_reply(self, reply):
-        if reply.error() is not QNetworkReply.NetworkError.NoError:
+        if reply.error() != QNetworkReply.NetworkError.NoError:
             self.signal_developmentVersionsLoaded.emit(reply.errorString())
             reply.deleteLater()
             return
