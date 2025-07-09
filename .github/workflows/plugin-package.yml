@@ -43,7 +43,7 @@ jobs:
         run: |
           for LIB in pgserviceparser pum; do
             DNL=$(git grep $LIB requirements.txt | cut -d: -f2)
-            pip download $DNL --only-binary :all: -d temp/
+            pip download $DNL --no-deps --only-binary :all: -d temp/
           done
           unzip -o "temp/*.whl" -d oqtopus/libs
           rm -r temp
