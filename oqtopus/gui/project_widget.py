@@ -69,7 +69,7 @@ class ProjectWidget(QWidget, DIALOG_UI):
         QtUtils.resetForegroundColor(self.project_info_label)
         QtUtils.setFontItalic(self.project_info_label, False)
         self.project_info_label.setText(
-            f"<a href='file://{self.tr(asset_project.package_dir)}'>{self.tr(asset_project.package_dir)}</a>",
+            f"<a href='file://{asset_project.package_dir}'>{asset_project.package_dir}</a>",
         )
 
     def __projectInstallClicked(self):
