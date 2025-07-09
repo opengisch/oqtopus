@@ -213,19 +213,19 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_information_label.setText(loading_text)
 
     def __seeChangeLogClicked(self):
-        if self.__current_module_package.type == ModulePackage.Type.FROM_ZIP:
-            QMessageBox.warning(
-                self,
-                self.tr("Can't open changelog"),
-                self.tr("Changelog is not available for Zip packages."),
-            )
-            return
-
         if self.__current_module_package is None:
             QMessageBox.warning(
                 self,
                 self.tr("Can't open changelog"),
                 self.tr("Please select a module and version first."),
+            )
+            return
+
+        if self.__current_module_package.type == ModulePackage.Type.FROM_ZIP:
+            QMessageBox.warning(
+                self,
+                self.tr("Can't open changelog"),
+                self.tr("Changelog is not available for Zip packages."),
             )
             return
 

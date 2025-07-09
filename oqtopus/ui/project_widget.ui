@@ -26,8 +26,11 @@
      <property name="text">
       <string>-</string>
      </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
      <property name="textInteractionFlags">
-      <set>Qt::NoTextInteraction</set>
+      <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
      </property>
     </widget>
    </item>
