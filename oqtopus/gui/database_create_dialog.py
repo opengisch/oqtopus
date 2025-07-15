@@ -35,6 +35,11 @@ from ..utils.qt_utils import OverrideCursor
 DIALOG_UI = PluginUtils.get_ui_class("database_create_dialog.ui")
 
 
+DEFAULT_PG_PORT = "5432"
+DEFAULT_PG_DB = "postgres"
+DEFAULT_PG_HOST = "localhost"
+
+
 class DatabaseCreateDialog(QDialog, DIALOG_UI):
     def __init__(self, selected_service=None, parent=None):
         QDialog.__init__(self, parent)
@@ -62,6 +67,11 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
         self.parameters_ssl_comboBox.addItem("require", "require")
         self.parameters_ssl_comboBox.addItem("verify-ca", "verify-ca")
         self.parameters_ssl_comboBox.addItem("verify-full", "verify-full")
+        self.parameters_ssl_comboBox.setCurrentIndex(2)  # Default to 'prefer'
+
+        self.parameters_host_lineEdit.setPlaceholderText(DEFAULT_PG_HOST)
+        self.parameters_port_lineEdit.setPlaceholderText(DEFAULT_PG_PORT)
+        self.parameters_database_lineEdit.setPlaceholderText(DEFAULT_PG_DB)
 
         self.database_lineEdit.textChanged.connect(self._databaseTextChanged)
 
@@ -91,8 +101,7 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
         self.parameters_ssl_comboBox.setCurrentIndex(parameter_ssl_index)
         self.parameters_user_lineEdit.setText(service_user)
         self.parameters_password_lineEdit.setText(service_password)
-
-        self.database_lineEdit.setText(service_dbname)
+        self.parameters_database_lineEdit.setText(service_dbname)
 
     def _enterManuallyToggled(self, checked):
         self.parameters_frame.setEnabled(checked)
@@ -195,16 +204,16 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
 
         # Collect parameters from manual input fields
         if self.parameters_host_lineEdit.text():
-            parameters["host"] = self.parameters_host_lineEdit.text()
+            parameters["host"] = self.parameters_host_lineEdit.text() or DEFAULT_PG_HOST
         if self.parameters_port_lineEdit.text():
-            parameters["port"] = self.parameters_port_lineEdit.text()
+            parameters["port"] = self.parameters_port_lineEdit.text() or DEFAULT_PG_PORT
         if self.parameters_ssl_comboBox.currentData():
             parameters["sslmode"] = self.parameters_ssl_comboBox.currentData()
         if self.parameters_user_lineEdit.text():
             parameters["user"] = self.parameters_user_lineEdit.text()
         if self.parameters_password_lineEdit.text():
             parameters["password"] = self.parameters_password_lineEdit.text()
-        if self.database_lineEdit.text():
-            parameters["dbname"] = self.database_lineEdit.text()
+        if self.parameters_database_lineEdit.text():
+            parameters["dbname"] = self.parameters_database_lineEdit.text() or DEFAULT_PG_DB
 
         return parameters
