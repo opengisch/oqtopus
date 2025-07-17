@@ -27,7 +27,7 @@ from pgserviceparser import service_config as pgserviceparser_service_config
 from pgserviceparser import service_names as pgserviceparser_service_names
 from pgserviceparser import write_service as pgserviceparser_write_service
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtWidgets import QDialog, QMessageBox
+from qgis.PyQt.QtWidgets import QDialog, QLineEdit, QMessageBox
 
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import OverrideCursor
@@ -76,6 +76,8 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
         self.database_lineEdit.textChanged.connect(self._databaseTextChanged)
 
         self.buttonBox.accepted.connect(self._accept)
+
+        self.parameters_password_toolButton.clicked.connect(self._togglePasswordVisibility)
 
         if self.existingService_comboBox.count() > 0:
             self._serviceChanged()
@@ -217,3 +219,9 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
             parameters["dbname"] = self.parameters_database_lineEdit.text() or DEFAULT_PG_DB
 
         return parameters
+
+    def _togglePasswordVisibility(self):
+        if self.parameters_password_toolButton.isChecked():
+            self.parameters_password_lineEdit.setEchoMode(QLineEdit.EchoMode.Normal)
+        else:
+            self.parameters_password_lineEdit.setEchoMode(QLineEdit.EchoMode.Password)
