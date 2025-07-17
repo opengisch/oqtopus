@@ -17,7 +17,7 @@
    <item row="0" column="0">
     <widget class="QPushButton" name="project_install_pushButton">
      <property name="text">
-      <string>Install demo project</string>
+      <string>Install template project</string>
      </property>
     </widget>
    </item>
