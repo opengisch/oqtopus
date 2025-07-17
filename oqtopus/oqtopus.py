@@ -2,8 +2,6 @@ import sys
 import types
 from pathlib import Path
 
-import yaml
-
 # Create fake qgis.PyQt modules that point to PyQt5 modules
 try:
     pyqt_core = __import__("PyQt6.QtCore", fromlist=[""])
@@ -38,7 +36,6 @@ sys.modules["qgis.PyQt.uic"] = pyqt_uic
 
 from qgis.PyQt.QtGui import QIcon  # noqa: E402
 
-from .core.modules_config import ModulesConfig  # noqa: E402
 from .gui.main_dialog import MainDialog  # noqa: E402
 from .utils.plugin_utils import PluginUtils  # noqa: E402
 
@@ -52,11 +49,7 @@ def main():
 
     conf_path = Path(__file__).parent / "default_config.yaml"
 
-    with conf_path.open() as f:
-        data = yaml.safe_load(f)
-        modules_config = ModulesConfig(**data)
-
-    dialog = MainDialog(modules_config)
+    dialog = MainDialog(modules_config_path=conf_path)
     dialog.setWindowIcon(icon)
     dialog.show()
 

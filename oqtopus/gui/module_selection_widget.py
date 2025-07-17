@@ -1,9 +1,11 @@
+import yaml
 from qgis.PyQt.QtCore import Qt, QUrl, pyqtSignal
 from qgis.PyQt.QtGui import QDesktopServices
 from qgis.PyQt.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
 
 from ..core.module import Module
 from ..core.module_package import ModulePackage
+from ..core.modules_config import ModulesConfig
 from ..core.package_prepare_task import PackagePrepareTask, PackagePrepareTaskCanceled
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, OverrideCursor, QtUtils
@@ -18,28 +20,44 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
     signal_loadingStarted = pyqtSignal()
     signal_loadingFinished = pyqtSignal()
 
-    def __init__(self, modules_config, parent=None):
+    def __init__(self, modules_config_path, parent=None):
         QWidget.__init__(self, parent)
         self.setupUi(self)
 
         self.__current_module = None
         self.__current_module_package = None
-        self.__modules_config = modules_config
+        self.__modules_config = None
+
+        try:
+            with modules_config_path.open() as f:
+                data = yaml.safe_load(f)
+                self.__modules_config = ModulesConfig(**data)
+        except Exception as e:
+            logger.error(f"Error loading modules config from {modules_config_path}: {e}")
+            QMessageBox.critical(
+                self,
+                self.tr("Error"),
+                self.tr(f"Can't load modules configuration from '{modules_config_path}': {e}"),
+            )
+            self.__modules_config = None
 
         self.module_progressBar.setVisible(False)
 
         self.module_module_comboBox.clear()
         self.module_module_comboBox.addItem(self.tr("Please select a module"), None)
-        for config_module in self.__modules_config.modules:
-            module = Module(
-                name=config_module.name,
-                organisation=config_module.organisation,
-                repository=config_module.repository,
-                parent=self,
-            )
-            self.module_module_comboBox.addItem(module.name, module)
-            module.signal_versionsLoaded.connect(self.__loadVersionsFinished)
-            module.signal_developmentVersionsLoaded.connect(self.__loadDevelopmentVersionsFinished)
+        if self.__modules_config is not None:
+            for config_module in self.__modules_config.modules:
+                module = Module(
+                    name=config_module.name,
+                    organisation=config_module.organisation,
+                    repository=config_module.repository,
+                    parent=self,
+                )
+                self.module_module_comboBox.addItem(module.name, module)
+                module.signal_versionsLoaded.connect(self.__loadVersionsFinished)
+                module.signal_developmentVersionsLoaded.connect(
+                    self.__loadDevelopmentVersionsFinished
+                )
 
         self.module_latestVersion_label.setText("")
         QtUtils.setForegroundColor(self.module_latestVersion_label, PluginUtils.COLOR_GREEN)

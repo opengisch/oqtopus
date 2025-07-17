@@ -52,7 +52,7 @@ DIALOG_UI = PluginUtils.get_ui_class("main_dialog.ui")
 
 class MainDialog(QDialog, DIALOG_UI):
 
-    def __init__(self, modules_config, parent=None):
+    def __init__(self, modules_config_path, parent=None):
         QDialog.__init__(self, parent)
         self.setupUi(self)
 
@@ -60,7 +60,7 @@ class MainDialog(QDialog, DIALOG_UI):
         self.buttonBox.helpRequested.connect(self.__helpRequested)
 
         # Init GUI Modules
-        self.__moduleSelectionWidget = ModuleSelectionWidget(modules_config, self)
+        self.__moduleSelectionWidget = ModuleSelectionWidget(modules_config_path, self)
         self.moduleSelection_groupBox.layout().addWidget(self.__moduleSelectionWidget)
 
         # Init GUI Database

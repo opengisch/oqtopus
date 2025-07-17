@@ -1,10 +1,7 @@
 from pathlib import Path
 
-import yaml
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QApplication
-
-from oqtopus.core.modules_config import ModulesConfig
 
 from .gui.about_dialog import AboutDialog
 from .gui.main_dialog import MainDialog
@@ -155,12 +152,8 @@ class OqtopusPlugin:
     def show_main_dialog(self):
         conf_path = Path(__file__).parent / "default_config.yaml"
 
-        with conf_path.open() as f:
-            data = yaml.safe_load(f)
-            modules_config = ModulesConfig(**data)
-
-            main_dialog = MainDialog(modules_config, self.iface.mainWindow())
-            main_dialog.exec()
+        main_dialog = MainDialog(modules_config_path=conf_path, parent=self.iface.mainWindow())
+        main_dialog.exec()
 
     def show_logs_folder(self):
         PluginUtils.open_logs_folder()
