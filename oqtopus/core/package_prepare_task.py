@@ -25,6 +25,8 @@ class PackagePrepareTask(QThread):
 
         self.module_package = None
 
+        self.__destination_directory = None
+
         self.__canceled = False
         self.lastError = None
 
@@ -53,6 +55,8 @@ class PackagePrepareTask(QThread):
             if self.module_package is None:
                 raise Exception(self.tr("No module version provided."))
 
+            self.__destination_directory = self.__prepareDestinationDirectory()
+
             self.__download_module_assets(self.module_package)
             self.lastError = None
 
@@ -61,13 +65,29 @@ class PackagePrepareTask(QThread):
             logger.critical(f"Package prepare task error: {e}")
             self.lastError = e
 
+    def __prepareDestinationDirectory(self):
+        """
+        Prepare the destination directory for the module package.
+        This method creates a temporary directory for the package.
+        """
+        temp_dir = PluginUtils.plugin_temp_path()
+        destination_directory = os.path.join(
+            temp_dir,
+            self.module_package.organisation,
+            self.module_package.repository,
+            self.module_package.name,
+        )
+        os.makedirs(destination_directory, exist_ok=True)
+
+        return destination_directory
+
     def __download_module_assets(self, module_package):
 
         # Download the source
         zip_file = self.__download_module_asset(module_package.download_url, "source.zip")
-        module_package.zip_file = zip_file
+        module_package.source_package_zip = zip_file
         package_dir = self.__extract_zip_file(zip_file)
-        module_package.package_dir = package_dir
+        module_package.source_package_dir = package_dir
 
         # Download the release assets
         self.__checkForCanceled()
@@ -77,6 +97,7 @@ class PackagePrepareTask(QThread):
                 module_package.asset_project.type.value + ".zip",
             )
             package_dir = self.__extract_zip_file(zip_file)
+            module_package.asset_project.package_zip = zip_file
             module_package.asset_project.package_dir = package_dir
 
         self.__checkForCanceled()
@@ -86,15 +107,12 @@ class PackagePrepareTask(QThread):
                 module_package.asset_plugin.type.value + ".zip",
             )
             package_dir = self.__extract_zip_file(zip_file)
+            module_package.asset_plugin.package_zip = zip_file
             module_package.asset_plugin.package_dir = package_dir
 
     def __download_module_asset(self, url: str, filename: str):
 
-        temp_dir = PluginUtils.plugin_temp_path()
-        destination_directory = os.path.join(temp_dir, "Downloads")
-        os.makedirs(destination_directory, exist_ok=True)
-
-        zip_file = os.path.join(destination_directory, filename)
+        zip_file = os.path.join(self.__destination_directory, filename)
 
         # Streaming, so we can iterate over the response.
         response = requests.get(url, allow_redirects=True, stream=True)
@@ -121,19 +139,17 @@ class PackagePrepareTask(QThread):
         return zip_file
 
     def __extract_zip_file(self, zip_file):
-        temp_dir = PluginUtils.plugin_temp_path()
-
         # Unzip the file to plugin temp dir
         try:
             with zipfile.ZipFile(zip_file, "r") as zip_ref:
                 # Find the top-level directory
                 zip_dirname = zip_ref.namelist()[0].split("/")[0]
-                package_dir = os.path.join(temp_dir, zip_dirname)
+                package_dir = os.path.join(self.__destination_directory, zip_dirname)
 
                 if os.path.exists(package_dir):
                     shutil.rmtree(package_dir)
 
-                zip_ref.extractall(temp_dir)
+                zip_ref.extractall(self.__destination_directory)
 
         except zipfile.BadZipFile:
             raise Exception(self.tr(f"The selected file '{zip_file}' is not a valid zip archive."))

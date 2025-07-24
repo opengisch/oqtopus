@@ -25,6 +25,8 @@ class ModulePackage:
         branch=None,
     ):
         self.module = module
+        self.organisation = organisation
+        self.repository = repository
         self.type = type
         self.name = name
         self.branch = branch
@@ -50,12 +52,10 @@ class ModulePackage:
         if self.type == ModulePackage.Type.RELEASE:
             type = "tags"
 
-        self.download_url = (
-            f"https://github.com/{organisation}/{repository}/archive/refs/{type}/{self.branch}.zip"
-        )
+        self.download_url = f"https://github.com/{self.organisation}/{self.repository}/archive/refs/{type}/{self.branch}.zip"
 
-        self.zip_file = None
-        self.package_dir = None
+        self.source_package_zip = None
+        self.source_package_dir = None
 
     def display_name(self):
         if self.prerelease:

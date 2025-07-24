@@ -208,20 +208,26 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             QtUtils.setForegroundColor(self.module_information_label, PluginUtils.COLOR_WARNING)
             return
 
-        package_dir = self.module_package_comboBox.currentData().package_dir
+        package_dir = self.module_package_comboBox.currentData().source_package_dir
         logger.info(f"Package loaded into '{package_dir}'")
-        self.module_information_label.setText(package_dir)
         QtUtils.resetForegroundColor(self.module_information_label)
+        self.module_information_label.setText(
+            f"<a href='file://{package_dir}'>{package_dir}</a>",
+        )
 
         asset_project = self.module_package_comboBox.currentData().asset_project
         if asset_project:
-            self.module_informationProject_label.setText(asset_project.package_dir)
+            self.module_informationProject_label.setText(
+                f"<a href='file://{asset_project.package_dir}'>{asset_project.package_dir}</a>",
+            )
         else:
             self.module_informationProject_label.setText("No asset available")
 
         asset_plugin = self.module_package_comboBox.currentData().asset_plugin
         if asset_plugin:
-            self.module_informationPlugin_label.setText(asset_plugin.package_dir)
+            self.module_informationPlugin_label.setText(
+                f"<a href='file://{asset_plugin.package_dir}'>{asset_plugin.package_dir}</a>",
+            )
         else:
             self.module_informationPlugin_label.setText("No asset available")
 

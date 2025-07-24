@@ -45,6 +45,7 @@ from .database_connection_widget import DatabaseConnectionWidget  # noqa: E402
 from .logs_widget import LogsWidget  # noqa: E402
 from .module_selection_widget import ModuleSelectionWidget  # noqa: E402
 from .module_widget import ModuleWidget  # noqa: E402
+from .plugin_widget import PluginWidget  # noqa: E402
 from .project_widget import ProjectWidget  # noqa: E402
 
 DIALOG_UI = PluginUtils.get_ui_class("main_dialog.ui")
@@ -74,6 +75,10 @@ class MainDialog(QDialog, DIALOG_UI):
         # Init GUI Project
         self.__projectWidget = ProjectWidget(self)
         self.project_tab.layout().addWidget(self.__projectWidget)
+
+        # Init GUI Plugin
+        self.__pluginWidget = PluginWidget(self)
+        self.plugin_tab.layout().addWidget(self.__pluginWidget)
 
         # Init GUI Logs
         self.__logsWidget = LogsWidget(self)
@@ -161,6 +166,10 @@ class MainDialog(QDialog, DIALOG_UI):
             self.__moduleSelectionWidget.getSelectedModulePackage()
         )
         self.__projectWidget.setModulePackage(
+            self.__moduleSelectionWidget.getSelectedModulePackage()
+        )
+
+        self.__pluginWidget.setModulePackage(
             self.__moduleSelectionWidget.getSelectedModulePackage()
         )
 

@@ -42,13 +42,13 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.__updateModuleInfo()
 
     def __packagePrepareGetPUMConfig(self):
-        package_dir = self.__current_module_package.package_dir
+        package_dir = self.__current_module_package.source_package_dir
 
         if package_dir is None:
             CriticalMessageBox(
                 self.tr("Error"),
                 self.tr(
-                    f"The selected file '{self.__current_module_package.zip_file}' does not contain a valid package directory."
+                    f"The selected file '{self.__current_module_package.source_package_zip}' does not contain a valid package directory."
                 ),
                 None,
                 self,
@@ -61,7 +61,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             CriticalMessageBox(
                 self.tr("Error"),
                 self.tr(
-                    f"The selected file '{self.__current_module_package.zip_file}' does not contain a valid .pum.yaml file."
+                    f"The selected file '{self.__current_module_package.source_package_zip}' does not contain a valid .pum.yaml file."
                 ),
                 None,
                 self,

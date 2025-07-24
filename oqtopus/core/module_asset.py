@@ -14,3 +14,5 @@ class ModuleAsset:
         self.download_url = download_url
         self.size = size
         self.type = type
+        self.package_zip = None
+        self.package_dir = None
