@@ -60,6 +60,15 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         """
         return self.__database_connection
 
+    def getService(self):
+        """
+        Returns the current service name.
+        If no service is selected, returns None.
+        """
+        if self.db_services_comboBox.currentText() == "":
+            return None
+        return self.db_services_comboBox.currentText()
+
     def __loadDatabaseInformations(self):
         pg_service_conf_path = pgserviceparser_conf_path()
         self.db_servicesConfigFilePath_label.setText(

@@ -22,10 +22,14 @@ class ProjectWidget(QWidget, DIALOG_UI):
         self.project_seeChangelog_pushButton.clicked.connect(self.__projectSeeChangelogClicked)
 
         self.__current_module_package = None
+        self.__current_service = None
 
     def setModulePackage(self, module_package: ModulePackage):
         self.__current_module_package = module_package
         self.__packagePrepareGetProjectFilename()
+
+    def setService(self, service):
+        self.__current_service = service
 
     def __packagePrepareGetProjectFilename(self):
         asset_project = self.__current_module_package.asset_project
@@ -110,6 +114,25 @@ class ProjectWidget(QWidget, DIALOG_UI):
 
                 if os.path.isdir(source_path):
                     shutil.copytree(source_path, destination_path, dirs_exist_ok=True)
+
+                elif item.endswith(".qgs"):
+                    with open(source_path) as original_project:
+                        contents = original_project.read()
+
+                    if self.__current_service is not None:
+                        # Replace service in project file
+                        contents = contents.replace(
+                            "service='pg_tww'", f"service='{self.__current_service}'"
+                        )
+                    else:
+                        logger.warning(
+                            "No service set, skipping service replacement in project file."
+                        )
+
+                    installed_path = os.path.join(install_destination, item)
+                    output_file = open(installed_path, "w")
+                    output_file.write(contents)
+
                 else:
                     shutil.copy2(source_path, destination_path)
 
