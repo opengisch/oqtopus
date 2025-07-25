@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 
 from qgis.PyQt.QtCore import QUrl
@@ -120,9 +121,8 @@ class ProjectWidget(QWidget, DIALOG_UI):
                         contents = original_project.read()
 
                     if self.__current_service is not None:
-                        # Replace service in project file
-                        contents = contents.replace(
-                            "service='pg_tww'", f"service='{self.__current_service}'"
+                        contents = re.sub(
+                            r"service='[^']+'", f"service='{self.__current_service}'", contents
                         )
                     else:
                         logger.warning(
@@ -130,8 +130,8 @@ class ProjectWidget(QWidget, DIALOG_UI):
                         )
 
                     installed_path = os.path.join(install_destination, item)
-                    output_file = open(installed_path, "w")
-                    output_file.write(contents)
+                    with open(installed_path, "w") as output_file:
+                        output_file.write(contents)
 
                 else:
                     shutil.copy2(source_path, destination_path)
