@@ -3,7 +3,7 @@ import json
 from qgis.PyQt.QtCore import QByteArray, QObject, QUrl, pyqtSignal
 from qgis.PyQt.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 
-from ..utils.plugin_utils import PluginUtils
+from ..utils.plugin_utils import PluginUtils, logger
 from .module_package import ModulePackage
 
 
@@ -25,8 +25,9 @@ class Module(QObject):
         return f"Module(name={self.name}, organisation={self.organisation}, repository={self.repository})"
 
     def start_load_versions(self):
-        url = QUrl(f"https://api.github.com/repos/{self.organisation}/{self.repository}/releases")
-        request = QNetworkRequest(url)
+        url = f"https://api.github.com/repos/{self.organisation}/{self.repository}/releases"
+        logger.info(f"Loading versions from '{url}'...")
+        request = QNetworkRequest(QUrl(url))
         headers = PluginUtils.get_github_headers()
         for key, value in headers.items():
             request.setRawHeader(QByteArray(key.encode()), QByteArray(value.encode()))
@@ -83,8 +84,10 @@ class Module(QObject):
         )
         self.development_versions.append(mainVersion)
 
-        url = QUrl(f"https://api.github.com/repos/{self.organisation}/{self.repository}/pulls")
-        request = QNetworkRequest(url)
+        url = f"https://api.github.com/repos/{self.organisation}/{self.repository}/pulls"
+        logger.info(f"Loading development versions from '{url}'...")
+
+        request = QNetworkRequest(QUrl(url))
         headers = PluginUtils.get_github_headers()
         for key, value in headers.items():
             request.setRawHeader(QByteArray(key.encode()), QByteArray(value.encode()))

@@ -116,3 +116,8 @@ class ModulePackage:
         self.created_at = QDateTime.fromString(json_payload["created_at"], Qt.DateFormat.ISODate)
         self.prerelease = False
         self.html_url = json_payload["html_url"]
+
+        is_on_a_fork = json_payload["head"]["repo"]["fork"]
+        if is_on_a_fork:
+            self.organisation = json_payload["head"]["repo"]["owner"]["login"]
+            self.repository = json_payload["head"]["repo"]["name"]
