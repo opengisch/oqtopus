@@ -8,6 +8,7 @@ from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QMessageBox, QWidget
 
 from ..core.module import Module
+from ..core.module_package import ModulePackage
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, OverrideCursor, QtUtils
 
@@ -116,9 +117,19 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
-        parameters = self.parameters_groupbox.parameters_values()
-
         try:
+            parameters = self.parameters_groupbox.parameters_values()
+
+            beta_testing = False
+            if (
+                self.__current_module_package.type == ModulePackage.Type.PULL_REQUEST
+                or self.__current_module_package.type == ModulePackage.Type.BRANCH
+            ):
+                logger.warning(
+                    "Installing module from branch or pull request: set parameter beta_testing to True"
+                )
+                beta_testing = True
+
             upgrader = Upgrader(
                 config=self.__pum_config,
             )
@@ -128,6 +139,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
                     connection=self.__database_connection,
                     roles=self.db_parameters_CreateAndGrantRoles_checkBox.isChecked(),
                     grant=self.db_parameters_CreateAndGrantRoles_checkBox.isChecked(),
+                    beta_testing=beta_testing,
                 )
 
                 if self.db_demoData_checkBox.isChecked():
