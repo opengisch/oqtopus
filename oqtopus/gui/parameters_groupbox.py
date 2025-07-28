@@ -34,6 +34,7 @@ class ParameterWidget(QWidget):
             ParameterType.DECIMAL,
             ParameterType.INTEGER,
             ParameterType.TEXT,
+            ParameterType.PATH,
         ):
             self.widget = QLineEdit(self)
             if parameter_definition.default is not None:
@@ -45,6 +46,8 @@ class ParameterWidget(QWidget):
                 self.value = lambda: float(self.widget.text() or self.widget.placeholderText())
             else:
                 self.value = lambda: self.widget.text() or self.widget.placeholderText()
+        else:
+            raise ValueError(f"Unknown parameter type '{parameter_definition.type}'")
 
 
 class ParametersGroupBox(QGroupBox):
