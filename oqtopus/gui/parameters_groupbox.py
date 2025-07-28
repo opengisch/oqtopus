@@ -20,15 +20,14 @@ class ParameterWidget(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
         self.value = None
-        self.__valueChanged = False
 
         if parameter_definition.type != ParameterType.BOOLEAN:
             self.layout.addWidget(QLabel(parameter_definition.name, self))
 
         if parameter_definition.type == ParameterType.BOOLEAN:
             self.widget = QCheckBox(parameter_definition.name, self)
-            self.widget.setChecked(parameter_definition.default)
-            self.widget.checked.connect(self.__valueChanged)
+            if parameter_definition.default is not None:
+                self.widget.setChecked(parameter_definition.default)
             self.layout.addWidget(self.widget)
             self.value = lambda: self.widget.isChecked()
         elif parameter_definition.type in (
