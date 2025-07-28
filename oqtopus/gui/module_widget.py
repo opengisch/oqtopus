@@ -81,7 +81,16 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         logger.info(f"PUM config loaded from '{pumConfigFilename}'")
 
-        self.parameters_groupbox.setParameters(self.__pum_config.parameters())
+        try:
+            self.parameters_groupbox.setParameters(self.__pum_config.parameters())
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"),
+                self.tr(f"Can't load parameters from PUM config '{pumConfigFilename}':"),
+                exception,
+                self,
+            ).exec()
+            return
 
         self.db_demoData_comboBox.clear()
         for demo_data_name, demo_data_file in self.__pum_config.demo_data().items():

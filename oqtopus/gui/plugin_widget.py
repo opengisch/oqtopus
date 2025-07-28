@@ -73,7 +73,9 @@ class PluginWidget(QWidget, DIALOG_UI):
         QMessageBox.warning(
             self,
             self.tr("Not implemented"),
-            self.tr("Installation is not implemented yet."),
+            self.tr(
+                'Installation is not implemented yet.\nAt the moment, you can only copy the plugin zip file to a directory and use "Install from ZIP" in QGIS.'
+            ),
         )
         return
 
