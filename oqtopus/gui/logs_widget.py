@@ -62,6 +62,11 @@ class LogModel(QAbstractItemModel):
             | Qt.ItemFlag.ItemNeverHasChildren
         )
 
+    def clear(self):
+        self.beginResetModel()
+        self.logs = []
+        self.endResetModel()
+
 
 class LogFilterProxyModel(QSortFilterProxyModel):
     LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
