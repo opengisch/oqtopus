@@ -23,6 +23,7 @@
 # ---------------------------------------------------------------------
 
 import psycopg
+from pgserviceparser import full_config as pgserviceparser_full_config
 from pgserviceparser import service_config as pgserviceparser_service_config
 from pgserviceparser import write_service as pgserviceparser_write_service
 from qgis.PyQt.QtCore import Qt
@@ -71,13 +72,16 @@ class DatabaseDuplicateDialog(QDialog, DIALOG_UI):
 
         # Check if the new service name is already in use
         try:
-            new_service_config = pgserviceparser_service_config(new_service_name)
-            errorText = self.tr(f"Service name '{new_service_name}' is already in use.")
+            if new_service_name in pgserviceparser_full_config():
+                errorText = self.tr(f"Service name '{new_service_name}' is already in use.")
+                logger.error(errorText)
+                QMessageBox.critical(self, "Error", errorText)
+                return
+        except Exception as e:
+            errorText = self.tr(f"Error checking existing service names:\n{e}.")
             logger.error(errorText)
             QMessageBox.critical(self, "Error", errorText)
             return
-        except Exception:
-            pass
 
         # Duplicate the database
         new_database_name = self.newDatabase_lineEdit.text()
