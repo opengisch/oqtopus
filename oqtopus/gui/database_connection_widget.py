@@ -152,8 +152,17 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         databaseDuplicateDialog = DatabaseDuplicateDialog(
             selected_service=self.db_services_comboBox.currentText(), parent=self
         )
+
+        # Close the current connection otherwise it will block the database duplication
+        if self.__database_connection is not None:
+            self.__database_connection.close()
+            self.__database_connection = None
+
         if databaseDuplicateDialog.exec() == QDialog.DialogCode.Rejected:
+            self.__serviceChanged()
             return
+
+        self.__loadDatabaseInformations()
 
     def __set_connection(self, connection):
         """
