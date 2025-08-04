@@ -73,8 +73,6 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
         self.parameters_port_lineEdit.setPlaceholderText(DEFAULT_PG_PORT)
         self.parameters_database_lineEdit.setPlaceholderText(DEFAULT_PG_DB)
 
-        self.database_lineEdit.textChanged.connect(self._databaseTextChanged)
-
         self.buttonBox.accepted.connect(self._accept)
 
         if self.existingService_comboBox.count() > 0:
@@ -105,9 +103,6 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
 
     def _enterManuallyToggled(self, checked):
         self.parameters_frame.setEnabled(checked)
-
-    def _databaseTextChanged(self, text):
-        self.database_label.setText(text)
 
     def _accept(self):
         service_name = self.created_service_name()
@@ -193,9 +188,10 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
             service_name = self.existingService_comboBox.currentText()
             existing_settings = pgserviceparser_service_config(service_name)
             settings.update(existing_settings)
-            # Overwrite dbname with the new database name
-            if self.database_lineEdit.text():
-                settings["dbname"] = self.database_lineEdit.text()
+
+        # Overwrite dbname with the new database name
+        if self.database_lineEdit.text():
+            settings["dbname"] = self.database_lineEdit.text()
 
         return settings
 

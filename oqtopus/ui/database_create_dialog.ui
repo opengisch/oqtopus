@@ -11,13 +11,16 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Create Service</string>
+   <string>Create Database</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QGroupBox" name="groupBox_2">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To issue a &lt;span style=&quot; font-style:italic;&quot;&gt;CREATE DATABASE&lt;/span&gt; command, you must first be connected to the PostgreSQL server. Select an existing administrative connection (often named postgres) from a service or manually.&lt;br/&gt;This connection is used to perform the creation action, and as a template for the new service to be created.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="title">
-      <string>Create database</string>
+      <string>Connection to use</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
       <item row="0" column="1">
@@ -164,25 +167,6 @@
         </attribute>
        </widget>
       </item>
-      <item row="6" column="1">
-       <widget class="QLineEdit" name="database_lineEdit">
-        <property name="font">
-         <font>
-          <italic>false</italic>
-         </font>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Database</string>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="0">
        <widget class="QRadioButton" name="useService_radioButton">
         <property name="text">
@@ -202,35 +186,48 @@
    <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
-      <string>Create service</string>
+      <string>New database</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="0" column="0">
+      <item row="1" column="0">
        <widget class="QLabel" name="label">
+        <property name="toolTip">
+         <string>Enter a convenient alias that will be created in your pg_service.conf file.</string>
+        </property>
         <property name="text">
-         <string>Service</string>
+         <string>Service name</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="service_lineEdit">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter a convenient alias that will be created in your &lt;span style=&quot; font-style:italic;&quot;&gt;pg_service.conf&lt;/span&gt; file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="toolTip">
+         <string>Enter the actual name for the new database as it will exist inside your PostgreSQL installation.</string>
+        </property>
+        <property name="text">
+         <string>Database name</string>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QLineEdit" name="service_lineEdit"/>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLabel" name="database_label">
+       <widget class="QLineEdit" name="database_lineEdit">
         <property name="font">
          <font>
-          <italic>true</italic>
+          <italic>false</italic>
          </font>
         </property>
-        <property name="text">
-         <string>-</string>
+        <property name="toolTip">
+         <string>Enter the actual name for the new database as it will exist inside your PostgreSQL installation.</string>
         </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>Database</string>
+         <string/>
         </property>
        </widget>
       </item>
