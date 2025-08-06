@@ -27,12 +27,20 @@ class ProjectWidget(QWidget, DIALOG_UI):
 
     def setModulePackage(self, module_package: ModulePackage):
         self.__current_module_package = module_package
-        self.__packagePrepareGetProjectFilename()
+        self.__updateProjectFilename()
 
     def setService(self, service):
         self.__current_service = service
+        self.__updateProjectFilename()
 
-    def __packagePrepareGetProjectFilename(self):
+    def __updateProjectFilename(self):
+
+        if self.__current_module_package is None:
+            self.project_info_label.setText(self.tr("No module package selected."))
+            QtUtils.setForegroundColor(self.project_info_label, PluginUtils.COLOR_WARNING)
+            QtUtils.setFontItalic(self.project_info_label, True)
+            return
+
         asset_project = self.__current_module_package.asset_project
         if asset_project is None:
             self.project_info_label.setText(
@@ -73,9 +81,14 @@ class ProjectWidget(QWidget, DIALOG_UI):
 
         QtUtils.resetForegroundColor(self.project_info_label)
         QtUtils.setFontItalic(self.project_info_label, False)
-        self.project_info_label.setText(
-            f"<a href='file://{asset_project.package_dir}'>{asset_project.package_dir}</a>",
-        )
+        if self.__current_service:
+            self.project_info_label.setText(
+                f"Project will use PG Service '{self.__current_service}' for database connection"
+            )
+        else:
+            self.project_info_label.setText(
+                "Project will use the default service. Please set a service in the database connection tab if you need a specific one."
+            )
 
     def __projectInstallClicked(self):
 
