@@ -15,7 +15,7 @@ license = { file = "LICENSE" }
 authors = [
   { name="Damiano Lombardi", email="damiano@opengis.ch" }
 ]
-dynamic = ["dependencies"]
+dynamic = ["version", "dependencies"]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -26,3 +26,6 @@ starting_version = "0.0.1"
 
 [tool.setuptools.package-data]
 "oqtopus" = ["**/*.ui"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
