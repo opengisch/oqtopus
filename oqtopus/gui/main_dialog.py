@@ -57,9 +57,7 @@ class MainDialog(QDialog, DIALOG_UI):
         QDialog.__init__(self, parent)
         self.setupUi(self)
 
-        self.__about_dialog_cls = AboutDialog
-        if about_dialog_cls is not None:
-            self.__about_dialog_cls = about_dialog_cls
+        self.__about_dialog_cls = about_dialog_cls or AboutDialog
 
         self.buttonBox.rejected.connect(self.__closeDialog)
         self.buttonBox.helpRequested.connect(self.__helpRequested)
