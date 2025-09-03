@@ -95,8 +95,11 @@ class PluginUtils:
         return ini_text.value("version")
 
     @staticmethod
-    def init_logger():
-        PluginUtils.logsDirectory = f"{PluginUtils.plugin_root_path()}/logs"
+    def init_logger(logs_directory=None):
+        if logs_directory is not None:
+            PluginUtils.logsDirectory = logs_directory
+        else:
+            PluginUtils.logsDirectory = f"{PluginUtils.plugin_root_path()}/logs"
 
         directory = QDir(PluginUtils.logsDirectory)
         if not directory.exists():
