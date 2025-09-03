@@ -53,9 +53,13 @@ DIALOG_UI = PluginUtils.get_ui_class("main_dialog.ui")
 
 class MainDialog(QDialog, DIALOG_UI):
 
-    def __init__(self, modules_config_path, parent=None):
+    def __init__(self, modules_config_path, about_dialog_cls=None, parent=None):
         QDialog.__init__(self, parent)
         self.setupUi(self)
+
+        self.__about_dialog_cls = AboutDialog
+        if about_dialog_cls is not None:
+            self.__about_dialog_cls = about_dialog_cls
 
         self.buttonBox.rejected.connect(self.__closeDialog)
         self.buttonBox.helpRequested.connect(self.__helpRequested)
@@ -136,7 +140,7 @@ class MainDialog(QDialog, DIALOG_UI):
         dlg.exec()
 
     def __show_about_dialog(self):
-        dialog = AboutDialog(self)
+        dialog = self.__about_dialog_cls(self)
         dialog.exec()
 
     def __moduleSelection_loadingStarted(self):
