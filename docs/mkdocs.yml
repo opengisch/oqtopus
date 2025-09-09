@@ -1,4 +1,6 @@
-site_name: PUM documentation
+site_name: oQtopus documentation
+site_description: oQtopus is an open-source platform designed to simplify and automate the deployment and management of PostgreSQL/postgis modules with QGIS projects.
+site_author: opengisch
 
 repo_name: opengisch/oqtopus
 repo_url: https://github.com/opengisch/oqtopus
