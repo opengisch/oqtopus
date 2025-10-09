@@ -69,6 +69,7 @@ markdown_extensions:
 nav:
   - About: index.md
   - Getting Started: getting_started.md
+  - Adding Modules: adding_modules.md
 
 extra:
   # Remove "Made with Material for MkDocs" from footer
