@@ -1,6 +1,6 @@
 # Getting Started
 
-oQtopus is designed to deploy PostgreSQL modules managed by [pum](https://github.com/opengisch/pum/) along with a QGIS project and plugin. 
+oQtopus is designed to deploy PostgreSQL modules managed by [pum](https://github.com/opengisch/pum/) along with a QGIS project and plugin.
 It can be installed either as a QGIS plugin or as a standalone Python executable.
 
 ## oQtopus as a QGIS Plugin
@@ -8,7 +8,7 @@ It can be installed either as a QGIS plugin or as a standalone Python executable
 ### Installation
 
 #### 🔧 Prerequisites (Mainly python packages)
-> [!WARNING] 
+> [!WARNING]
 > On Windows, QGIS installation doesn't provide the necessary Python libraries yet.
 > You need to install psycopg and pydantic using pip.
 
@@ -64,5 +64,15 @@ In the `Plugin` tab, you can install the module plugin (ie. TWW plugin). Direct 
 
 ## oQtopus as a standalone python executable
 
-TODO
+### Install module and requirements
 
+``` bash
+pip install pyqt6
+pip install oqtopus
+```
+
+### Run the application
+
+``` bash
+python3 -m oqtopus.oqtopus
+```
