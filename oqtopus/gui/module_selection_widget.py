@@ -129,7 +129,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             return
 
         if self.__current_module_package.type == self.__current_module_package.Type.FROM_ZIP:
-            self.module_zippackage_groupBox.setVisible(True)
+            self.module_zipPackage_groupBox.setVisible(True)
             return
         else:
             self.module_zipPackage_groupBox.setVisible(False)
@@ -182,7 +182,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             self.__packagePrepareTask.cancel()
             self.__packagePrepareTask.wait()
 
-        self.__packagePrepareTask.startFromZip(filename)
+        self.__packagePrepareTask.startFromZip(self.__current_module_package, filename)
 
         self.signal_loadingStarted.emit()
         self.module_progressBar.setVisible(True)
@@ -316,6 +316,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                 repository=self.__current_module.repository,
                 json_payload=None,
                 type=ModulePackage.Type.FROM_ZIP,
+                name="from_zip",
             ),
         )
 

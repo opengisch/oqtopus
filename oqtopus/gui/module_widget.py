@@ -49,7 +49,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             CriticalMessageBox(
                 self.tr("Error"),
                 self.tr(
-                    f"The selected file '{self.__current_module_package.source_package_zip}' does not contain a valid package directory."
+                    f"The selected file '{self.__current_module_package.source_package_zip}' doesn't contain a valid package directory."
                 ),
                 None,
                 self,
@@ -62,7 +62,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             CriticalMessageBox(
                 self.tr("Error"),
                 self.tr(
-                    f"The selected file '{self.__current_module_package.source_package_zip}' does not contain a valid .pum.yaml file."
+                    f"The selected file '{self.__current_module_package.source_package_zip}' doesn't contain a valid .pum.yaml file."
                 ),
                 None,
                 self,

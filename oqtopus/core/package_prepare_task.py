@@ -24,21 +24,23 @@ class PackagePrepareTask(QThread):
         super().__init__(parent)
 
         self.module_package = None
+        self.from_zip_file = None
 
         self.__destination_directory = None
 
         self.__canceled = False
         self.lastError = None
 
-    def startFromZip(self, zip_file: str):
-
-        self.module_package = None
+    def startFromZip(self, module_package, zip_file: str):
+        self.module_package = module_package
+        self.from_zip_file = zip_file
 
         self.__canceled = False
         self.start()
 
     def startFromModulePackage(self, module_package):
         self.module_package = module_package
+        self.from_zip_file = None
 
         self.__canceled = False
         self.start()
@@ -55,9 +57,10 @@ class PackagePrepareTask(QThread):
             if self.module_package is None:
                 raise Exception(self.tr("No module version provided."))
 
-            self.__destination_directory = self.__prepareDestinationDirectory()
+            self.__destination_directory = self.__prepare_destination_directory()
+            logger.info(f"Destination directory: {self.__destination_directory}")
 
-            self.__download_module_assets(self.module_package)
+            self.__prepare_module_assets(self.module_package)
             self.lastError = None
 
         except Exception as e:
@@ -65,7 +68,7 @@ class PackagePrepareTask(QThread):
             logger.critical(f"Package prepare task error: {e}")
             self.lastError = e
 
-    def __prepareDestinationDirectory(self):
+    def __prepare_destination_directory(self):
         """
         Prepare the destination directory for the module package.
         This method creates a temporary directory for the package.
@@ -81,10 +84,13 @@ class PackagePrepareTask(QThread):
 
         return destination_directory
 
-    def __download_module_assets(self, module_package):
+    def __prepare_module_assets(self, module_package):
 
-        # Download the source
-        zip_file = self.__download_module_asset(module_package.download_url, "source.zip")
+        # Download the source or use from zip
+        zip_file = self.from_zip_file or self.__download_module_asset(
+            module_package.download_url, "source.zip"
+        )
+
         module_package.source_package_zip = zip_file
         package_dir = self.__extract_zip_file(zip_file)
         module_package.source_package_dir = package_dir
