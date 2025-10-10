@@ -1,4 +1,4 @@
-from qgis.PyQt.QtWidgets import QApplication, QDialog, QMessageBox, QStyle
+from qgis.PyQt.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QStyle
 
 from ..utils.plugin_utils import PluginUtils
 
@@ -10,16 +10,37 @@ class SettingsDialog(QDialog, DIALOG_UI):
         QDialog.__init__(self, parent)
         self.setupUi(self)
 
+        self.modulesConfigurationFile_lineEdit.setText(
+            PluginUtils.get_modules_configuration_file()
+        )
+        self.modulesConfigurationFile_toolButton.setIcon(
+            QApplication.style().standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton)
+        )
+        self.modulesConfigurationFile_toolButton.clicked.connect(
+            self.__select_modules_configuration_file
+        )
+
         self.githubToken_lineEdit.setText(PluginUtils.get_github_token())
 
-        self.helpButton.setIcon(
+        self.githubToken_helpButton.setIcon(
             QApplication.style().standardIcon(QStyle.StandardPixmap.SP_DialogHelpButton)
         )
-        self.helpButton.clicked.connect(self.__show_github_token_help)
+        self.githubToken_helpButton.clicked.connect(self.__show_github_token_help)
 
     def accept(self):
+        PluginUtils.set_modules_configuration_file(self.modulesConfigurationFile_lineEdit.text())
         PluginUtils.set_github_token(self.githubToken_lineEdit.text())
         super().accept()
+
+    def __select_modules_configuration_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            self.tr("Select Modules Configuration File"),
+            "",
+            self.tr("YAML files (*.yml *.yaml);;All files (*)"),
+        )
+        if file_path:
+            self.modulesConfigurationFile_lineEdit.setText(file_path)
 
     def __show_github_token_help(self):
         QMessageBox.information(
