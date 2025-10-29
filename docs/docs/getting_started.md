@@ -67,7 +67,7 @@ In the `Plugin` tab, you can install the module plugin (ie. TWW plugin). Direct 
 ### Install module and requirements
 
 ``` bash
-pip install pyqt6
+pip install pyqt6  # Or pyqt5 depending whats available on your system
 pip install oqtopus
 ```
 
