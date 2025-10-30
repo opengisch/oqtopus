@@ -96,14 +96,24 @@ class MainDialog(QDialog, DIALOG_UI):
         # Settings action
         settings_action = QAction(self.tr("Settings"), self)
         settings_action.triggered.connect(self.__open_settings_dialog)
+        self.menubar.addAction(settings_action)
+
+        # Help menu
+        help_menu = self.menubar.addMenu(self.tr("Help"))
+
+        # Documentation action
+        documentation_action = QAction(
+            PluginUtils.get_plugin_icon("help.svg"), self.tr("Documentation"), self
+        )
+        documentation_action.triggered.connect(PluginUtils.open_documentation)
+        help_menu.addAction(documentation_action)
 
         # About action
-        about_action = QAction(self.tr("About"), self)
+        about_action = QAction(
+            PluginUtils.get_plugin_icon("oqtopus-logo.png"), self.tr("About"), self
+        )
         about_action.triggered.connect(self.__show_about_dialog)
-
-        # Add actions to menubar
-        self.menubar.addAction(settings_action)
-        self.menubar.addAction(about_action)
+        help_menu.addAction(about_action)
 
         self.__moduleSelectionWidget.signal_loadingStarted.connect(
             self.__moduleSelection_loadingStarted

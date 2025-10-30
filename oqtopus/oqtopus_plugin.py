@@ -123,11 +123,19 @@ class OqtopusPlugin:
             text=self.tr("Show &main dialog"),
             callback=self.show_main_dialog,
             parent=self.iface.mainWindow(),
+            add_to_toolbar=True,
         )
         self.add_action(
             icon_path=None,
             text=self.tr("Show &log folder"),
             callback=self.show_logs_folder,
+            parent=self.iface.mainWindow(),
+            add_to_toolbar=False,
+        )
+        self.add_action(
+            icon_path=PluginUtils.get_plugin_icon_path("help.svg"),
+            text=self.tr("Help"),
+            callback=PluginUtils.open_documentation,
             parent=self.iface.mainWindow(),
             add_to_toolbar=False,
         )

@@ -46,6 +46,8 @@ class PluginUtils:
     COLOR_GREEN = QColor(12, 167, 137)
     COLOR_WARNING = QColor(255, 165, 0)
 
+    DOCUMENTATION_URL = "https://opengisch.github.io/oqtopus/"
+
     @staticmethod
     def plugin_root_path():
         """
@@ -124,7 +126,6 @@ class PluginUtils:
 
     @staticmethod
     def open_logs_folder():
-        print(f"Opening logs folder {PluginUtils.logsDirectory}")
         QDesktopServices.openUrl(QUrl.fromLocalFile(PluginUtils.logsDirectory))
 
     @staticmethod
@@ -152,6 +153,10 @@ class PluginUtils:
         if token:
             headers["Authorization"] = f"token {token}"
         return headers
+
+    @staticmethod
+    def open_documentation():
+        QDesktopServices.openUrl(QUrl(PluginUtils.DOCUMENTATION_URL))
 
 
 class LoggingBridge(logging.Handler, QObject):
