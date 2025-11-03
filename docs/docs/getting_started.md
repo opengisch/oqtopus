@@ -41,7 +41,7 @@ In the `Module selection` box:
 
 !!! note "Alternative versions"
 
-    By default Oqtopus lists versions listed in the releases list of the Github project.
+    By default oQtopus lists versions listed in the releases list of the Github project.
     But it is also possible to install from a .zip archive of the source code.
     By selecting "Load development branches" in the versions combobox Oqtopus will load
     additional installable versions for the main branch and all branches from open pull requests.
