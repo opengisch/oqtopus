@@ -45,7 +45,7 @@ After editing the YAML file, save your changes and restart oQtopus. The new modu
 
 ## Module structure
 
-Oqtopus assumes a certain structure of the module/repository.
+oQtopus assumes a certain structure of the module/repository.
 
 ### Datamodel
 
