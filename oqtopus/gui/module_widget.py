@@ -140,6 +140,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
                     roles=self.db_parameters_CreateAndGrantRoles_checkBox.isChecked(),
                     grant=self.db_parameters_CreateAndGrantRoles_checkBox.isChecked(),
                     beta_testing=beta_testing,
+                    commit=False,
                 )
 
                 if self.db_demoData_checkBox.isChecked():
@@ -149,6 +150,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
                         name=demo_data_name,
                         parameters=parameters,
                     )
+
+                self.__database_connection.commit()
+
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"), self.tr("Can't install the module:"), exception, self
