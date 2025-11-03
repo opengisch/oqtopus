@@ -58,7 +58,7 @@ configuration file.
 
 ### Project
 
-Oqtopus search in the Github release for an asset labeled `oqtopus.project`. The asset is expected to be a
+oQtopus search in the Github release for an asset labeled `oqtopus.project`. The asset is expected to be a
 ZIP archive containing a .qgs or .qgz QGIS project file.
 
 
