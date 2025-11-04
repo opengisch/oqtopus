@@ -76,7 +76,7 @@
    <item row="4" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;For any feedback, bugs or comments, please visit &lt;a href=&quot;https://github.com/Oqtopus/Oqtopus/issues&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#2980b9;&quot;&gt;https://github.com/Oqtopus/Oqtopus/issues&lt;/span&gt;&lt;/a&gt;. &lt;/p&gt;&lt;p&gt;For the changelog: &lt;a href=&quot;https://github.com/Oqtopus/Oqtopus/releases&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#2980b9;&quot;&gt;https://github.com/Oqtopus/Oqtopus/releases&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;For any feedback, bugs or comments, please visit &lt;a href=&quot;https://github.com/opengisch/oqtopus/issues&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#2980b9;&quot;&gt;https://github.com/opengisch/oqtopus/issues&lt;/span&gt;&lt;/a&gt;. &lt;/p&gt;&lt;p&gt;For the changelog: &lt;a href=&quot;https://github.com/opengisch/oqtopus/releases&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#2980b9;&quot;&gt;https://github.com/opengisch/oqtopus/releases&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="openExternalLinks">
       <bool>true</bool>

@@ -129,7 +129,7 @@ class MainDialog(QDialog, DIALOG_UI):
         self.accept()
 
     def __helpRequested(self):
-        help_page = "https://github.com/oqtopus/Oqtopus"
+        help_page = "https://github.com/opengisch/oqtopus"
         logger.info(f"Opening help page {help_page}")
         QDesktopServices.openUrl(QUrl(help_page))
 

@@ -26,7 +26,7 @@ class SettingsDialog(QDialog, DIALOG_UI):
             self,
             "GitHub Access Token Help",
             "<b>GitHub Access Token</b><br>"
-            "Oqtopus needs to download release data from GitHub to work properly. "
+            "oQtopus needs to download release data from GitHub to work properly. "
             "GitHub limits the number of requests that can be made without authentication. "
             "A personal access token is required to access private repositories or to increase API rate limits.<br><br>"
             "To generate a token:<br>"

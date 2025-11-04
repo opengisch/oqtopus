@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Oqtopus Module Management Tool</string>
+   <string>oQtopus Module Management Tool</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_8" rowstretch="0,0,0,0,0,0">
    <item row="2" column="0" rowspan="2">

@@ -280,7 +280,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                     self,
                     self.tr("GitHub API Rate Limit Exceeded"),
                     self.tr(
-                        "Oqtopus needs to download release data from GitHub to work properly.<br><br>"
+                        "oQtopus needs to download release data from GitHub to work properly.<br><br>"
                         "GitHub limits the number of requests that can be made without authentication. "
                         "You have reached the maximum number of requests allowed for unauthenticated users.<br><br>"
                         "To continue using this feature, please create a free GitHub personal access token and enter it in the Settings dialog.<br><br>"
@@ -340,7 +340,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                     self,
                     self.tr("GitHub API Rate Limit Exceeded"),
                     self.tr(
-                        "Oqtopus needs to download release data from GitHub to work properly.<br><br>"
+                        "oQtopus needs to download release data from GitHub to work properly.<br><br>"
                         "GitHub limits the number of requests that can be made without authentication. "
                         "You have reached the maximum number of requests allowed for unauthenticated users.<br><br>"
                         "To continue using this feature, please create a free GitHub personal access token and enter it in the Settings dialog.<br><br>"

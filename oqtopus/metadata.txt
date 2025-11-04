@@ -1,5 +1,5 @@
 [general]
-name=Oqtopus Module Management Tool
+name=oQtopus Module Management Tool
 qgisMinimumVersion=3.0
 description=This is the management tool for every PUM based module installation and upgrade
 version=0.1

@@ -14,7 +14,7 @@ class PackagePrepareTaskCanceled(Exception):
 
 class PackagePrepareTask(QThread):
     """
-    This class is responsible for preparing the package for the Oqtopus module management tool.
+    This class is responsible for preparing the package for the oQtopus module management tool.
     It inherits from QThread to run the preparation process in a separate thread.
     """
 
