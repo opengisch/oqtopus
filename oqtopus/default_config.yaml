@@ -1,5 +1,9 @@
 
 modules:
-  - name: "TEKSI Wastewater"
-    organisation: "teksi"
-    repository: "wastewater"
+  - name: TEKSI Wastewater
+    organisation: teksi
+    repository: wastewater
+
+  - name: SIGNALO
+    organisation: opengisch
+    repository: signalo
