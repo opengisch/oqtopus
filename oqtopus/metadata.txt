@@ -1,7 +1,9 @@
 [general]
 name=oQtopus
 qgisMinimumVersion=3.0
-description=oQtopus : A QGIS module manager that helps you deploy, manage and upgrade your QGIS projects, plugins and associated postgreSQL / PostGIS datamodel implementations.
+qgisMaximumVersion=4.99
+supportsQt6=True
+description=This is the management tool for every PUM based module installation and upgrade
 version=0.1
 author=OPENGIS.ch
 email=info@opengis.ch
@@ -17,5 +19,3 @@ icon=icons/oqtopus-logo.png
 experimental=True
 deprecated=False
 server=False
-
-supportsQt6=True

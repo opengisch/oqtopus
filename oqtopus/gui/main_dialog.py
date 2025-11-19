@@ -27,7 +27,14 @@ import os
 import sys
 
 from qgis.PyQt.QtCore import QUrl
-from qgis.PyQt.QtGui import QAction, QDesktopServices
+from qgis.PyQt.QtGui import QDesktopServices
+
+try:
+    from qgis.PyQt.QtGui import QAction
+except ImportError:
+    # Import for Qt5
+    from qgis.PyQt.QtWidgets import QAction
+
 from qgis.PyQt.QtWidgets import (
     QDialog,
     QMenuBar,
