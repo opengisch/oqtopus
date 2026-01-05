@@ -1,5 +1,5 @@
 pgserviceparser>=2.4.0,<3.0.0
-pum>=1.1.18,<2.0.0
+pum>=1.2.3,<2.0.0
 PyYAML
 pydantic >=2.0
 psycopg>=3.1.0,<4.0.0
