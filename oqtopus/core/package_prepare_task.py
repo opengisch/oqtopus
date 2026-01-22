@@ -128,19 +128,27 @@ class PackagePrepareTask(QThread):
 
         self.__checkForCanceled()
 
-        logger.info(f"Downloading from '{url}' to '{zip_file}'")
-        data_size = 0
+        # Get total file size from headers
+        total_size = int(response.headers.get("content-length", 0))
+
+        logger.info(f"Downloading from '{url}' to '{zip_file}' (size: {total_size} bytes)")
+        downloaded_size = 0
         with open(zip_file, "wb") as file:
-            next_emit_threshold = 10 * 1024 * 1024  # 10MB threshold
-            for data in response.iter_content(chunk_size=None):
+            chunk_size = 8192  # 8KB chunks
+            emit_threshold = 10 * 1024 * 1024  # 10MB threshold
+            next_emit_size = emit_threshold
+            for data in response.iter_content(chunk_size=chunk_size):
                 file.write(data)
 
                 self.__checkForCanceled()
 
-                data_size += len(data)
-                if data_size >= next_emit_threshold:  # Emit signal when threshold is exceeded
-                    self.signalPackagingProgress.emit(data_size)
-                    next_emit_threshold += 10 * 1024 * 1024  # Update to the next threshold
+                downloaded_size += len(data)
+
+                # Emit progress as percentage (0-100)
+                if total_size > 0 and downloaded_size >= next_emit_size:
+                    next_emit_size += emit_threshold
+                    progress_percent = (downloaded_size / total_size) * 100
+                    self.signalPackagingProgress.emit(progress_percent)
 
         return zip_file
 

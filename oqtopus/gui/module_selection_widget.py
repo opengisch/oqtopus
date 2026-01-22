@@ -147,6 +147,8 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.__packagePrepareTask.startFromModulePackage(self.__current_module_package)
 
         self.signal_loadingStarted.emit()
+        self.module_progressBar.setMaximum(100)
+        self.module_progressBar.setValue(0)
         self.module_progressBar.setVisible(True)
 
     def __loadDevelopmentVersions(self):
@@ -185,6 +187,8 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.__packagePrepareTask.startFromZip(self.__current_module_package, filename)
 
         self.signal_loadingStarted.emit()
+        self.module_progressBar.setMaximum(100)
+        self.module_progressBar.setValue(0)
         self.module_progressBar.setVisible(True)
 
     def __packagePrepareTaskFinished(self):
@@ -232,9 +236,9 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             self.module_informationPlugin_label.setText("No asset available")
 
     def __packagePrepareTaskProgress(self, progress):
-        loading_text = self.tr("Load package task running...")
-        logger.info(loading_text)
+        loading_text = self.tr(f"Downloading... {progress:.1f}%")
         self.module_information_label.setText(loading_text)
+        self.module_progressBar.setValue(int(progress))
 
     def __seeChangeLogClicked(self):
         if self.__current_module_package is None:
