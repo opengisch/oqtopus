@@ -241,42 +241,57 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
     def __updateModuleInfo(self):
         if self.__current_module_package is None:
-            self.moduleInfo_label.setText(self.tr("No module package selected"))
-            QtUtils.setForegroundColor(self.moduleInfo_label, PluginUtils.COLOR_WARNING)
+            self.moduleInfo_selected_label.setText(self.tr("No module package selected"))
+            QtUtils.setForegroundColor(self.moduleInfo_selected_label, PluginUtils.COLOR_WARNING)
             self.moduleInfo_stackedWidget.setEnabled(False)
             return
 
         if self.__database_connection is None:
-            self.moduleInfo_label.setText(self.tr("No database connection available"))
-            QtUtils.setForegroundColor(self.moduleInfo_label, PluginUtils.COLOR_WARNING)
+            self.moduleInfo_installation_label.setText(self.tr("No database connection available"))
+            QtUtils.setForegroundColor(
+                self.moduleInfo_installation_label, PluginUtils.COLOR_WARNING
+            )
             self.moduleInfo_stackedWidget.setEnabled(False)
             return
 
         if self.__pum_config is None:
-            self.moduleInfo_label.setText(self.tr("No PUM config available"))
-            QtUtils.setForegroundColor(self.moduleInfo_label, PluginUtils.COLOR_WARNING)
+            self.moduleInfo_selected_label.setText(self.tr("No PUM config available"))
+            QtUtils.setForegroundColor(self.moduleInfo_selected_label, PluginUtils.COLOR_WARNING)
             self.moduleInfo_stackedWidget.setEnabled(False)
             return
 
         migrationVersion = self.__pum_config.last_version()
         sm = SchemaMigrations(self.__pum_config)
 
+        # Set the selected module info
+        self.moduleInfo_selected_label.setText(
+            self.tr(
+                f"Module selected:{self.__current_module_package.module.name} - {migrationVersion}"
+            )
+        )
+        QtUtils.resetForegroundColor(self.moduleInfo_selected_label)
+
         self.moduleInfo_stackedWidget.setEnabled(True)
 
         if sm.exists(self.__database_connection):
             # Case upgrade
             baseline_version = sm.baseline(self.__database_connection)
-            self.moduleInfo_label.setText(self.tr(f"Version {baseline_version} found"))
-            QtUtils.resetForegroundColor(self.moduleInfo_label)
+            self.moduleInfo_installation_label.setText(
+                f"Installed: module {self.__current_module_package.module.name} at version {baseline_version}."
+            )
+            QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
             self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {migrationVersion}"))
-
-            # Set the version labels
-            self.installed_version_label.setText(str(baseline_version))
-            self.selected_version_label.setText(str(migrationVersion))
 
             self.moduleInfo_stackedWidget.setCurrentWidget(
                 self.moduleInfo_stackedWidget_pageUpgrade
             )
+
+            # Disable upgrade if selected version is not greater than installed version
+            if migrationVersion <= baseline_version:
+                self.moduleInfo_stackedWidget.setEnabled(False)
+                logger.info(
+                    f"Selected version {migrationVersion} is equal to or lower than installed version {baseline_version}"
+                )
 
             logger.info(
                 f"Migration table details: {sm.migration_details(self.__database_connection)}"
@@ -284,8 +299,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         else:
             # Case install
-            self.moduleInfo_label.setText(self.tr("No module found"))
-            QtUtils.resetForegroundColor(self.moduleInfo_label)
+            self.moduleInfo_installation_label.setText(self.tr("No module installed"))
+            QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
             self.moduleInfo_install_pushButton.setText(self.tr(f"Install {migrationVersion}"))
             self.moduleInfo_stackedWidget.setCurrentWidget(
                 self.moduleInfo_stackedWidget_pageInstall
