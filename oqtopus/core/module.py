@@ -72,6 +72,11 @@ class Module(QObject):
     def start_load_development_versions(self):
         self.development_versions = []
 
+        # Add pre-releases from already loaded versions
+        for version in self.versions:
+            if version.prerelease is True:
+                self.development_versions.append(version)
+
         # Create version for the main branch
         mainVersion = ModulePackage(
             module=self,
@@ -85,7 +90,7 @@ class Module(QObject):
         self.development_versions.append(mainVersion)
 
         url = f"https://api.github.com/repos/{self.organisation}/{self.repository}/pulls"
-        logger.info(f"Loading development versions from '{url}'...")
+        logger.info(f"Loading pre-releases and development versions from '{url}'...")
 
         request = QNetworkRequest(QUrl(url))
         headers = PluginUtils.get_github_headers()

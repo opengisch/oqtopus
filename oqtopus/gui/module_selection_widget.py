@@ -15,7 +15,7 @@ DIALOG_UI = PluginUtils.get_ui_class("module_selection_widget.ui")
 
 class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
-    module_package_SPECIAL_LOAD_DEVELOPMENT = "Load development versions"
+    module_package_SPECIAL_LOAD_DEVELOPMENT = "Load pre-releases and development branches"
 
     signal_loadingStarted = pyqtSignal()
     signal_loadingFinished = pyqtSignal()
@@ -310,6 +310,9 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             return
 
         for module_package in self.__current_module.versions:
+            # Skip pre-releases in the main list (they'll be shown in development versions)
+            if module_package.prerelease is True:
+                continue
             self.module_package_comboBox.addItem(module_package.display_name(), module_package)
 
         if self.__current_module.latest_version is not None:
@@ -332,7 +335,8 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         self.module_package_comboBox.insertSeparator(self.module_package_comboBox.count())
         self.module_package_comboBox.addItem(
-            self.tr("Load development branches"), self.module_package_SPECIAL_LOAD_DEVELOPMENT
+            self.tr("Load pre-releases and development branches"),
+            self.module_package_SPECIAL_LOAD_DEVELOPMENT,
         )
 
         self.module_package_comboBox.setEnabled(True)
