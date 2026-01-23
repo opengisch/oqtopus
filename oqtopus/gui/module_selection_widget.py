@@ -64,6 +64,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         self.module_package_comboBox.clear()
         self.module_package_comboBox.addItem(self.tr("Please select a version"), None)
+        self.module_package_comboBox.setEnabled(False)
 
         self.module_zipPackage_groupBox.setVisible(False)
 
@@ -104,6 +105,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_package_comboBox.addItem(self.tr("Please select a version"), None)
 
         if self.__current_module is None:
+            self.module_package_comboBox.setEnabled(False)
             return
 
         if self.__current_module.versions == list():
@@ -329,6 +331,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             self.tr("Load development branches"), self.module_package_SPECIAL_LOAD_DEVELOPMENT
         )
 
+        self.module_package_comboBox.setEnabled(True)
         self.module_progressBar.setVisible(False)
         logger.info(f"Versions loaded for module '{self.__current_module.name}'.")
 
@@ -377,3 +380,5 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         for module_package in self.__current_module.development_versions:
             self.module_package_comboBox.addItem(module_package.display_name(), module_package)
+
+        self.module_package_comboBox.setEnabled(True)
