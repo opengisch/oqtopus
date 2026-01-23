@@ -32,6 +32,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.__current_module_package = None
         self.__database_connection = None
+        self.__pum_config = None
+        self.__data_model_dir = None
 
     def setModulePackage(self, module_package: Module):
         self.__current_module_package = module_package
