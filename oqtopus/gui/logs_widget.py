@@ -1,12 +1,16 @@
 import logging
 
+# Import and register SQL logging level from pum
+from pum import SQL
 from qgis.PyQt.QtCore import QAbstractItemModel, QModelIndex, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtWidgets import QAbstractItemView, QApplication, QStyle, QWidget
 
 from ..utils.plugin_utils import LoggingBridge, PluginUtils
 
-DIALOG_UI = PluginUtils.get_ui_class("logs_widget.ui")
+logging.addLevelName(SQL, "SQL")
 
+
+DIALOG_UI = PluginUtils.get_ui_class("logs_widget.ui")
 
 COLUMNS = ["Level", "Module", "Message"]
 
@@ -69,7 +73,7 @@ class LogModel(QAbstractItemModel):
 
 
 class LogFilterProxyModel(QSortFilterProxyModel):
-    LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    LEVELS = ["SQL", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -130,6 +134,7 @@ class LogsWidget(QWidget, DIALOG_UI):
 
         self.logs_level_comboBox.addItems(
             [
+                "SQL",
                 "DEBUG",
                 "INFO",
                 "WARNING",
@@ -138,7 +143,7 @@ class LogsWidget(QWidget, DIALOG_UI):
             ]
         )
         self.logs_level_comboBox.currentTextChanged.connect(self.proxy_model.setLevelFilter)
-        self.logs_level_comboBox.setCurrentText("DEBUG")
+        self.logs_level_comboBox.setCurrentText("INFO")
 
         self.logs_openFile_toolButton.setIcon(
             QApplication.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon)

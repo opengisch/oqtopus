@@ -157,6 +157,15 @@ class OqtopusPlugin:
             self.iface.removePluginMenu(self.main_menu_name, action)
             self.iface.removeToolBarIcon(action)
 
+        # Remove pum modules from sys.modules to allow proper reloading
+        # This is necessary because pum is in the libs folder and imported at module level
+        import sys
+
+        pum_modules = [mod for mod in sys.modules.keys() if mod.startswith("pum")]
+        for mod in pum_modules:
+            del sys.modules[mod]
+            logger.debug(f"Removed {mod} from sys.modules for clean reload")
+
     def show_main_dialog(self):
         conf_path = Path(__file__).parent / "default_config.yaml"
 
