@@ -114,13 +114,19 @@ class PluginUtils:
             rotationHandler = TimedRotatingFileHandler(
                 logfile.filePath(), when="midnight", backupCount=10
             )
-
-            # Configure logging
-            logging.basicConfig(
-                level=logging.DEBUG,
-                format="%(asctime)s %(levelname)-7s %(message)s",
-                handlers=[rotationHandler],
+            rotationHandler.setLevel(logging.DEBUG)
+            rotationHandler.setFormatter(
+                logging.Formatter("%(asctime)s %(levelname)-7s %(message)s")
             )
+
+            # Configure logging - basicConfig might not work if already called
+            # so we configure the root logger directly
+            root_logger = logging.getLogger()
+            root_logger.setLevel(logging.DEBUG)
+            root_logger.addHandler(rotationHandler)
+
+            # Set the pum library to DEBUG level
+            logging.getLogger("pum").setLevel(logging.DEBUG)
         else:
             logger.error(f"Can't create log files directory '{PluginUtils.logsDirectory}'.")
 

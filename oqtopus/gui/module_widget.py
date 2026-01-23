@@ -186,20 +186,25 @@ class ModuleWidget(QWidget, DIALOG_UI):
         if self.__current_module_package is None:
             self.moduleInfo_label.setText(self.tr("No module package selected"))
             QtUtils.setForegroundColor(self.moduleInfo_label, PluginUtils.COLOR_WARNING)
+            self.moduleInfo_stackedWidget.setEnabled(False)
             return
 
         if self.__database_connection is None:
             self.moduleInfo_label.setText(self.tr("No database connection available"))
             QtUtils.setForegroundColor(self.moduleInfo_label, PluginUtils.COLOR_WARNING)
+            self.moduleInfo_stackedWidget.setEnabled(False)
             return
 
         if self.__pum_config is None:
             self.moduleInfo_label.setText(self.tr("No PUM config available"))
             QtUtils.setForegroundColor(self.moduleInfo_label, PluginUtils.COLOR_WARNING)
+            self.moduleInfo_stackedWidget.setEnabled(False)
             return
 
         migrationVersion = self.__pum_config.last_version()
         sm = SchemaMigrations(self.__pum_config)
+
+        self.moduleInfo_stackedWidget.setEnabled(True)
 
         if sm.exists(self.__database_connection):
             # Case upgrade
