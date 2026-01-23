@@ -90,7 +90,7 @@ class DatabaseDuplicateDialog(QDialog, DIALOG_UI):
             with OverrideCursor(Qt.CursorShape.WaitCursor):
                 with database_connection.cursor() as cursor:
                     cursor.execute(
-                        f"CREATE DATABASE {new_database_name} TEMPLATE {self.__existing_service_config.get('dbname')}"
+                        f'CREATE DATABASE "{new_database_name}" TEMPLATE "{self.__existing_service_config.get("dbname")}"'
                     )
         except psycopg.Error as e:
             errorText = self.tr(f"Error duplicating database:\n{e}.")

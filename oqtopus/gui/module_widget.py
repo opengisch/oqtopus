@@ -139,8 +139,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 upgrader.install(
                     parameters=parameters,
                     connection=self.__database_connection,
-                    roles=self.db_parameters_CreateAndGrantRoles_checkBox.isChecked(),
-                    grant=self.db_parameters_CreateAndGrantRoles_checkBox.isChecked(),
+                    roles=self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
+                    grant=self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
                     beta_testing=beta_testing,
                     commit=False,
                 )
@@ -175,12 +175,69 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.__updateModuleInfo()
 
     def __upgradeModuleClicked(self):
-        QMessageBox.critical(
+        if self.__current_module_package is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please select a module package first."), None, self
+            ).exec()
+            return
+
+        if self.__database_connection is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please select a database service first."), None, self
+            ).exec()
+            return
+
+        if self.__pum_config is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("No valid module available."), None, self
+            ).exec()
+            return
+
+        try:
+            parameters = self.parameters_groupbox.parameters_values()
+
+            beta_testing = False
+            if (
+                self.__current_module_package.type == ModulePackage.Type.PULL_REQUEST
+                or self.__current_module_package.type == ModulePackage.Type.BRANCH
+            ):
+                logger.warning(
+                    "Upgrading module from branch or pull request: set parameter beta_testing to True"
+                )
+                beta_testing = True
+
+            upgrader = Upgrader(
+                config=self.__pum_config,
+            )
+            with OverrideCursor(Qt.CursorShape.WaitCursor):
+                upgrader.upgrade(
+                    parameters=parameters,
+                    connection=self.__database_connection,
+                    beta_testing=beta_testing,
+                    roles=self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
+                    grant=self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
+                )
+
+                self.__database_connection.commit()
+
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Can't upgrade the module:"), exception, self
+            ).exec()
+            return
+
+        QMessageBox.information(
             self,
-            self.tr("Not implemented"),
-            self.tr("Upgrade module is not implemented yet."),
+            self.tr("Module upgraded"),
+            self.tr(
+                f"Module '{self.__current_module_package.module.name}' has been successfully upgraded to version '{self.__current_module_package.name}'."
+            ),
         )
-        return
+        logger.info(
+            f"Module '{self.__current_module_package.module.name}' has been successfully upgraded to version '{self.__current_module_package.name}'."
+        )
+
+        self.__updateModuleInfo()
 
     def __updateModuleInfo(self):
         if self.__current_module_package is None:
@@ -212,6 +269,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.moduleInfo_label.setText(self.tr(f"Version {baseline_version} found"))
             QtUtils.resetForegroundColor(self.moduleInfo_label)
             self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {migrationVersion}"))
+
+            # Set the version labels
+            self.installed_version_label.setText(str(baseline_version))
+            self.selected_version_label.setText(str(migrationVersion))
 
             self.moduleInfo_stackedWidget.setCurrentWidget(
                 self.moduleInfo_stackedWidget_pageUpgrade
