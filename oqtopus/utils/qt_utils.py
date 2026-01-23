@@ -68,6 +68,25 @@ class QtUtils:
         font.setItalic(italic)
         widget.setFont(font)
 
+    @staticmethod
+    def setTextWithEllipsis(label, text, max_length=80):
+        """
+        Set text on a label with ellipsis in the middle if too long.
+        Sets full text as tooltip.
+        :param label: The QLabel widget to set text on.
+        :param text: The text to display.
+        :param max_length: Maximum length before truncating (default: 80).
+        """
+        if len(text) <= max_length:
+            label.setText(text)
+            label.setToolTip("")
+        else:
+            # Calculate how many characters to keep on each side
+            side_length = (max_length - 3) // 2  # 3 for the ellipsis
+            truncated = f"{text[:side_length]}…{text[-side_length:]}"
+            label.setText(truncated)
+            label.setToolTip(text)
+
 
 class CriticalMessageBox(QMessageBox):
     def __init__(self, title: str, description: str, exception: Exception = None, parent=None):

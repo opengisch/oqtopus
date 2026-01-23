@@ -78,6 +78,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         self.db_services_comboBox.clear()
 
         try:
+            self.db_services_comboBox.addItem(self.tr("Please select a service"), None)
             for service_name in pgserviceparser_service_names():
                 self.db_services_comboBox.addItem(service_name)
         except Exception as exception:
@@ -87,7 +88,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             return
 
     def __serviceChanged(self, index=None):
-        if self.db_services_comboBox.currentText() == "":
+        if not self.db_services_comboBox.currentText():
             self.db_database_label.setText(self.tr("No database"))
             QtUtils.setForegroundColor(self.db_database_label, PluginUtils.COLOR_WARNING)
             QtUtils.setFontItalic(self.db_database_label, True)

@@ -217,14 +217,18 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         package_dir = self.module_package_comboBox.currentData().source_package_dir
         logger.info(f"Package loaded into '{package_dir}'")
         QtUtils.resetForegroundColor(self.module_information_label)
-        self.module_information_label.setText(
+        QtUtils.setTextWithEllipsis(
+            self.module_information_label,
             f"<a href='file://{package_dir}'>{package_dir}</a>",
+            max_length=60,
         )
 
         asset_project = self.module_package_comboBox.currentData().asset_project
         if asset_project:
-            self.module_informationProject_label.setText(
+            QtUtils.setTextWithEllipsis(
+                self.module_informationProject_label,
                 f"<a href='file://{asset_project.package_dir}'>{asset_project.package_dir}</a>",
+                max_length=60,
             )
         else:
             self.module_informationProject_label.setText("No asset available")
