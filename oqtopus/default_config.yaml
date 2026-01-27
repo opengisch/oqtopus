@@ -1,9 +1,11 @@
 
 modules:
   - name: TEKSI Wastewater
+    id: tww
     organisation: teksi
     repository: wastewater
 
   - name: SIGNALO
+    id: signalo
     organisation: opengisch
     repository: signalo

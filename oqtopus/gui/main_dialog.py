@@ -175,16 +175,10 @@ class MainDialog(QDialog, DIALOG_UI):
         if module_package.asset_project is not None:
             self.project_tab.setEnabled(True)
 
-        self.__moduleWidget.setModulePackage(
-            self.__moduleSelectionWidget.getSelectedModulePackage()
-        )
-        self.__projectWidget.setModulePackage(
-            self.__moduleSelectionWidget.getSelectedModulePackage()
-        )
-
-        self.__pluginWidget.setModulePackage(
-            self.__moduleSelectionWidget.getSelectedModulePackage()
-        )
+        module_package = self.__moduleSelectionWidget.getSelectedModulePackage()
+        self.__moduleWidget.setModulePackage(module_package)
+        self.__projectWidget.setModulePackage(module_package)
+        self.__pluginWidget.setModulePackage(module_package)
 
     def __databaseConnectionWidget_connectionChanged(self):
         self.__moduleWidget.setDatabaseConnection(self.__databaseConnectionWidget.getConnection())

@@ -119,6 +119,20 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
+        # Check that the module name in the PUM config matches the selected module
+        pum_module_name = self.__pum_config.config.pum.module
+        selected_module_name = self.__current_module_package.module.id
+        if pum_module_name != selected_module_name:
+            CriticalMessageBox(
+                self.tr("Error"),
+                self.tr(
+                    f"Module name mismatch: The selected module is '{selected_module_name}' but the PUM configuration specifies '{pum_module_name}'."
+                ),
+                None,
+                self,
+            ).exec()
+            return
+
         try:
             parameters = self.parameters_groupbox.parameters_values()
 
@@ -192,6 +206,36 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 self.tr("Error"), self.tr("No valid module available."), None, self
             ).exec()
             return
+
+        # Check that the module name in the PUM config matches the selected module
+        pum_module_name = self.__pum_config.config.pum.module
+        selected_module_name = self.__current_module_package.module.name
+        if pum_module_name != selected_module_name:
+            CriticalMessageBox(
+                self.tr("Error"),
+                self.tr(
+                    f"Module name mismatch: The selected module is '{selected_module_name}' but the PUM configuration specifies '{pum_module_name}'."
+                ),
+                None,
+                self,
+            ).exec()
+            return
+
+        # Check that the module name matches the installed module in the database
+        sm = SchemaMigrations(self.__pum_config)
+        if sm.exists(self.__database_connection):
+            migration_details = sm.migration_details(self.__database_connection)
+            installed_module_name = migration_details.get("module")
+            if installed_module_name and installed_module_name != pum_module_name:
+                CriticalMessageBox(
+                    self.tr("Error"),
+                    self.tr(
+                        f"Module name mismatch: The database contains module '{installed_module_name}' but you are trying to upgrade with '{pum_module_name}'."
+                    ),
+                    None,
+                    self,
+                ).exec()
+                return
 
         try:
             parameters = self.parameters_groupbox.parameters_values()
