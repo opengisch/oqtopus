@@ -25,9 +25,10 @@ Open `default_config.yaml` in a text editor. Each module is defined as a diction
 
 ```yaml
 modules:
-  - name: "TEKSI Wastewater"
-    organisation: "teksi"
-    repository: "wastewater"
+  - name: TEKSI Wastewater
+    id: tww
+    organisation: teksi
+    repository: wastewater
 ```
 
 ### 3. Required fields
