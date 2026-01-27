@@ -66,6 +66,8 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_package_comboBox.addItem(self.tr("Please select a version"), None)
         self.module_package_comboBox.setEnabled(False)
 
+        self.module_seeChangeLog_pushButton.setEnabled(False)
+
         self.module_zipPackage_groupBox.setVisible(False)
 
         self.module_module_comboBox.currentIndexChanged.connect(self.__moduleChanged)
@@ -103,6 +105,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_latestVersion_label.setText("")
         self.module_package_comboBox.clear()
         self.module_package_comboBox.addItem(self.tr("Please select a version"), None)
+        self.module_seeChangeLog_pushButton.setEnabled(False)
 
         if self.__current_module is None:
             self.module_package_comboBox.setEnabled(False)
@@ -128,7 +131,11 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         self.__current_module_package = self.module_package_comboBox.currentData()
         if self.__current_module_package is None:
+            self.module_seeChangeLog_pushButton.setEnabled(False)
             return
+
+        # Enable changelog button for valid selections
+        self.module_seeChangeLog_pushButton.setEnabled(True)
 
         if self.__current_module_package.type == self.__current_module_package.Type.FROM_ZIP:
             self.module_zipPackage_groupBox.setVisible(True)
