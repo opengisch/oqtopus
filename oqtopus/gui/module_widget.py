@@ -152,9 +152,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
             if (
                 self.__current_module_package.type == ModulePackage.Type.PULL_REQUEST
                 or self.__current_module_package.type == ModulePackage.Type.BRANCH
+                or self.__current_module_package.prerelease
             ):
                 logger.warning(
-                    "Installing module from branch or pull request: set parameter beta_testing to True"
+                    "Installing module from branch, pull request, or prerelease: set parameter beta_testing to True"
                 )
                 beta_testing = True
 
@@ -256,9 +257,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
             if (
                 self.__current_module_package.type == ModulePackage.Type.PULL_REQUEST
                 or self.__current_module_package.type == ModulePackage.Type.BRANCH
+                or self.__current_module_package.prerelease
             ):
                 logger.warning(
-                    "Upgrading module from branch or pull request: set parameter beta_testing to True"
+                    "Upgrading module from branch, pull request, or prerelease: set parameter beta_testing to True"
                 )
                 beta_testing = True
 
