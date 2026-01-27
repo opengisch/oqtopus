@@ -48,8 +48,8 @@ In the `Module selection` box:
 
     By default oQtopus lists versions listed in the releases list of the Github project.
     But it is also possible to install from a .zip archive of the source code.
-    By selecting "Load development branches" in the versions combobox oQtopus will load
-    additional installable versions for the main branch and all branches from open pull requests.
+    By selecting "Load pre-releases and development branches" in the versions combobox oQtopus will load
+    additional installable versions including pre-releases, the main branch and all branches from open pull requests.
 
 
 ### Create or prepare the host database
