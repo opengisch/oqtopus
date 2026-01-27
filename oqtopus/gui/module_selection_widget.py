@@ -49,6 +49,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             for config_module in self.__modules_config.modules:
                 module = Module(
                     name=config_module.name,
+                    id=config_module.id,
                     organisation=config_module.organisation,
                     repository=config_module.repository,
                     parent=self,

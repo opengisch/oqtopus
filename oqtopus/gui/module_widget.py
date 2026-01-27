@@ -1,6 +1,8 @@
 import os
+from pathlib import Path
 
 import psycopg
+import yaml
 from pum.pum_config import PumConfig
 from pum.schema_migrations import SchemaMigrations
 from pum.upgrader import Upgrader
@@ -72,7 +74,17 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            self.__pum_config = PumConfig.from_yaml(pumConfigFilename, install_dependencies=True)
+            with open(pumConfigFilename) as file:
+                # since pum 1.3, the module id is mandatory in the pum config
+                config_data = yaml.safe_load(file)
+                if "pum" not in config_data:
+                    config_data["pum"] = {}
+                if "module" not in config_data["pum"]:
+                    config_data["pum"]["module"] = self.__current_module_package.module.id
+                base_path = Path(pumConfigFilename).parent
+            self.__pum_config = PumConfig(
+                base_path=base_path, install_dependencies=True, **config_data
+            )
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"),

@@ -11,9 +11,10 @@ class Module(QObject):
     signal_versionsLoaded = pyqtSignal(str)
     signal_developmentVersionsLoaded = pyqtSignal(str)
 
-    def __init__(self, name: str, organisation: str, repository: str, parent=None):
+    def __init__(self, name: str, id: str, organisation: str, repository: str, parent=None):
         super().__init__(parent)
         self.name = name
+        self.id = id
         self.organisation = organisation
         self.repository = repository
         self.versions = []
