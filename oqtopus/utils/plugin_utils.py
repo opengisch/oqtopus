@@ -22,6 +22,7 @@ import os
 from logging import LogRecord
 from logging.handlers import TimedRotatingFileHandler
 
+from pum import SQL
 from qgis.PyQt.QtCore import (
     QDir,
     QFileInfo,
@@ -125,8 +126,9 @@ class PluginUtils:
             root_logger.setLevel(logging.DEBUG)
             root_logger.addHandler(rotationHandler)
 
-            # Set the pum library to DEBUG level
-            logging.getLogger("pum").setLevel(logging.DEBUG)
+            # Set the pum library to SQL level (5) to capture all SQL statements
+            # SQL (5) < DEBUG (10) < INFO (20)
+            logging.getLogger("pum").setLevel(SQL)
         else:
             logger.error(f"Can't create log files directory '{PluginUtils.logsDirectory}'.")
 

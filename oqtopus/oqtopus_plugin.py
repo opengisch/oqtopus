@@ -30,7 +30,7 @@ class OqtopusPlugin:
         logger.info(f"Starting {PluginUtils.PLUGIN_NAME} plugin version {self.__version__}")
 
         self.actions = []
-        self.main_menu_name = self.tr(f"&{PluginUtils.PLUGIN_NAME}")
+        self.main_menu_name = f"&{PluginUtils.PLUGIN_NAME}"
 
     # noinspection PyMethodMayBeStatic
     def tr(self, source_text):
