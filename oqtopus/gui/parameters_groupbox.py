@@ -1,6 +1,5 @@
 import logging
 
-from pum import ParameterDefinition, ParameterType
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QGroupBox,
@@ -9,6 +8,8 @@ from qgis.PyQt.QtWidgets import (
     QLineEdit,
     QWidget,
 )
+
+from ..libs.pum import ParameterDefinition, ParameterType
 
 logger = logging.getLogger(__name__)
 
@@ -21,33 +22,44 @@ class ParameterWidget(QWidget):
         self.setLayout(self.layout)
         self.value = None
 
-        if parameter_definition.type != ParameterType.BOOLEAN:
+        # Get the parameter type value (handle both enum and string cases)
+        # This is needed because during plugin reload, enums can become strings
+        param_type = parameter_definition.type
+        if isinstance(param_type, ParameterType):
+            param_type_value = param_type.value
+        elif isinstance(param_type, str):
+            # Handle string representations like "ParameterType.INTEGER" or "integer"
+            param_type_value = (
+                param_type.split(".")[-1].lower() if "." in param_type else param_type.lower()
+            )
+        else:
+            param_type_value = str(param_type).split(".")[-1].lower()
+
+        if param_type_value != "boolean":
             self.layout.addWidget(QLabel(parameter_definition.name, self))
 
-        if parameter_definition.type == ParameterType.BOOLEAN:
+        if param_type_value == "boolean":
             self.widget = QCheckBox(parameter_definition.name, self)
             if parameter_definition.default is not None:
                 self.widget.setChecked(parameter_definition.default)
             self.layout.addWidget(self.widget)
             self.value = lambda: self.widget.isChecked()
-        elif parameter_definition.type in (
-            ParameterType.DECIMAL,
-            ParameterType.INTEGER,
-            ParameterType.TEXT,
-            ParameterType.PATH,
-        ):
+        elif param_type_value in ("decimal", "integer", "text", "path"):
             self.widget = QLineEdit(self)
             if parameter_definition.default is not None:
                 self.widget.setPlaceholderText(str(parameter_definition.default))
             self.layout.addWidget(self.widget)
-            if parameter_definition.type == ParameterType.INTEGER:
+            if param_type_value == "integer":
                 self.value = lambda: int(self.widget.text() or self.widget.placeholderText())
-            elif parameter_definition.type == ParameterType.DECIMAL:
+            elif param_type_value == "decimal":
                 self.value = lambda: float(self.widget.text() or self.widget.placeholderText())
             else:
                 self.value = lambda: self.widget.text() or self.widget.placeholderText()
         else:
-            raise ValueError(f"Unknown parameter type '{parameter_definition.type}'")
+            raise ValueError(
+                f"Unknown parameter type '{parameter_definition.type}' "
+                f"(normalized to '{param_type_value}')"
+            )
 
 
 class ParametersGroupBox(QGroupBox):

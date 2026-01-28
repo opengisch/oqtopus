@@ -81,6 +81,14 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
     def close(self):
         if self.__packagePrepareTask.isRunning():
+            # Disconnect signals first to prevent crashes when emitting to destroyed widgets
+            try:
+                self.__packagePrepareTask.signalPackagingProgress.disconnect()
+                self.__packagePrepareTask.finished.disconnect()
+            except TypeError:
+                # Already disconnected
+                pass
+
             self.__packagePrepareTask.cancel()
             self.__packagePrepareTask.wait()
 
@@ -258,17 +266,22 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         else:
             self.module_informationPlugin_label.setText("No asset available")
 
-    def __packagePrepareTaskProgress(self, progress):
+    def __packagePrepareTaskProgress(self, progress, bytes_downloaded):
         if progress < 0:
             # Indeterminate progress (size unknown)
             self.module_progressBar.setMaximum(0)
             self.module_progressBar.setValue(0)
-            loading_text = self.tr("Downloading package...")
+            if bytes_downloaded > 0:
+                mb_downloaded = bytes_downloaded / (1024 * 1024)
+                loading_text = self.tr(f"Downloading package... {mb_downloaded:.1f} MB")
+            else:
+                loading_text = self.tr("Downloading package...")
         else:
             # Determinate progress (0-100%)
             self.module_progressBar.setMaximum(100)
             self.module_progressBar.setValue(int(progress))
-            loading_text = self.tr(f"Downloading... {progress:.0f}%")
+            mb_downloaded = bytes_downloaded / (1024 * 1024)
+            loading_text = self.tr(f"Downloading... {mb_downloaded:.1f} MB ({progress:.0f}%)")
 
         self.module_information_label.setText(loading_text)
 

@@ -3,16 +3,15 @@ from pathlib import Path
 
 import psycopg
 import yaml
-from pum.pum_config import PumConfig
-from pum.schema_migrations import SchemaMigrations
-from pum.upgrader import Upgrader
-from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QMessageBox, QWidget
 
 from ..core.module import Module
+from ..core.module_operation_task import ModuleOperationTask
 from ..core.module_package import ModulePackage
+from ..libs.pum.pum_config import PumConfig
+from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
-from ..utils.qt_utils import CriticalMessageBox, OverrideCursor, QtUtils
+from ..utils.qt_utils import CriticalMessageBox, QtUtils
 
 DIALOG_UI = PluginUtils.get_ui_class("module_widget.ui")
 
@@ -32,11 +31,21 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_install_pushButton.clicked.connect(self.__installModuleClicked)
         self.moduleInfo_upgrade_pushButton.clicked.connect(self.__upgradeModuleClicked)
         self.uninstall_button.clicked.connect(self.__uninstallModuleClicked)
+        self.moduleInfo_cancel_button.clicked.connect(self.__cancelOperationClicked)
 
         self.__current_module_package = None
         self.__database_connection = None
         self.__pum_config = None
         self.__data_model_dir = None
+
+        # Background operation task
+        self.__operation_task = ModuleOperationTask(self)
+        self.__operation_task.signalProgress.connect(self.__onOperationProgress)
+        self.__operation_task.signalFinished.connect(self.__onOperationFinished)
+
+        # Hide cancel button and progress bar initially
+        self.moduleInfo_cancel_button.setVisible(False)
+        self.moduleInfo_progressbar.setVisible(False)
 
     def setModulePackage(self, module_package: Module):
         self.__current_module_package = module_package
@@ -191,47 +200,26 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 if reply != QMessageBox.StandardButton.Yes:
                     return
 
-            upgrader = Upgrader(
-                config=self.__pum_config,
-            )
-            with OverrideCursor(Qt.CursorShape.WaitCursor):
-                upgrader.install(
-                    parameters=parameters,
-                    connection=self.__database_connection,
-                    roles=self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
-                    grant=self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
-                    beta_testing=beta_testing,
-                    commit=False,
-                )
+            # Start background install operation
+            options = {
+                "roles": self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
+                "grant": self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
+                "beta_testing": beta_testing,
+                "install_demo_data": self.db_demoData_checkBox.isChecked(),
+                "demo_data_name": (
+                    self.db_demoData_comboBox.currentText()
+                    if self.db_demoData_checkBox.isChecked()
+                    else None
+                ),
+            }
 
-                if self.db_demoData_checkBox.isChecked():
-                    demo_data_name = self.db_demoData_comboBox.currentText()
-                    upgrader.install_demo_data(
-                        connection=self.__database_connection,
-                        name=demo_data_name,
-                        parameters=parameters,
-                    )
-
-                self.__database_connection.commit()
+            self.__startOperation("install", parameters, options)
 
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"), self.tr("Can't install the module:"), exception, self
             ).exec()
             return
-
-        QMessageBox.information(
-            self,
-            self.tr("Module installed"),
-            self.tr(
-                f"Module '{self.__current_module_package.module.name}' version '{self.__current_module_package.name}' has been successfully installed."
-            ),
-        )
-        logger.info(
-            f"Module '{self.__current_module_package.module.name}' version '{self.__current_module_package.name}' has been successfully installed."
-        )
-
-        self.__updateModuleInfo()
 
     def __upgradeModuleClicked(self):
         if self.__current_module_package is None:
@@ -317,37 +305,21 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 )
                 beta_testing = True
 
-            upgrader = Upgrader(
-                config=self.__pum_config,
-            )
-            with OverrideCursor(Qt.CursorShape.WaitCursor):
-                upgrader.upgrade(
-                    parameters=parameters,
-                    connection=self.__database_connection,
-                    beta_testing=beta_testing,
-                    force=installed_beta_testing,  # Use force=True if upgrading from beta_testing
-                    roles=self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
-                    grant=self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
-                )
+            # Start background upgrade operation
+            options = {
+                "beta_testing": beta_testing,
+                "force": installed_beta_testing,
+                "roles": self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
+                "grant": self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
+            }
 
-                self.__database_connection.commit()
+            self.__startOperation("upgrade", parameters, options)
 
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"), self.tr("Can't upgrade the module:"), exception, self
             ).exec()
             return
-
-        QMessageBox.information(
-            self,
-            self.tr("Module upgraded"),
-            self.tr(
-                f"Module '{self.__current_module_package.module.name}' has been successfully upgraded to version '{self.__current_module_package.name}'."
-            ),
-        )
-        logger.info(
-            f"Module '{self.__current_module_package.module.name}' has been successfully upgraded to version '{self.__current_module_package.name}'."
-        )
 
         self.__updateModuleInfo()
 
@@ -416,34 +388,14 @@ class ModuleWidget(QWidget, DIALOG_UI):
         try:
             parameters = self.parameters_groupbox.parameters_values()
 
-            upgrader = Upgrader(
-                config=self.__pum_config,
-            )
-            with OverrideCursor(Qt.CursorShape.WaitCursor):
-                upgrader.uninstall(
-                    connection=self.__database_connection,
-                    parameters=parameters,
-                    commit=True,
-                )
+            # Start background uninstall operation
+            self.__startOperation("uninstall", parameters, {})
 
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"), self.tr("Can't uninstall the module:"), exception, self
             ).exec()
             return
-
-        QMessageBox.information(
-            self,
-            self.tr("Module uninstalled"),
-            self.tr(
-                f"Module '{self.__current_module_package.module.name}' has been successfully uninstalled."
-            ),
-        )
-        logger.info(
-            f"Module '{self.__current_module_package.module.name}' has been successfully uninstalled."
-        )
-
-        self.__updateModuleInfo()
 
     def __show_error_state(self, message: str, on_label=None):
         """Display an error state and disable the widget."""
@@ -543,3 +495,106 @@ class ModuleWidget(QWidget, DIALOG_UI):
         else:
             # Module not installed - show install page
             self.__show_install_page(migrationVersion)
+
+    def __startOperation(self, operation: str, parameters: dict, options: dict):
+        """Start a background module operation."""
+        # Disable UI during operation
+        self.moduleInfo_stackedWidget.setEnabled(False)
+        self.moduleInfo_cancel_button.setVisible(True)
+        self.moduleInfo_cancel_button.setEnabled(True)
+        self.moduleInfo_progressbar.setVisible(True)
+        self.moduleInfo_progressbar.setValue(0)
+
+        # Disable module selection and database connection to prevent navigation during operation
+        if self.parent() is not None:
+            parent_dialog = self.parent()
+            if hasattr(parent_dialog, "moduleSelection_groupBox"):
+                parent_dialog.moduleSelection_groupBox.setEnabled(False)
+            if hasattr(parent_dialog, "db_groupBox"):
+                parent_dialog.db_groupBox.setEnabled(False)
+
+        # Start the background task
+        if operation == "install":
+            self.__operation_task.start_install(
+                self.__pum_config, self.__database_connection, parameters, **options
+            )
+        elif operation == "upgrade":
+            self.__operation_task.start_upgrade(
+                self.__pum_config, self.__database_connection, parameters, **options
+            )
+        elif operation == "uninstall":
+            self.__operation_task.start_uninstall(
+                self.__pum_config, self.__database_connection, parameters, **options
+            )
+
+    def __cancelOperationClicked(self):
+        """Cancel the current operation."""
+        self.moduleInfo_cancel_button.setEnabled(False)
+        self.__operation_task.cancel()
+        logger.info("Operation canceled by user")
+
+    def __onOperationProgress(self, message: str, current: int, total: int):
+        """Handle progress updates from background operation."""
+        # Update progress bar only, don't touch the installation label
+        if total > 0:
+            # Determinate progress
+            self.moduleInfo_progressbar.setFormat(message)
+            self.moduleInfo_progressbar.setTextVisible(True)
+            self.moduleInfo_progressbar.setMaximum(total)
+            self.moduleInfo_progressbar.setValue(current)
+            logger.debug(f"Progress update: {current}/{total} - {message}")
+        else:
+            # Indeterminate progress
+            self.moduleInfo_progressbar.setFormat(message)
+            self.moduleInfo_progressbar.setTextVisible(True)
+            self.moduleInfo_progressbar.setMaximum(0)
+            self.moduleInfo_progressbar.setValue(0)
+
+    def __onOperationFinished(self, success: bool, error_message: str):
+        """Handle completion of background operation."""
+        # Re-enable UI
+        self.moduleInfo_stackedWidget.setEnabled(True)
+        self.moduleInfo_cancel_button.setVisible(False)
+        self.moduleInfo_progressbar.setVisible(False)
+
+        # Re-enable module selection and database connection
+        if self.parent() is not None:
+            parent_dialog = self.parent()
+            if hasattr(parent_dialog, "moduleSelection_groupBox"):
+                parent_dialog.moduleSelection_groupBox.setEnabled(True)
+            if hasattr(parent_dialog, "db_groupBox"):
+                parent_dialog.db_groupBox.setEnabled(True)
+
+        if success:
+            # Show success message
+            operation_name = (
+                "installed"
+                if self.__operation_task._ModuleOperationTask__operation == "install"
+                else (
+                    "upgraded"
+                    if self.__operation_task._ModuleOperationTask__operation == "upgrade"
+                    else "uninstalled"
+                )
+            )
+
+            QMessageBox.information(
+                self,
+                self.tr(f"Module {operation_name}"),
+                self.tr(
+                    f"Module '{self.__current_module_package.module.name}' has been successfully {operation_name}."
+                ),
+            )
+            logger.info(
+                f"Module '{self.__current_module_package.module.name}' has been successfully {operation_name}."
+            )
+
+            # Refresh module info
+            self.__updateModuleInfo()
+        else:
+            # Show error message
+            CriticalMessageBox(
+                self.tr("Error"),
+                self.tr(f"Operation failed: {error_message}"),
+                None,
+                self,
+            ).exec()

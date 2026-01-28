@@ -155,6 +155,20 @@
      </widget>
     </widget>
    </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="moduleInfo_cancel_button">
+     <property name="text">
+      <string>Cancel</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QProgressBar" name="moduleInfo_progressbar">
+     <property name="value">
+      <number>24</number>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>

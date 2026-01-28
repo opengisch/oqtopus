@@ -1,10 +1,10 @@
 import logging
 
-# Import and register SQL logging level from pum
-from pum import SQL
 from qgis.PyQt.QtCore import QAbstractItemModel, QModelIndex, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtWidgets import QAbstractItemView, QApplication, QStyle, QWidget
 
+# Import and register SQL logging level from pum
+from ..libs.pum import SQL
 from ..utils.plugin_utils import LoggingBridge, PluginUtils
 
 logging.addLevelName(SQL, "SQL")

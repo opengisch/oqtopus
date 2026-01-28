@@ -132,6 +132,12 @@ class MainDialog(QDialog, DIALOG_UI):
 
         logger.info("Ready.")
 
+    def closeEvent(self, event):
+        """Handle window close event (X button) to properly cleanup threads."""
+        self.__moduleSelectionWidget.close()
+        self.__logsWidget.close()
+        event.accept()
+
     def __closeDialog(self):
         self.__moduleSelectionWidget.close()
         self.__logsWidget.close()
