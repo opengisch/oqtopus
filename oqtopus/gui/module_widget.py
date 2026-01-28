@@ -45,6 +45,14 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
     def clearModulePackage(self):
         """Clear module package state and disable the stacked widget."""
+        # Clean up any imported modules from hooks to prevent conflicts
+        if self.__pum_config is not None:
+            try:
+                self.__pum_config.cleanup_hook_imports()
+            except Exception:
+                # Ignore errors during cleanup
+                pass
+
         self.__current_module_package = None
         self.__pum_config = None
         self.__data_model_dir = None
@@ -139,14 +147,14 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
-        # Check that the module name in the PUM config matches the selected module
-        pum_module_name = self.__pum_config.config.pum.module
-        selected_module_name = self.__current_module_package.module.id
-        if pum_module_name != selected_module_name:
+        # Check that the module ID in the PUM config matches the selected module
+        pum_module_id = self.__pum_config.config.pum.module
+        selected_module_id = self.__current_module_package.module.id
+        if pum_module_id != selected_module_id:
             CriticalMessageBox(
                 self.tr("Error"),
                 self.tr(
-                    f"Module name mismatch: The selected module is '{selected_module_name}' but the PUM configuration specifies '{pum_module_name}'."
+                    f"Module ID mismatch: The selected module is '{selected_module_id}' but the PUM configuration specifies '{pum_module_id}'."
                 ),
                 None,
                 self,
@@ -228,30 +236,30 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
-        # Check that the module name in the PUM config matches the selected module
-        pum_module_name = self.__pum_config.config.pum.module
-        selected_module_name = self.__current_module_package.module.name
-        if pum_module_name != selected_module_name:
+        # Check that the module ID in the PUM config matches the selected module
+        pum_module_id = self.__pum_config.config.pum.module
+        selected_module_id = self.__current_module_package.module.id
+        if pum_module_id != selected_module_id:
             CriticalMessageBox(
                 self.tr("Error"),
                 self.tr(
-                    f"Module name mismatch: The selected module is '{selected_module_name}' but the PUM configuration specifies '{pum_module_name}'."
+                    f"Module ID mismatch: The selected module is '{selected_module_id}' but the PUM configuration specifies '{pum_module_id}'."
                 ),
                 None,
                 self,
             ).exec()
             return
 
-        # Check that the module name matches the installed module in the database
+        # Check that the module ID matches the installed module in the database
         sm = SchemaMigrations(self.__pum_config)
         if sm.exists(self.__database_connection):
             migration_details = sm.migration_details(self.__database_connection)
-            installed_module_name = migration_details.get("module")
-            if installed_module_name and installed_module_name != pum_module_name:
+            installed_module_id = migration_details.get("module")
+            if installed_module_id and installed_module_id != pum_module_id:
                 CriticalMessageBox(
                     self.tr("Error"),
                     self.tr(
-                        f"Module name mismatch: The database contains module '{installed_module_name}' but you are trying to upgrade with '{pum_module_name}'."
+                        f"Module ID mismatch: The database contains module '{installed_module_id}' but you are trying to upgrade with '{pum_module_id}'."
                     ),
                     None,
                     self,
@@ -433,9 +441,12 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
     def __configure_uninstall_button(self):
         """Show/hide uninstall button based on configuration."""
-        self.uninstall_button.setVisible(
-            self.__pum_config.config.uninstall if self.__pum_config else False
+        has_uninstall = bool(
+            self.__pum_config
+            and self.__pum_config.config.uninstall
+            and len(self.__pum_config.config.uninstall) > 0
         )
+        self.uninstall_button.setVisible(has_uninstall)
 
     def __updateModuleInfo(self):
         if self.__current_module_package is None:

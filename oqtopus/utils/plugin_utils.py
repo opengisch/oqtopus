@@ -22,7 +22,6 @@ import os
 from logging import LogRecord
 from logging.handlers import TimedRotatingFileHandler
 
-from pum import SQL
 from qgis.PyQt.QtCore import (
     QDir,
     QFileInfo,
@@ -34,6 +33,8 @@ from qgis.PyQt.QtCore import (
 )
 from qgis.PyQt.QtGui import QColor, QDesktopServices, QIcon
 from qgis.PyQt.uic import loadUiType
+
+from ..libs.pum import SQL
 
 logger = logging.getLogger("oqtopus")
 

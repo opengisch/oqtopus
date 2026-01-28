@@ -118,6 +118,8 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             return
 
         if self.__current_module.versions == list():
+            # Emit signal first to allow UI to update before showing wait cursor
+            self.signal_loadingStarted.emit()
             QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             self.__current_module.start_load_versions()
 
@@ -171,6 +173,8 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             return
 
         if self.__current_module.development_versions == list():
+            # Emit signal first to allow UI to update before showing wait cursor
+            self.signal_loadingStarted.emit()
             QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             self.__current_module.start_load_development_versions()
 
