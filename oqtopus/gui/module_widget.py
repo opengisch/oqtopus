@@ -175,6 +175,22 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 )
                 beta_testing = True
 
+                # Warn user before installing in beta testing mode
+                reply = QMessageBox.warning(
+                    self,
+                    self.tr("Beta Testing Installation"),
+                    self.tr(
+                        "You are about to install this module in BETA TESTING mode.\n\n"
+                        "This means the module will not be allowed to receive future updates through normal upgrade process.\n"
+                        "We strongly discourage using this for production databases.\n\n"
+                        "Are you sure you want to continue?"
+                    ),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
+
             upgrader = Upgrader(
                 config=self.__pum_config,
             )
