@@ -252,9 +252,12 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         # Check that the module ID matches the installed module in the database
         sm = SchemaMigrations(self.__pum_config)
+        installed_beta_testing = False
         if sm.exists(self.__database_connection):
             migration_details = sm.migration_details(self.__database_connection)
             installed_module_id = migration_details.get("module")
+            installed_beta_testing = migration_details.get("beta_testing", False)
+
             if installed_module_id and installed_module_id != pum_module_id:
                 CriticalMessageBox(
                     self.tr("Error"),
@@ -265,6 +268,24 @@ class ModuleWidget(QWidget, DIALOG_UI):
                     self,
                 ).exec()
                 return
+
+            # Confirm upgrade if installed module is in beta testing
+            if installed_beta_testing:
+                reply = QMessageBox.question(
+                    self,
+                    self.tr("Confirm Upgrade"),
+                    self.tr(
+                        "The installed module is in BETA TESTING mode.\n\n"
+                        "Are you sure you want to upgrade? \n"
+                        "This is not a recommended action: \n"
+                        "if the installed version has missing or different changelogs, \n"
+                        "the upgrade may fail or cause further issues."
+                    ),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
 
         try:
             parameters = self.parameters_groupbox.parameters_values()
@@ -288,6 +309,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
                     parameters=parameters,
                     connection=self.__database_connection,
                     beta_testing=beta_testing,
+                    force=installed_beta_testing,  # Use force=True if upgrading from beta_testing
                     roles=self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
                     grant=self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
                 )
@@ -421,12 +443,24 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_install_pushButton.setText(self.tr(f"Install {version}"))
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
 
-    def __show_upgrade_page(self, module_name: str, baseline_version: str, target_version: str):
+    def __show_upgrade_page(
+        self,
+        module_name: str,
+        baseline_version: str,
+        target_version: str,
+        beta_testing: bool = False,
+    ):
         """Switch to upgrade page and configure it."""
+        beta_text = " (BETA TESTING)" if beta_testing else ""
         self.moduleInfo_installation_label.setText(
-            f"Installed: module {module_name} at version {baseline_version}."
+            f"Installed: module {module_name} at version {baseline_version}{beta_text}."
         )
-        QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
+        if beta_testing:
+            QtUtils.setForegroundColor(
+                self.moduleInfo_installation_label, PluginUtils.COLOR_WARNING
+            )
+        else:
+            QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
         self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {target_version}"))
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageUpgrade)
 
@@ -480,13 +514,16 @@ class ModuleWidget(QWidget, DIALOG_UI):
         if sm.exists(self.__database_connection):
             # Module is installed - show upgrade page
             baseline_version = sm.baseline(self.__database_connection)
+            migration_details = sm.migration_details(self.__database_connection)
+            installed_beta_testing = migration_details.get("beta_testing", False)
             self.__show_upgrade_page(
-                self.__current_module_package.module.name, baseline_version, migrationVersion
+                self.__current_module_package.module.name,
+                baseline_version,
+                migrationVersion,
+                installed_beta_testing,
             )
 
-            logger.info(
-                f"Migration table details: {sm.migration_details(self.__database_connection)}"
-            )
+            logger.info(f"Migration table details: {migration_details}")
         else:
             # Module not installed - show install page
             self.__show_install_page(migrationVersion)
