@@ -31,6 +31,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.moduleInfo_install_pushButton.clicked.connect(self.__installModuleClicked)
         self.moduleInfo_upgrade_pushButton.clicked.connect(self.__upgradeModuleClicked)
+        self.uninstall_button.clicked.connect(self.__uninstallModuleClicked)
 
         self.__current_module_package = None
         self.__database_connection = None
@@ -297,6 +298,100 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.__updateModuleInfo()
 
+    def __uninstallModuleClicked(self):
+        if self.__current_module_package is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please select a module package first."), None, self
+            ).exec()
+            return
+
+        if self.__database_connection is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please select a database service first."), None, self
+            ).exec()
+            return
+
+        if self.__pum_config is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("No valid module available."), None, self
+            ).exec()
+            return
+
+        # Check if uninstall hooks are defined
+        if not self.__pum_config.config.uninstall:
+            CriticalMessageBox(
+                self.tr("Error"),
+                self.tr(
+                    "No uninstall configuration found. The module does not provide uninstall functionality."
+                ),
+                None,
+                self,
+            ).exec()
+            return
+
+        # Check if the installed version matches the selected version
+        sm = SchemaMigrations(self.__pum_config)
+        version_warning = ""
+        if not sm.exists(self.__database_connection):
+            raise Exception("Module is not installed in the database. This should not happen.")
+        installed_version = sm.baseline(self.__database_connection)
+        selected_version = self.__pum_config.last_version()
+        if installed_version != selected_version:
+            version_warning = (
+                f"\n\n⚠️ WARNING: Version mismatch detected!\n"
+                f"Installed version: {installed_version}\n"
+                f"Selected version: {selected_version}\n\n"
+                f"This could be an issue as the uninstall instructions may not match the installed datamodel."
+            )
+
+        # Confirm uninstall with user
+        reply = QMessageBox.question(
+            self,
+            self.tr("Confirm Uninstall"),
+            self.tr(
+                f"Are you sure you want to uninstall module '{self.__current_module_package.module.name}'?\n\n"
+                f"This action will remove all module data from the database and cannot be undone."
+                f"{version_warning}"
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            parameters = self.parameters_groupbox.parameters_values()
+
+            upgrader = Upgrader(
+                config=self.__pum_config,
+            )
+            with OverrideCursor(Qt.CursorShape.WaitCursor):
+                upgrader.uninstall(
+                    connection=self.__database_connection,
+                    parameters=parameters,
+                    commit=True,
+                )
+
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Can't uninstall the module:"), exception, self
+            ).exec()
+            return
+
+        QMessageBox.information(
+            self,
+            self.tr("Module uninstalled"),
+            self.tr(
+                f"Module '{self.__current_module_package.module.name}' has been successfully uninstalled."
+            ),
+        )
+        logger.info(
+            f"Module '{self.__current_module_package.module.name}' has been successfully uninstalled."
+        )
+
+        self.__updateModuleInfo()
+
     def __updateModuleInfo(self):
         if self.__current_module_package is None:
             self.moduleInfo_selected_label.setText(self.tr("No module package selected"))
@@ -331,6 +426,12 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.moduleInfo_stackedWidget.setEnabled(True)
 
+        # Show/hide uninstall button based on whether uninstall configuration exists
+        if self.__pum_config.config.uninstall:
+            self.uninstall_button.setVisible(True)
+        else:
+            self.uninstall_button.setVisible(False)
+
         if sm.exists(self.__database_connection):
             # Case upgrade
             baseline_version = sm.baseline(self.__database_connection)
@@ -346,10 +447,12 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
             # Disable upgrade if selected version is not greater than installed version
             if migrationVersion <= baseline_version:
-                self.moduleInfo_stackedWidget.setEnabled(False)
+                self.moduleInfo_upgrade_pushButton.setDisabled(True)
                 logger.info(
                     f"Selected version {migrationVersion} is equal to or lower than installed version {baseline_version}"
                 )
+            else:
+                self.moduleInfo_upgrade_pushButton.setEnabled(True)
 
             logger.info(
                 f"Migration table details: {sm.migration_details(self.__database_connection)}"

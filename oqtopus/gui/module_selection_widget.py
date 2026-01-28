@@ -250,9 +250,18 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             self.module_informationPlugin_label.setText("No asset available")
 
     def __packagePrepareTaskProgress(self, progress):
-        loading_text = self.tr(f"Downloading... {progress:.1f}%")
+        if progress < 0:
+            # Indeterminate progress (size unknown)
+            self.module_progressBar.setMaximum(0)
+            self.module_progressBar.setValue(0)
+            loading_text = self.tr("Downloading package...")
+        else:
+            # Determinate progress (0-100%)
+            self.module_progressBar.setMaximum(100)
+            self.module_progressBar.setValue(int(progress))
+            loading_text = self.tr(f"Downloading... {progress:.0f}%")
+
         self.module_information_label.setText(loading_text)
-        self.module_progressBar.setValue(int(progress))
 
     def __seeChangeLogClicked(self):
         if self.__current_module_package is None:

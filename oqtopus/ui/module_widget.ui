@@ -113,6 +113,13 @@
          </property>
         </spacer>
        </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="moduleInfo_selected_label">
+         <property name="text">
+          <string>Selected module version</string>
+         </property>
+        </widget>
+       </item>
        <item row="4" column="0" colspan="2">
         <widget class="QPushButton" name="moduleInfo_upgrade_pushButton">
          <property name="text">
@@ -137,10 +144,10 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="moduleInfo_selected_label">
+       <item row="6" column="0" colspan="2">
+        <widget class="QPushButton" name="uninstall_button">
          <property name="text">
-          <string>Selected module version</string>
+          <string>Uninstall</string>
          </property>
         </widget>
        </item>

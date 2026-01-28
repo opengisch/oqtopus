@@ -31,6 +31,11 @@ class PackagePrepareTask(QThread):
         self.__canceled = False
         self.lastError = None
 
+        # Track download progress across all assets
+        self.__download_total_expected = 0
+        self.__download_total_received = 0
+        self.__last_emitted_percent = None
+
     def startFromZip(self, module_package, zip_file: str):
         self.module_package = module_package
         self.from_zip_file = zip_file
@@ -59,6 +64,11 @@ class PackagePrepareTask(QThread):
 
             self.__destination_directory = self.__prepare_destination_directory()
             logger.info(f"Destination directory: {self.__destination_directory}")
+
+            # Reset progress tracking
+            self.__download_total_expected = 0
+            self.__download_total_received = 0
+            self.__last_emitted_percent = None
 
             self.__prepare_module_assets(self.module_package)
             self.lastError = None
@@ -129,28 +139,48 @@ class PackagePrepareTask(QThread):
         self.__checkForCanceled()
 
         # Get total file size from headers
-        total_size = int(response.headers.get("content-length", 0))
+        content_length = response.headers.get("content-length")
+        file_size = int(content_length) if content_length else 0
 
-        logger.info(f"Downloading from '{url}' to '{zip_file}' (size: {total_size} bytes)")
+        if file_size > 0:
+            self.__download_total_expected += file_size
+            logger.info(f"Downloading from '{url}' to '{zip_file}' (size: {file_size} bytes)")
+        else:
+            logger.info(f"Downloading from '{url}' to '{zip_file}' (size unknown)")
+            # Emit indeterminate progress
+            self.signalPackagingProgress.emit(-1.0)
+
         downloaded_size = 0
         with open(zip_file, "wb") as file:
-            chunk_size = 8192  # 8KB chunks
-            emit_threshold = 10 * 1024 * 1024  # 10MB threshold
-            next_emit_size = emit_threshold
+            chunk_size = 256 * 1024  # 256KB chunks
             for data in response.iter_content(chunk_size=chunk_size):
                 file.write(data)
 
                 self.__checkForCanceled()
 
-                downloaded_size += len(data)
+                chunk_len = len(data)
+                downloaded_size += chunk_len
+                self.__download_total_received += chunk_len
 
-                # Emit progress as percentage (0-100)
-                if total_size > 0 and downloaded_size >= next_emit_size:
-                    next_emit_size += emit_threshold
-                    progress_percent = (downloaded_size / total_size) * 100
-                    self.signalPackagingProgress.emit(progress_percent)
+                # Emit progress on percentage change
+                self.__emit_progress()
+
+        # Ensure final progress reflects completion
+        self.__emit_progress(force=True)
 
         return zip_file
+
+    def __emit_progress(self, force: bool = False):
+        """Emit download progress as percentage (0-100) or -1 for indeterminate."""
+        if self.__download_total_expected <= 0:
+            return  # Indeterminate already emitted
+
+        percent = int((self.__download_total_received * 100) / self.__download_total_expected)
+        percent = max(0, min(100, percent))  # Clamp to 0-100
+
+        if force or self.__last_emitted_percent != percent:
+            self.__last_emitted_percent = percent
+            self.signalPackagingProgress.emit(float(percent))
 
     def __extract_zip_file(self, zip_file):
         # Unzip the file to plugin temp dir
