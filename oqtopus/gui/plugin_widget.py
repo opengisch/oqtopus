@@ -28,7 +28,20 @@ class PluginWidget(QWidget, DIALOG_UI):
         self.__current_module_package = module_package
         self.__packagePrepareGetPluginFilename()
 
+    def clearModulePackage(self):
+        """Clear module package state and reset UI."""
+        self.__current_module_package = None
+        self.info_label.setText(self.tr("No module package selected."))
+        QtUtils.setForegroundColor(self.info_label, PluginUtils.COLOR_WARNING)
+        QtUtils.setFontItalic(self.info_label, True)
+
     def __packagePrepareGetPluginFilename(self):
+        if self.__current_module_package is None:
+            self.info_label.setText(self.tr("No module package selected."))
+            QtUtils.setForegroundColor(self.info_label, PluginUtils.COLOR_WARNING)
+            QtUtils.setFontItalic(self.info_label, True)
+            return
+
         asset_plugin = self.__current_module_package.asset_plugin
         if asset_plugin is None:
             self.info_label.setText(self.tr("No plugin asset available for this module version."))

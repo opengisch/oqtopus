@@ -33,6 +33,7 @@ from qgis.PyQt.QtWidgets import (
     QMenuBar,
 )
 
+from ..core.module_package import ModulePackage
 from ..utils.plugin_utils import PluginUtils, logger
 from .about_dialog import AboutDialog
 from .settings_dialog import SettingsDialog
@@ -127,9 +128,7 @@ class MainDialog(QDialog, DIALOG_UI):
         )
         self.__databaseConnectionWidget_connectionChanged()
 
-        self.module_tab.setEnabled(False)
-        self.plugin_tab.setEnabled(False)
-        self.project_tab.setEnabled(False)
+        self.__disable_module_tabs()
 
         logger.info("Ready.")
 
@@ -151,34 +150,44 @@ class MainDialog(QDialog, DIALOG_UI):
         dialog = self.__about_dialog_cls(self)
         dialog.exec()
 
-    def __moduleSelection_loadingStarted(self):
-        self.db_groupBox.setEnabled(False)
+    def __disable_module_tabs(self):
+        """Disable all module-related tabs."""
         self.module_tab.setEnabled(False)
         self.plugin_tab.setEnabled(False)
         self.project_tab.setEnabled(False)
+
+    def __enable_module_tabs(self, module_package: ModulePackage):
+        """Enable module tabs based on available assets."""
+        self.module_tab.setEnabled(True)
+        self.plugin_tab.setEnabled(module_package.asset_plugin is not None)
+        self.project_tab.setEnabled(module_package.asset_project is not None)
+
+    def __clear_module_packages(self):
+        """Clear module package state from all widgets."""
+        self.__moduleWidget.clearModulePackage()
+        self.__projectWidget.clearModulePackage()
+        self.__pluginWidget.clearModulePackage()
+
+    def __set_module_packages(self, module_package: ModulePackage):
+        """Set module package in all widgets."""
+        self.__moduleWidget.setModulePackage(module_package)
+        self.__projectWidget.setModulePackage(module_package)
+        self.__pluginWidget.setModulePackage(module_package)
+
+    def __moduleSelection_loadingStarted(self):
+        self.db_groupBox.setEnabled(False)
+        self.__disable_module_tabs()
+        self.__clear_module_packages()
 
     def __moduleSelection_loadingFinished(self):
         self.db_groupBox.setEnabled(True)
 
         module_package = self.__moduleSelectionWidget.getSelectedModulePackage()
-        if module_package is None:
+        if module_package is None or self.__moduleSelectionWidget.lastError() is not None:
             return
 
-        if self.__moduleSelectionWidget.lastError() is not None:
-            return
-
-        self.module_tab.setEnabled(True)
-
-        if module_package.asset_plugin is not None:
-            self.plugin_tab.setEnabled(True)
-
-        if module_package.asset_project is not None:
-            self.project_tab.setEnabled(True)
-
-        module_package = self.__moduleSelectionWidget.getSelectedModulePackage()
-        self.__moduleWidget.setModulePackage(module_package)
-        self.__projectWidget.setModulePackage(module_package)
-        self.__pluginWidget.setModulePackage(module_package)
+        self.__enable_module_tabs(module_package)
+        self.__set_module_packages(module_package)
 
     def __databaseConnectionWidget_connectionChanged(self):
         self.__moduleWidget.setDatabaseConnection(self.__databaseConnectionWidget.getConnection())

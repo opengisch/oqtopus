@@ -43,6 +43,13 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.__packagePrepareGetPUMConfig()
         self.__updateModuleInfo()
 
+    def clearModulePackage(self):
+        """Clear module package state and disable the stacked widget."""
+        self.__current_module_package = None
+        self.__pum_config = None
+        self.__data_model_dir = None
+        self.__updateModuleInfo()
+
     def setDatabaseConnection(self, connection: psycopg.Connection):
         self.__database_connection = connection
         self.__updateModuleInfo()
@@ -392,25 +399,57 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.__updateModuleInfo()
 
+    def __show_error_state(self, message: str, on_label=None):
+        """Display an error state and disable the widget."""
+        label = on_label or self.moduleInfo_selected_label
+        label.setText(self.tr(message))
+        QtUtils.setForegroundColor(label, PluginUtils.COLOR_WARNING)
+        self.moduleInfo_stackedWidget.setEnabled(False)
+
+    def __show_install_page(self, version: str):
+        """Switch to install page and configure it."""
+        self.moduleInfo_installation_label.setText(self.tr("No module installed"))
+        QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
+        self.moduleInfo_install_pushButton.setText(self.tr(f"Install {version}"))
+        self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
+
+    def __show_upgrade_page(self, module_name: str, baseline_version: str, target_version: str):
+        """Switch to upgrade page and configure it."""
+        self.moduleInfo_installation_label.setText(
+            f"Installed: module {module_name} at version {baseline_version}."
+        )
+        QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
+        self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {target_version}"))
+        self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageUpgrade)
+
+        # Enable/disable upgrade button based on version comparison
+        if target_version <= baseline_version:
+            self.moduleInfo_upgrade_pushButton.setDisabled(True)
+            logger.info(
+                f"Selected version {target_version} is equal to or lower than installed version {baseline_version}"
+            )
+        else:
+            self.moduleInfo_upgrade_pushButton.setEnabled(True)
+
+    def __configure_uninstall_button(self):
+        """Show/hide uninstall button based on configuration."""
+        self.uninstall_button.setVisible(
+            self.__pum_config.config.uninstall if self.__pum_config else False
+        )
+
     def __updateModuleInfo(self):
         if self.__current_module_package is None:
-            self.moduleInfo_selected_label.setText(self.tr("No module package selected"))
-            QtUtils.setForegroundColor(self.moduleInfo_selected_label, PluginUtils.COLOR_WARNING)
-            self.moduleInfo_stackedWidget.setEnabled(False)
+            self.__show_error_state("No module package selected")
             return
 
         if self.__database_connection is None:
-            self.moduleInfo_installation_label.setText(self.tr("No database connection available"))
-            QtUtils.setForegroundColor(
-                self.moduleInfo_installation_label, PluginUtils.COLOR_WARNING
+            self.__show_error_state(
+                "No database connection available", on_label=self.moduleInfo_installation_label
             )
-            self.moduleInfo_stackedWidget.setEnabled(False)
             return
 
         if self.__pum_config is None:
-            self.moduleInfo_selected_label.setText(self.tr("No PUM config available"))
-            QtUtils.setForegroundColor(self.moduleInfo_selected_label, PluginUtils.COLOR_WARNING)
-            self.moduleInfo_stackedWidget.setEnabled(False)
+            self.__show_error_state("No PUM config available")
             return
 
         migrationVersion = self.__pum_config.last_version()
@@ -425,44 +464,18 @@ class ModuleWidget(QWidget, DIALOG_UI):
         QtUtils.resetForegroundColor(self.moduleInfo_selected_label)
 
         self.moduleInfo_stackedWidget.setEnabled(True)
-
-        # Show/hide uninstall button based on whether uninstall configuration exists
-        if self.__pum_config.config.uninstall:
-            self.uninstall_button.setVisible(True)
-        else:
-            self.uninstall_button.setVisible(False)
+        self.__configure_uninstall_button()
 
         if sm.exists(self.__database_connection):
-            # Case upgrade
+            # Module is installed - show upgrade page
             baseline_version = sm.baseline(self.__database_connection)
-            self.moduleInfo_installation_label.setText(
-                f"Installed: module {self.__current_module_package.module.name} at version {baseline_version}."
+            self.__show_upgrade_page(
+                self.__current_module_package.module.name, baseline_version, migrationVersion
             )
-            QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
-            self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {migrationVersion}"))
-
-            self.moduleInfo_stackedWidget.setCurrentWidget(
-                self.moduleInfo_stackedWidget_pageUpgrade
-            )
-
-            # Disable upgrade if selected version is not greater than installed version
-            if migrationVersion <= baseline_version:
-                self.moduleInfo_upgrade_pushButton.setDisabled(True)
-                logger.info(
-                    f"Selected version {migrationVersion} is equal to or lower than installed version {baseline_version}"
-                )
-            else:
-                self.moduleInfo_upgrade_pushButton.setEnabled(True)
 
             logger.info(
                 f"Migration table details: {sm.migration_details(self.__database_connection)}"
             )
-
         else:
-            # Case install
-            self.moduleInfo_installation_label.setText(self.tr("No module installed"))
-            QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
-            self.moduleInfo_install_pushButton.setText(self.tr(f"Install {migrationVersion}"))
-            self.moduleInfo_stackedWidget.setCurrentWidget(
-                self.moduleInfo_stackedWidget_pageInstall
-            )
+            # Module not installed - show install page
+            self.__show_install_page(migrationVersion)

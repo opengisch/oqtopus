@@ -63,10 +63,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_latestVersion_label.setText("")
         QtUtils.setForegroundColor(self.module_latestVersion_label, PluginUtils.COLOR_GREEN)
 
-        self.module_package_comboBox.clear()
-        self.module_package_comboBox.addItem(self.tr("Please select a version"), None)
-        self.module_package_comboBox.setEnabled(False)
-
+        self.__reset_package_selection()
         self.module_seeChangeLog_pushButton.setEnabled(False)
 
         self.module_zipPackage_groupBox.setVisible(False)
@@ -97,6 +94,16 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         """
         return self.__packagePrepareTask.lastError
 
+    def __reset_package_selection(self):
+        """Reset package selection combo box to initial state."""
+        self.module_package_comboBox.clear()
+        self.module_package_comboBox.addItem(self.tr("Please select a version"), None)
+        self.module_package_comboBox.setEnabled(False)
+
+    def __enable_package_selection(self):
+        """Enable package selection combo box."""
+        self.module_package_comboBox.setEnabled(True)
+
     def __moduleChanged(self, index):
         if self.module_module_comboBox.currentData() == self.__current_module:
             return
@@ -104,12 +111,10 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.__current_module = self.module_module_comboBox.currentData()
 
         self.module_latestVersion_label.setText("")
-        self.module_package_comboBox.clear()
-        self.module_package_comboBox.addItem(self.tr("Please select a version"), None)
+        self.__reset_package_selection()
         self.module_seeChangeLog_pushButton.setEnabled(False)
 
         if self.__current_module is None:
-            self.module_package_comboBox.setEnabled(False)
             return
 
         if self.__current_module.versions == list():
@@ -356,7 +361,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             self.module_package_SPECIAL_LOAD_DEVELOPMENT,
         )
 
-        self.module_package_comboBox.setEnabled(True)
+        self.__enable_package_selection()
         self.module_progressBar.setVisible(False)
         logger.info(f"Versions loaded for module '{self.__current_module.name}'.")
 
@@ -406,4 +411,4 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         for module_package in self.__current_module.development_versions:
             self.module_package_comboBox.addItem(module_package.display_name(), module_package)
 
-        self.module_package_comboBox.setEnabled(True)
+        self.__enable_package_selection()

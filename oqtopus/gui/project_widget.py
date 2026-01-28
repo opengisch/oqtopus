@@ -29,6 +29,11 @@ class ProjectWidget(QWidget, DIALOG_UI):
         self.__current_module_package = module_package
         self.__updateProjectFilename()
 
+    def clearModulePackage(self):
+        """Clear module package state and reset UI."""
+        self.__current_module_package = None
+        self.__updateProjectFilename()
+
     def setService(self, service):
         self.__current_service = service
         self.__updateProjectFilename()
