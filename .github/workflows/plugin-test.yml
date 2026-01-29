@@ -27,10 +27,15 @@ jobs:
         with:
           submodules: true
 
-      - name: Create libs __init__.py
+      - name: Download bundled libraries
         run: |
-          mkdir -p oqtopus/libs
-          echo "# This file makes the libs directory a Python package" > oqtopus/libs/__init__.py
+          while IFS= read -r line; do
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            pip download "$line" --no-deps --only-binary :all: -d temp/
+          done < requirements-libs.txt
+          unzip -o "temp/*.whl" -d oqtopus/libs
+          touch oqtopus/libs/__init__.py
+          rm -r temp
 
       - name: Unit tests
         run:

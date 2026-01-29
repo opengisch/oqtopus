@@ -41,10 +41,10 @@ jobs:
 
       - name: Package PyPI Packages
         run: |
-          for LIB in pgserviceparser pum; do
-            DNL=$(git grep $LIB requirements.txt | cut -d: -f2)
-            pip download $DNL --no-deps --only-binary :all: -d temp/
-          done
+          while IFS= read -r line; do
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            pip download "$line" --no-deps --only-binary :all: -d temp/
+          done < requirements-libs.txt
           unzip -o "temp/*.whl" -d oqtopus/libs
           touch oqtopus/libs/__init__.py
           rm -r temp
