@@ -1,11 +1,11 @@
 import psycopg
-from pgserviceparser import conf_path as pgserviceparser_conf_path
-from pgserviceparser import service_config as pgserviceparser_service_config
-from pgserviceparser import service_names as pgserviceparser_service_names
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtGui import QAction
 from qgis.PyQt.QtWidgets import QDialog, QMenu, QWidget
 
+from ..libs.pgserviceparser import conf_path as pgserviceparser_conf_path
+from ..libs.pgserviceparser import service_config as pgserviceparser_service_config
+from ..libs.pgserviceparser import service_names as pgserviceparser_service_names
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
 from .database_create_dialog import DatabaseCreateDialog
