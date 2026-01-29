@@ -27,6 +27,11 @@ jobs:
         with:
           submodules: true
 
+      - name: Create libs __init__.py
+        run: |
+          mkdir -p oqtopus/libs
+          echo "# This file makes the libs directory a Python package" > oqtopus/libs/__init__.py
+
       - name: Unit tests
         run:
           docker run
