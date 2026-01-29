@@ -23,6 +23,7 @@ class ModulePackage:
         type=Type.RELEASE,
         name=None,
         branch=None,
+        commit_sha=None,
     ):
         self.module = module
         self.organisation = organisation
@@ -30,6 +31,7 @@ class ModulePackage:
         self.type = type
         self.name = name
         self.branch = branch
+        self.commit_sha = commit_sha
         self.created_at = None
         self.prerelease = False
         self.html_url = None
@@ -62,6 +64,26 @@ class ModulePackage:
             return f"{self.name} (prerelease)"
 
         return self.name
+
+    def fetch_commit_sha(self):
+        """Fetch the latest commit SHA for the branch from GitHub API."""
+        if self.type not in (ModulePackage.Type.BRANCH, ModulePackage.Type.PULL_REQUEST):
+            return
+
+        try:
+            # For branches: use refs/heads/{branch}
+            # For PRs: use refs/heads/{branch} from the head repo
+            url = f"https://api.github.com/repos/{self.organisation}/{self.repository}/commits/{self.branch}"
+            r = requests.get(url, headers=PluginUtils.get_github_headers(), timeout=10)
+            r.raise_for_status()
+            commit_data = r.json()
+            self.commit_sha = commit_data["sha"]
+        except Exception as e:
+            # If we can't fetch the commit SHA, we'll fall back to not caching
+            from ..utils.plugin_utils import logger
+
+            logger.warning(f"Failed to fetch commit SHA for branch '{self.branch}': {e}")
+            self.commit_sha = None
 
     def __parse_release(self, json_payload: dict):
         if self.name is None:
@@ -113,6 +135,7 @@ class ModulePackage:
         if self.name is None:
             self.name = f"#{json_payload['number']} {json_payload['title']}"
         self.branch = json_payload["head"]["ref"]
+        self.commit_sha = json_payload["head"]["sha"]
         self.created_at = QDateTime.fromString(json_payload["created_at"], Qt.DateFormat.ISODate)
         self.prerelease = False
         self.html_url = json_payload["html_url"]

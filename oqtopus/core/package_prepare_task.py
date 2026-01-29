@@ -97,18 +97,12 @@ class PackagePrepareTask(QThread):
 
     def __prepare_module_assets(self, module_package):
 
-        # For branches and pull requests, content may change - don't use cache
-        is_dynamic_content = module_package.type in (
-            ModulePackage.Type.BRANCH,
-            ModulePackage.Type.PULL_REQUEST,
-        )
-
         # Pre-fetch all file sizes to calculate accurate total progress
-        self.__prefetch_download_sizes(module_package, is_dynamic_content)
+        self.__prefetch_download_sizes(module_package)
 
         # Download the source or use from zip
         zip_file = self.from_zip_file or self.__download_module_asset(
-            module_package.download_url, "source.zip", skip_cache=is_dynamic_content
+            module_package.download_url, "source.zip", module_package
         )
 
         module_package.source_package_zip = zip_file
@@ -121,7 +115,7 @@ class PackagePrepareTask(QThread):
             zip_file = self.__download_module_asset(
                 module_package.asset_project.download_url,
                 module_package.asset_project.type.value + ".zip",
-                skip_cache=is_dynamic_content,
+                module_package,
             )
             package_dir = self.__extract_zip_file(zip_file)
             module_package.asset_project.package_zip = zip_file
@@ -132,13 +126,13 @@ class PackagePrepareTask(QThread):
             zip_file = self.__download_module_asset(
                 module_package.asset_plugin.download_url,
                 module_package.asset_plugin.type.value + ".zip",
-                skip_cache=is_dynamic_content,
+                module_package,
             )
             package_dir = self.__extract_zip_file(zip_file)
             module_package.asset_plugin.package_zip = zip_file
             module_package.asset_plugin.package_dir = package_dir
 
-    def __prefetch_download_sizes(self, module_package, skip_cache: bool):
+    def __prefetch_download_sizes(self, module_package):
         """Pre-fetch Content-Length for all files to be downloaded for accurate progress."""
         logger.debug("Pre-fetching download sizes...")
 
@@ -168,14 +162,15 @@ class PackagePrepareTask(QThread):
 
         total_size = 0
         for url, filename in urls_to_check:
-            zip_file = os.path.join(self.__destination_directory, filename)
+            cache_filename = self.__get_cache_filename(filename, module_package)
+            zip_file = os.path.join(self.__destination_directory, cache_filename)
 
-            # If file exists in cache and we're not skipping cache, don't count it
-            if not skip_cache and os.path.exists(zip_file):
+            # If file exists in cache, don't count it
+            if os.path.exists(zip_file):
                 try:
                     with zipfile.ZipFile(zip_file, "r") as zip_test:
                         zip_test.testzip()
-                    logger.debug(f"File '{filename}' exists in cache, skipping size check")
+                    logger.debug(f"File '{cache_filename}' exists in cache, skipping size check")
                     continue
                 except (zipfile.BadZipFile, Exception):
                     # Invalid, will need to download
@@ -209,12 +204,28 @@ class PackagePrepareTask(QThread):
             logger.info("Using indeterminate progress (size unknown)")
             self.signalPackagingProgress.emit(-1.0, 0)
 
-    def __download_module_asset(self, url: str, filename: str, skip_cache: bool = False):
+    def __get_cache_filename(self, base_filename: str, module_package):
+        """Generate cache filename, including commit SHA for branches/PRs if available."""
+        if module_package.type in (ModulePackage.Type.BRANCH, ModulePackage.Type.PULL_REQUEST):
+            if module_package.commit_sha:
+                # Include commit SHA in filename for cache invalidation
+                name, ext = os.path.splitext(base_filename)
+                return f"{name}-{module_package.commit_sha[:8]}{ext}"
+            else:
+                # No commit SHA available, don't cache (use unique name)
+                import time
 
-        zip_file = os.path.join(self.__destination_directory, filename)
+                name, ext = os.path.splitext(base_filename)
+                return f"{name}-{int(time.time())}{ext}"
+        return base_filename
+
+    def __download_module_asset(self, url: str, filename: str, module_package):
+
+        cache_filename = self.__get_cache_filename(filename, module_package)
+        zip_file = os.path.join(self.__destination_directory, cache_filename)
 
         # Check if file already exists and is valid
-        if not skip_cache and os.path.exists(zip_file):
+        if os.path.exists(zip_file):
             try:
                 # Try to open it to verify it's a valid zip
                 with zipfile.ZipFile(zip_file, "r") as zip_test:
@@ -229,11 +240,6 @@ class PackagePrepareTask(QThread):
             except (zipfile.BadZipFile, Exception) as e:
                 logger.warning(f"Existing file '{zip_file}' is invalid ({e}), will re-download")
                 os.remove(zip_file)
-        elif skip_cache and os.path.exists(zip_file):
-            logger.info(
-                f"Removing cached file '{zip_file}' because content may have changed (branch/PR)"
-            )
-            os.remove(zip_file)
 
         # Streaming, so we can iterate over the response.
         timeout = 60
@@ -315,7 +321,6 @@ class PackagePrepareTask(QThread):
 
     def __extract_zip_file(self, zip_file):
         # Unzip the file to plugin temp dir
-        logger.info(f"Extracting '{zip_file}'...")
         # Don't set indeterminate here - it confuses the progress when downloading multiple files
 
         try:
@@ -324,10 +329,19 @@ class PackagePrepareTask(QThread):
                 zip_dirname = zip_ref.namelist()[0].split("/")[0]
                 package_dir = os.path.join(self.__destination_directory, zip_dirname)
 
-                if os.path.exists(package_dir):
-                    logger.info(f"Removing existing directory '{package_dir}'")
-                    shutil.rmtree(package_dir)
+                # Check if already extracted and valid
+                if os.path.exists(package_dir) and os.path.isdir(package_dir):
+                    # Verify it's not empty and has some expected content
+                    if os.listdir(package_dir):
+                        logger.info(
+                            f"Directory '{package_dir}' already extracted - skipping extraction"
+                        )
+                        return package_dir
+                    else:
+                        logger.warning(f"Directory '{package_dir}' is empty, will re-extract")
+                        shutil.rmtree(package_dir)
 
+                logger.info(f"Extracting '{zip_file}'...")
                 zip_ref.extractall(self.__destination_directory)
                 logger.info(f"Extraction complete: '{package_dir}'")
 

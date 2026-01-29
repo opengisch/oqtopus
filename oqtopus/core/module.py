@@ -88,6 +88,8 @@ class Module(QObject):
             name="main",
             branch="main",
         )
+        # Fetch the latest commit SHA for caching
+        mainVersion.fetch_commit_sha()
         self.development_versions.append(mainVersion)
 
         url = f"https://api.github.com/repos/{self.organisation}/{self.repository}/pulls"
