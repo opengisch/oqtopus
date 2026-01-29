@@ -107,6 +107,11 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_package_comboBox.clear()
         self.module_package_comboBox.addItem(self.tr("Please select a version"), None)
         self.module_package_comboBox.setEnabled(False)
+        # Disable this placeholder item so it can't be selected once a version is chosen
+        model = self.module_package_comboBox.model()
+        item = model.item(0)
+        if item:
+            item.setEnabled(False)
 
     def __enable_package_selection(self):
         """Enable package selection combo box."""
@@ -148,6 +153,13 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.__current_module_package = self.module_package_comboBox.currentData()
         if self.__current_module_package is None:
             self.module_seeChangeLog_pushButton.setEnabled(False)
+            # Clear module information when placeholder is selected
+            self.module_information_label.setText(self.tr("Please select a version"))
+            QtUtils.resetForegroundColor(self.module_information_label)
+            self.module_informationProject_label.setText("-")
+            self.module_informationPlugin_label.setText("-")
+            # Emit signal to clear module widgets
+            self.signal_loadingFinished.emit()
             return
 
         # Enable changelog button for valid selections
