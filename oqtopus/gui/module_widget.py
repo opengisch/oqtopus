@@ -440,11 +440,14 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
     def __show_error_state(self, message: str, on_label=None):
-        """Display an error state and disable the widget."""
+        """Display an error state and hide the widget content."""
         label = on_label or self.moduleInfo_selected_label
         label.setText(self.tr(message))
         QtUtils.setForegroundColor(label, PluginUtils.COLOR_WARNING)
-        self.moduleInfo_stackedWidget.setEnabled(False)
+        # Hide the stacked widget entirely when in error state
+        self.moduleInfo_stackedWidget.setVisible(False)
+        # Also hide uninstall button since module info is not valid
+        self.uninstall_button.setVisible(False)
 
     def __show_install_page(self, version: str):
         """Switch to install page and configure it."""
@@ -452,6 +455,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
         QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
         self.moduleInfo_install_pushButton.setText(self.tr(f"Install {version}"))
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
+        # Ensure the stacked widget is visible when showing a valid page
+        self.moduleInfo_stackedWidget.setVisible(True)
 
     def __show_upgrade_page(
         self,
@@ -473,6 +478,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
             QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
         self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {target_version}"))
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageUpgrade)
+        # Ensure the stacked widget is visible when showing a valid page
+        self.moduleInfo_stackedWidget.setVisible(True)
 
         # Enable/disable upgrade button based on version comparison
         if target_version <= baseline_version:
