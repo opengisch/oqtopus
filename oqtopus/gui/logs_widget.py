@@ -37,7 +37,7 @@ class LogModel(QAbstractItemModel):
         return len(COLUMNS)
 
     def data(self, index: QModelIndex, role: Qt.ItemDataRole = None):
-        if not index.isValid() or role != Qt.ItemDataRole.DisplayRole:
+        if not index.isValid():
             return None
         if (
             index.row() < 0
@@ -46,8 +46,18 @@ class LogModel(QAbstractItemModel):
             or index.column() >= len(COLUMNS)
         ):
             return None
+
         log = self.logs[index.row()]
-        return log[COLUMNS[index.column()]]
+        col_name = COLUMNS[index.column()]
+        value = log[col_name]
+
+        if role == Qt.ItemDataRole.DisplayRole:
+            return value
+        elif role == Qt.ItemDataRole.ToolTipRole:
+            # Show full text in tooltip, especially useful for long messages
+            if col_name == "Message":
+                return value
+        return None
 
     def index(self, row: int, column: int, parent=None):
         if row < 0 or row >= len(self.logs) or column < 0 or column >= len(COLUMNS):
@@ -129,6 +139,22 @@ class LogsWidget(QWidget, DIALOG_UI):
         self.logs_treeView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.logs_treeView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.logs_treeView.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+
+        # Enable word wrapping for better readability
+        self.logs_treeView.setWordWrap(True)
+        self.logs_treeView.setTextElideMode(Qt.TextElideMode.ElideNone)
+
+        # Configure column widths
+        header = self.logs_treeView.header()
+        header.setStretchLastSection(True)  # Message column stretches to fill space
+        header.resizeSection(0, 100)  # Level column - fixed width
+        header.resizeSection(1, 150)  # Module column - fixed width
+        # Message column will take remaining space due to setStretchLastSection
+
+        # Enable automatic row height adjustment
+        self.logs_treeView.setUniformRowHeights(False)
+        header.setDefaultSectionSize(100)
+
         self.loggingBridge.loggedLine.connect(self.__logged_line)
         logging.getLogger().addHandler(self.loggingBridge)
 
