@@ -3,6 +3,7 @@ from pathlib import Path
 
 import psycopg
 import yaml
+from qgis.PyQt.QtCore import QTimer
 from qgis.PyQt.QtWidgets import QMessageBox, QWidget
 
 from ..core.module import Module
@@ -43,6 +44,11 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.__operation_task.signalProgress.connect(self.__onOperationProgress)
         self.__operation_task.signalFinished.connect(self.__onOperationFinished)
 
+        # Timeout timer for detecting hung operations
+        self.__cancel_timeout_timer = QTimer(self)
+        self.__cancel_timeout_timer.setSingleShot(True)
+        self.__cancel_timeout_timer.timeout.connect(self.__onCancelTimeout)
+
         # Hide cancel button and progress bar initially
         self.moduleInfo_cancel_button.setVisible(False)
         self.moduleInfo_progressbar.setVisible(False)
@@ -54,6 +60,16 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
     def clearModulePackage(self):
         """Clear module package state and disable the stacked widget."""
+        # Cancel any running operations before clearing
+        if self.__operation_task.isRunning():
+            logger.warning("Canceling running operation due to module package change")
+            self.__operation_task.cancel()
+            # Don't wait - just reset UI immediately to avoid freezing
+            # The finished signal will be emitted when the thread stops
+
+        # Reset UI state immediately
+        self.__resetOperationUI()
+
         # Clean up any imported modules from hooks to prevent conflicts
         if self.__pum_config is not None:
             try:
@@ -68,8 +84,34 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.__updateModuleInfo()
 
     def setDatabaseConnection(self, connection: psycopg.Connection):
+        # Cancel any running operations before changing database
+        if self.__operation_task.isRunning():
+            logger.warning("Canceling running operation due to database connection change")
+            self.__operation_task.cancel()
+            # Don't wait - just reset UI immediately to avoid freezing
+
+        # Reset UI state immediately
+        self.__resetOperationUI()
+
         self.__database_connection = connection
         self.__updateModuleInfo()
+
+    def __resetOperationUI(self):
+        """Reset UI elements related to operations."""
+        self.moduleInfo_cancel_button.setVisible(False)
+        self.moduleInfo_cancel_button.setEnabled(True)
+        self.moduleInfo_cancel_button.setText(self.tr("Cancel"))
+        self.moduleInfo_progressbar.setVisible(False)
+        self.moduleInfo_progressbar.setValue(0)
+        self.moduleInfo_stackedWidget.setEnabled(True)
+
+        # Re-enable parent controls if they were disabled
+        if self.parent() is not None:
+            parent_dialog = self.parent()
+            if hasattr(parent_dialog, "moduleSelection_groupBox"):
+                parent_dialog.moduleSelection_groupBox.setEnabled(True)
+            if hasattr(parent_dialog, "db_groupBox"):
+                parent_dialog.db_groupBox.setEnabled(True)
 
     def __packagePrepareGetPUMConfig(self):
         package_dir = self.__current_module_package.source_package_dir
@@ -530,8 +572,30 @@ class ModuleWidget(QWidget, DIALOG_UI):
     def __cancelOperationClicked(self):
         """Cancel the current operation."""
         self.moduleInfo_cancel_button.setEnabled(False)
+        self.moduleInfo_cancel_button.setText(self.tr("Canceling..."))
         self.__operation_task.cancel()
-        logger.info("Operation canceled by user")
+        logger.info("Operation cancel requested by user")
+        # Don't wait here - the __onOperationFinished signal will handle UI cleanup
+
+        # Start a timeout timer in case the operation hangs
+        self.__cancel_timeout_timer.start(5000)  # 5 second timeout
+
+    def __onCancelTimeout(self):
+        """Handle timeout when cancel doesn't complete."""
+        if self.__operation_task.isRunning():
+            logger.error("Operation did not respond to cancel request, forcing termination")
+            self.__operation_task.terminate()
+            # Force UI reset
+            self.__resetOperationUI()
+            # Show warning
+            QMessageBox.warning(
+                self,
+                self.tr("Operation Terminated"),
+                self.tr(
+                    "The operation did not respond to the cancel request and was forcefully terminated. "
+                    "The database may be in an inconsistent state. Please verify manually."
+                ),
+            )
 
     def __onOperationProgress(self, message: str, current: int, total: int):
         """Handle progress updates from background operation."""
@@ -552,18 +616,11 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
     def __onOperationFinished(self, success: bool, error_message: str):
         """Handle completion of background operation."""
-        # Re-enable UI
-        self.moduleInfo_stackedWidget.setEnabled(True)
-        self.moduleInfo_cancel_button.setVisible(False)
-        self.moduleInfo_progressbar.setVisible(False)
+        # Stop the timeout timer if running
+        self.__cancel_timeout_timer.stop()
 
-        # Re-enable module selection and database connection
-        if self.parent() is not None:
-            parent_dialog = self.parent()
-            if hasattr(parent_dialog, "moduleSelection_groupBox"):
-                parent_dialog.moduleSelection_groupBox.setEnabled(True)
-            if hasattr(parent_dialog, "db_groupBox"):
-                parent_dialog.db_groupBox.setEnabled(True)
+        # Always reset UI state, even if already reset
+        self.__resetOperationUI()
 
         if success:
             # Show success message
@@ -591,10 +648,11 @@ class ModuleWidget(QWidget, DIALOG_UI):
             # Refresh module info
             self.__updateModuleInfo()
         else:
-            # Show error message
-            CriticalMessageBox(
-                self.tr("Error"),
-                self.tr(f"Operation failed: {error_message}"),
-                None,
-                self,
-            ).exec()
+            # Show error message only if there's an actual error (not just cancellation)
+            if error_message:
+                CriticalMessageBox(
+                    self.tr("Error"),
+                    self.tr(f"Operation failed: {error_message}"),
+                    None,
+                    self,
+                ).exec()
