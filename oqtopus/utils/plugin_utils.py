@@ -17,10 +17,11 @@
  ***************************************************************************/
 """
 
+import glob
 import logging
 import os
+from datetime import datetime
 from logging import LogRecord
-from logging.handlers import TimedRotatingFileHandler
 
 from qgis.PyQt.QtCore import (
     QDir,
@@ -41,7 +42,7 @@ logger = logging.getLogger("oqtopus")
 
 class PluginUtils:
 
-    PLUGIN_NAME = "Oqtopus"
+    PLUGIN_NAME = "oQtopus"
 
     logsDirectory = ""
 
@@ -159,22 +160,24 @@ class PluginUtils:
             directory.mkpath(PluginUtils.logsDirectory)
 
         if directory.exists():
-            logfile = QFileInfo(directory, "Oqtopus.log")
+            # Create a new log file for each session with timestamp
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            logfile = QFileInfo(directory, f"oQtopus_{timestamp}.log")
+            PluginUtils.currentLogFile = logfile.filePath()
 
-            # Handler for files rotation, create one log per day
-            rotationHandler = TimedRotatingFileHandler(
-                logfile.filePath(), when="midnight", backupCount=10
-            )
-            rotationHandler.setLevel(logging.DEBUG)
-            rotationHandler.setFormatter(
-                logging.Formatter("%(asctime)s %(levelname)-7s %(message)s")
-            )
+            # Clean up old log files, keep only the 10 most recent
+            PluginUtils._cleanup_old_logs(PluginUtils.logsDirectory, keep=10)
+
+            # Create file handler for this session
+            fileHandler = logging.FileHandler(logfile.filePath(), mode="w")
+            fileHandler.setLevel(logging.DEBUG)
+            fileHandler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-7s %(message)s"))
 
             # Configure logging - basicConfig might not work if already called
             # so we configure the root logger directly
             root_logger = logging.getLogger()
             root_logger.setLevel(logging.DEBUG)
-            root_logger.addHandler(rotationHandler)
+            root_logger.addHandler(fileHandler)
 
             # Set the pum library to SQL level (5) to capture all SQL statements
             # SQL (5) < DEBUG (10) < INFO (20)
@@ -183,16 +186,40 @@ class PluginUtils:
             logger.error(f"Can't create log files directory '{PluginUtils.logsDirectory}'.")
 
     @staticmethod
+    def _cleanup_old_logs(logs_dir: str, keep: int = 10):
+        """Remove old log files, keeping only the most recent ones.
+
+        Args:
+            logs_dir: Directory containing log files
+            keep: Number of most recent log files to keep
+        """
+        log_files = glob.glob(os.path.join(logs_dir, "oQtopus_*.log"))
+        # Sort by modification time, newest first
+        log_files.sort(key=os.path.getmtime, reverse=True)
+        # Remove old files beyond the keep limit
+        for old_file in log_files[keep:]:
+            try:
+                os.remove(old_file)
+            except OSError:
+                pass  # Ignore errors when removing old logs
+
+    @staticmethod
     def open_logs_folder():
         QDesktopServices.openUrl(QUrl.fromLocalFile(PluginUtils.logsDirectory))
 
     @staticmethod
     def open_log_file():
-        log_file_path = os.path.join(PluginUtils.logsDirectory, "Oqtopus.log")
-        if os.path.exists(log_file_path):
+        log_file_path = getattr(PluginUtils, "currentLogFile", None)
+        if log_file_path and os.path.exists(log_file_path):
             QDesktopServices.openUrl(QUrl.fromLocalFile(log_file_path))
         else:
-            logger.error(f"Log file '{log_file_path}' does not exist.")
+            # Fallback: open most recent log file
+            log_files = glob.glob(os.path.join(PluginUtils.logsDirectory, "oQtopus_*.log"))
+            if log_files:
+                log_files.sort(key=os.path.getmtime, reverse=True)
+                QDesktopServices.openUrl(QUrl.fromLocalFile(log_files[0]))
+            else:
+                logger.error("No log file found.")
 
     @staticmethod
     def get_github_token():

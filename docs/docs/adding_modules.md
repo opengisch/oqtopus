@@ -50,7 +50,7 @@ oQtopus assumes a certain structure of the module/repository.
 
 ### Datamodel
 
-To setup/update the database structure, Oqtopus downloads the source
+To setup/update the database structure, oQtopus downloads the source
 code from the configured module repository and looks for a pum configuration
 file at this path (from the repository root): `datamodel/.pum.yaml`.
 Please look at the PUM <a href="https://opengisch.github.io/pum/" target="_blank">documentation</a>
@@ -65,4 +65,4 @@ ZIP archive containing a .qgs or .qgz QGIS project file.
 
 ### Plugin
 
-Oqtopus search in the Github release for an asset labeled `oqtopus.plugin`. The asset is expected to be the ZIP archive of the QGIS plugin, ready to be installed.
+oQtopus search in the Github release for an asset labeled `oqtopus.plugin`. The asset is expected to be the ZIP archive of the QGIS plugin, ready to be installed.
