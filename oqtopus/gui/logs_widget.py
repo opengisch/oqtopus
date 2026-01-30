@@ -1,6 +1,8 @@
 import logging
+from datetime import datetime
 
 from qgis.PyQt.QtCore import QAbstractItemModel, QModelIndex, QSortFilterProxyModel, Qt
+from qgis.PyQt.QtGui import QKeySequence, QShortcut
 from qgis.PyQt.QtWidgets import QAbstractItemView, QApplication, QStyle, QWidget
 
 # Import and register SQL logging level from pum
@@ -137,7 +139,7 @@ class LogsWidget(QWidget, DIALOG_UI):
         self.logs_treeView.setModel(self.proxy_model)
         self.logs_treeView.setAlternatingRowColors(True)
         self.logs_treeView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.logs_treeView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.logs_treeView.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.logs_treeView.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
         # Enable word wrapping for better readability
@@ -185,13 +187,20 @@ class LogsWidget(QWidget, DIALOG_UI):
         self.logs_clear_toolButton.clicked.connect(self.__logsClearClicked)
         self.logs_filter_LineEdit.textChanged.connect(self.proxy_model.setFilterFixedString)
 
+        # Add copy shortcut (Ctrl+C)
+        self.copy_shortcut = QShortcut(QKeySequence.StandardKey.Copy, self.logs_treeView)
+        self.copy_shortcut.activated.connect(self.__copySelectedRows)
+
     def close(self):
         # uninstall the logging bridge
         logging.getLogger().removeHandler(self.loggingBridge)
 
     def __logged_line(self, record, line):
+        # Convert timestamp from record.created (epoch time) to readable format
+        timestamp = datetime.fromtimestamp(record.created).strftime("%Y-%m-%d %H:%M:%S")
 
         log_entry = {
+            "Timestamp": timestamp,
             "Level": record.levelname,
             "Module": record.name,
             "Message": record.msg,
@@ -211,3 +220,44 @@ class LogsWidget(QWidget, DIALOG_UI):
 
     def __logsClearClicked(self):
         self.logs_model.clear()
+
+    def __copySelectedRows(self):
+        """Copy selected rows to clipboard in CSV format."""
+        selection_model = self.logs_treeView.selectionModel()
+        selected_indexes = selection_model.selectedRows()
+
+        if not selected_indexes:
+            return
+
+        # Sort by row number to maintain order
+        selected_indexes.sort(key=lambda idx: idx.row())
+
+        # Build CSV content with header
+        csv_lines = ["Timestamp,Level,Module,Message"]
+
+        for proxy_index in selected_indexes:
+            # Map proxy index to source model index
+            source_index = self.proxy_model.mapToSource(proxy_index)
+            row = source_index.row()
+            log_entry = self.logs_model.logs[row]
+
+            # Escape fields that might contain commas or quotes
+            def escape_csv(value):
+                value = str(value)
+                if "," in value or '"' in value or "\n" in value:
+                    return '"' + value.replace('"', '""') + '"'
+                return value
+
+            csv_line = ",".join(
+                [
+                    escape_csv(log_entry["Timestamp"]),
+                    escape_csv(log_entry["Level"]),
+                    escape_csv(log_entry["Module"]),
+                    escape_csv(log_entry["Message"]),
+                ]
+            )
+            csv_lines.append(csv_line)
+
+        # Copy to clipboard
+        clipboard = QApplication.clipboard()
+        clipboard.setText("\n".join(csv_lines))
