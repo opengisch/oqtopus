@@ -184,12 +184,16 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         else:
             self.module_zipPackage_groupBox.setVisible(False)
 
-        loading_text = self.tr(
-            f"Loading packages for module '{self.module_module_comboBox.currentText()}' version '{self.__current_module_package.display_name()}'..."
-        )
+        loading_text = self.tr("Loading package...")
         self.module_information_label.setText(loading_text)
+        self.module_information_label.setToolTip(
+            f"{self.module_module_comboBox.currentText()} - {self.__current_module_package.display_name()}"
+        )
         QtUtils.resetForegroundColor(self.module_information_label)
-        logger.info(loading_text)
+        logger.info(
+            f"Loading packages for module '{self.module_module_comboBox.currentText()}' "
+            f"version '{self.__current_module_package.display_name()}'..."
+        )
 
         self.module_informationProject_label.setText("-")
         self.module_informationPlugin_label.setText("-")
@@ -267,32 +271,25 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         package_dir = self.module_package_comboBox.currentData().source_package_dir
         logger.info(f"Package loaded into '{package_dir}'")
         QtUtils.resetForegroundColor(self.module_information_label)
-        QtUtils.setTextWithEllipsis(
-            self.module_information_label,
-            f"<a href='file://{package_dir}'>{package_dir}</a>",
-            max_length=60,
-        )
+        QtUtils.setPathLinkWithEllipsis(self.module_information_label, package_dir)
 
         asset_project = self.module_package_comboBox.currentData().asset_project
         if asset_project:
-            QtUtils.setTextWithEllipsis(
-                self.module_informationProject_label,
-                f"<a href='file://{asset_project.package_dir}'>{asset_project.package_dir}</a>",
-                max_length=60,
+            QtUtils.setPathLinkWithEllipsis(
+                self.module_informationProject_label, asset_project.package_dir
             )
         else:
             self.module_informationProject_label.setText("No asset available")
+            self.module_informationProject_label.setToolTip("")
 
         asset_plugin = self.module_package_comboBox.currentData().asset_plugin
         if asset_plugin:
-            # Shorten long paths with ellipsis for better display
-            plugin_path = str(asset_plugin.package_dir)
-            display_path = self.__shorten_path(plugin_path, max_length=60)
-            self.module_informationPlugin_label.setText(
-                f"<a href='file://{plugin_path}'>{display_path}</a>",
+            QtUtils.setPathLinkWithEllipsis(
+                self.module_informationPlugin_label, asset_plugin.package_dir
             )
         else:
             self.module_informationPlugin_label.setText("No asset available")
+            self.module_informationPlugin_label.setToolTip("")
 
     def __packagePrepareTaskProgress(self, progress, bytes_downloaded):
         if progress < 0:
@@ -457,25 +454,3 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             self.module_package_comboBox.addItem(module_package.display_name(), module_package)
 
         self.__enable_package_selection()
-
-    @staticmethod
-    def __shorten_path(path: str, max_length: int = 60) -> str:
-        """Shorten a long path by replacing middle part with ellipsis.
-
-        Args:
-            path: The full path to shorten
-            max_length: Maximum length before shortening
-
-        Returns:
-            Shortened path with … in the middle if too long
-        """
-        if len(path) <= max_length:
-            return path
-
-        # Calculate how many characters to keep from start and end
-        # Reserve 3 characters for the ellipsis
-        chars_to_keep = max_length - 3
-        start_chars = chars_to_keep // 2
-        end_chars = chars_to_keep - start_chars
-
-        return f"{path[:start_chars]}…{path[-end_chars:]}"

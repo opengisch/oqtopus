@@ -87,6 +87,41 @@ class QtUtils:
             label.setText(truncated)
             label.setToolTip(text)
 
+    @staticmethod
+    def shortenPath(path: str, max_length: int = 50) -> str:
+        """Shorten a long path by replacing middle part with ellipsis.
+
+        Args:
+            path: The full path to shorten
+            max_length: Maximum length before shortening
+
+        Returns:
+            Shortened path with … in the middle if too long
+        """
+        if len(path) <= max_length:
+            return path
+
+        # Calculate how many characters to keep from start and end
+        # Reserve 1 character for the ellipsis
+        chars_to_keep = max_length - 1
+        start_chars = chars_to_keep // 2
+        end_chars = chars_to_keep - start_chars
+
+        return f"{path[:start_chars]}…{path[-end_chars:]}"
+
+    @staticmethod
+    def setPathLinkWithEllipsis(label, path: str, max_length: int = 50):
+        """Set a file path as a clickable link on a label, with ellipsis for long paths.
+
+        Args:
+            label: The QLabel widget to set the link on.
+            path: The full file path.
+            max_length: Maximum display length before truncating (default: 50).
+        """
+        display_path = QtUtils.shortenPath(str(path), max_length)
+        label.setText(f"<a href='file://{path}'>{display_path}</a>")
+        label.setToolTip(str(path))
+
 
 class CriticalMessageBox(QMessageBox):
     def __init__(self, title: str, description: str, exception: Exception = None, parent=None):
