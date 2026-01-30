@@ -52,6 +52,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                     id=config_module.id,
                     organisation=config_module.organisation,
                     repository=config_module.repository,
+                    exclude_releases=config_module.exclude_releases,
                     parent=self,
                 )
                 self.module_module_comboBox.addItem(module.name, module)

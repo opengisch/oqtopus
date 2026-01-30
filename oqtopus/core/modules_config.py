@@ -6,6 +6,7 @@ class ModuleConfig(BaseModel):
     id: str
     organisation: str
     repository: str
+    exclude_releases: str | None = None  # Regexp pattern to exclude releases
 
 
 class ModulesConfig(BaseModel):

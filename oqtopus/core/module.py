@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import time
 
 from qgis.PyQt.QtCore import (
@@ -22,12 +23,21 @@ class Module(QObject):
     signal_versionsLoaded = pyqtSignal(str)
     signal_developmentVersionsLoaded = pyqtSignal(str)
 
-    def __init__(self, name: str, id: str, organisation: str, repository: str, parent=None):
+    def __init__(
+        self,
+        name: str,
+        id: str,
+        organisation: str,
+        repository: str,
+        exclude_releases: str | None = None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.name = name
         self.id = id
         self.organisation = organisation
         self.repository = repository
+        self.exclude_releases = exclude_releases
         self.versions = []
         self.development_versions = []
         self.latest_version = None
@@ -143,7 +153,23 @@ class Module(QObject):
         logger.debug(f"_process_versions_data START, processing {len(json_versions)} versions")
         self.versions = []
         self.latest_version = None
+
+        # Compile exclude pattern if specified
+        exclude_pattern = None
+        if self.exclude_releases:
+            try:
+                exclude_pattern = re.compile(self.exclude_releases)
+                logger.debug(f"Excluding releases matching pattern: {self.exclude_releases}")
+            except re.error as e:
+                logger.warning(f"Invalid exclude_releases pattern '{self.exclude_releases}': {e}")
+
         for json_version in json_versions:
+            # Check if this release should be excluded
+            tag_name = json_version.get("tag_name", "")
+            if exclude_pattern and exclude_pattern.search(tag_name):
+                logger.debug(f"Excluding release '{tag_name}' (matches exclude pattern)")
+                continue
+
             module_package = ModulePackage(
                 module=self,
                 organisation=self.organisation,

@@ -4,6 +4,7 @@ modules:
     id: tww
     organisation: teksi
     repository: wastewater
+    exclude_releases: "plugin-ili-*"  # Example: exclude all v0.x releases
 
   - name: TEKSI District Heating
     id: tdh
