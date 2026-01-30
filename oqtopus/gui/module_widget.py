@@ -536,22 +536,24 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_stackedWidget.setEnabled(True)
         self.__configure_uninstall_button()
 
-        if sm.exists(self.__database_connection):
-            # Module is installed - show upgrade page
-            baseline_version = sm.baseline(self.__database_connection)
-            migration_details = sm.migration_details(self.__database_connection)
-            installed_beta_testing = migration_details.get("beta_testing", False)
-            self.__show_upgrade_page(
-                self.__current_module_package.module.name,
-                baseline_version,
-                migrationVersion,
-                installed_beta_testing,
-            )
+        # Wrap read-only queries in transaction to prevent idle connections
+        with self.__database_connection.transaction():
+            if sm.exists(self.__database_connection):
+                # Module is installed - show upgrade page
+                baseline_version = sm.baseline(self.__database_connection)
+                migration_details = sm.migration_details(self.__database_connection)
+                installed_beta_testing = migration_details.get("beta_testing", False)
+                self.__show_upgrade_page(
+                    self.__current_module_package.module.name,
+                    baseline_version,
+                    migrationVersion,
+                    installed_beta_testing,
+                )
 
-            logger.info(f"Migration table details: {migration_details}")
-        else:
-            # Module not installed - show install page
-            self.__show_install_page(migrationVersion)
+                logger.info(f"Migration table details: {migration_details}")
+            else:
+                # Module not installed - show install page
+                self.__show_install_page(migrationVersion)
 
     def __startOperation(self, operation: str, parameters: dict, options: dict):
         """Start a background module operation."""
