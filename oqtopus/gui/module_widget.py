@@ -106,20 +106,39 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
     def __resetOperationUI(self):
         """Reset UI elements related to operations."""
-        self.moduleInfo_cancel_button.setVisible(False)
-        self.moduleInfo_cancel_button.setEnabled(True)
-        self.moduleInfo_cancel_button.setText(self.tr("Cancel"))
-        self.moduleInfo_progressbar.setVisible(False)
-        self.moduleInfo_progressbar.setValue(0)
-        self.moduleInfo_stackedWidget.setEnabled(True)
+        self.__setOperationInProgress(False)
 
-        # Re-enable parent controls if they were disabled
+    def __setOperationInProgress(self, in_progress: bool):
+        """Enable or disable UI elements based on whether an operation is in progress.
+
+        Args:
+            in_progress: True to disable UI (operation starting), False to enable (operation finished)
+        """
+        # Main operation buttons - disable during operation
+        self.moduleInfo_install_pushButton.setEnabled(not in_progress)
+        self.moduleInfo_upgrade_pushButton.setEnabled(not in_progress)
+        self.uninstall_button.setEnabled(not in_progress)
+
+        # Stacked widget contains all the form controls
+        self.moduleInfo_stackedWidget.setEnabled(not in_progress)
+
+        # Cancel button and progress bar - only visible during operation
+        self.moduleInfo_cancel_button.setVisible(in_progress)
+        self.moduleInfo_cancel_button.setEnabled(in_progress)
+        if not in_progress:
+            self.moduleInfo_cancel_button.setText(self.tr("Cancel"))
+
+        self.moduleInfo_progressbar.setVisible(in_progress)
+        if not in_progress:
+            self.moduleInfo_progressbar.setValue(0)
+
+        # Parent controls (module selection, database connection)
         if self.parent() is not None:
             parent_dialog = self.parent()
             if hasattr(parent_dialog, "moduleSelection_groupBox"):
-                parent_dialog.moduleSelection_groupBox.setEnabled(True)
+                parent_dialog.moduleSelection_groupBox.setEnabled(not in_progress)
             if hasattr(parent_dialog, "db_groupBox"):
-                parent_dialog.db_groupBox.setEnabled(True)
+                parent_dialog.db_groupBox.setEnabled(not in_progress)
 
     def __packagePrepareGetPUMConfig(self):
         package_dir = self.__current_module_package.source_package_dir
@@ -369,9 +388,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
             CriticalMessageBox(
                 self.tr("Error"), self.tr("Can't upgrade the module:"), exception, self
             ).exec()
-            return
-
-        self.__updateModuleInfo()
 
     def __uninstallModuleClicked(self):
         if self.__current_module_package is None:
@@ -558,19 +574,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
     def __startOperation(self, operation: str, parameters: dict, options: dict):
         """Start a background module operation."""
         # Disable UI during operation
-        self.moduleInfo_stackedWidget.setEnabled(False)
-        self.moduleInfo_cancel_button.setVisible(True)
-        self.moduleInfo_cancel_button.setEnabled(True)
-        self.moduleInfo_progressbar.setVisible(True)
-        self.moduleInfo_progressbar.setValue(0)
-
-        # Disable module selection and database connection to prevent navigation during operation
-        if self.parent() is not None:
-            parent_dialog = self.parent()
-            if hasattr(parent_dialog, "moduleSelection_groupBox"):
-                parent_dialog.moduleSelection_groupBox.setEnabled(False)
-            if hasattr(parent_dialog, "db_groupBox"):
-                parent_dialog.db_groupBox.setEnabled(False)
+        self.__setOperationInProgress(True)
 
         # Start the background task
         if operation == "install":
