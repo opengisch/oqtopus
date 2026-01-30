@@ -24,6 +24,7 @@
 
 
 import os
+import shutil
 import sys
 
 from qgis.PyQt.QtCore import QUrl
@@ -31,6 +32,7 @@ from qgis.PyQt.QtGui import QAction, QDesktopServices
 from qgis.PyQt.QtWidgets import (
     QDialog,
     QMenuBar,
+    QMessageBox,
 )
 
 from ..core.module_package import ModulePackage
@@ -94,10 +96,18 @@ class MainDialog(QDialog, DIALOG_UI):
             self.menubar.setNativeMenuBar(False)
         self.layout().setMenuBar(self.menubar)
 
-        # Settings action
-        settings_action = QAction(self.tr("Settings"), self)
-        settings_action.triggered.connect(self.__open_settings_dialog)
-        self.menubar.addAction(settings_action)
+        # Settings menu
+        settings_menu = self.menubar.addMenu(self.tr("Settings"))
+
+        # Settings dialog action
+        settings_dialog_action = QAction(self.tr("Preferences..."), self)
+        settings_dialog_action.triggered.connect(self.__open_settings_dialog)
+        settings_menu.addAction(settings_dialog_action)
+
+        # Cache cleanup action
+        cleanup_cache_action = QAction(self.tr("Cleanup Cache"), self)
+        cleanup_cache_action.triggered.connect(self.__cleanup_cache)
+        settings_menu.addAction(cleanup_cache_action)
 
         # Help menu
         help_menu = self.menubar.addMenu(self.tr("Help"))
@@ -151,6 +161,52 @@ class MainDialog(QDialog, DIALOG_UI):
     def __open_settings_dialog(self):
         dlg = SettingsDialog(self)
         dlg.exec()
+
+    def __cleanup_cache(self):
+        """Delete all cached downloaded data."""
+        cache_dir = PluginUtils.plugin_temp_path()
+
+        if not os.path.exists(cache_dir):
+            QMessageBox.information(
+                self,
+                self.tr("Cache Cleanup"),
+                self.tr("Cache directory does not exist. Nothing to clean up."),
+            )
+            return
+
+        # Ask for confirmation
+        reply = QMessageBox.question(
+            self,
+            self.tr("Cleanup Cache"),
+            self.tr(
+                f"This will delete all cached downloaded data from:\n{cache_dir}\n\n"
+                "Downloaded module packages will need to be re-downloaded next time.\n\n"
+                "Are you sure you want to continue?"
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            # Delete the entire cache directory
+            shutil.rmtree(cache_dir)
+            # Recreate it empty
+            os.makedirs(cache_dir)
+
+            QMessageBox.information(
+                self,
+                self.tr("Cache Cleanup"),
+                self.tr("Cache has been successfully cleaned up."),
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                self.tr("Cache Cleanup Error"),
+                self.tr(f"Failed to cleanup cache:\n{str(e)}"),
+            )
 
     def __show_about_dialog(self):
         dialog = self.__about_dialog_cls(self)
