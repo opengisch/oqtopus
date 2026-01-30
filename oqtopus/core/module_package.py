@@ -97,17 +97,11 @@ class ModulePackage:
         self.prerelease = json_payload["prerelease"]
         self.html_url = json_payload["html_url"]
 
-        self.__parse_release_assets(json_payload["assets_url"])
+        # Use assets directly from the release payload (already included in releases API response)
+        self.__parse_release_assets(json_payload.get("assets", []))
 
-    def __parse_release_assets(self, assets_url: str):
-
-        # Load assets
-        r = requests.get(assets_url, headers=PluginUtils.get_github_headers())
-
-        # Raise an exception in case of http errors
-        r.raise_for_status()
-
-        json_assets = r.json()
+    def __parse_release_assets(self, json_assets: list):
+        """Parse release assets from the already-fetched release data."""
         for json_asset in json_assets:
             asset = ModuleAsset(
                 name=json_asset["name"],

@@ -140,42 +140,48 @@ class PackagePrepareTask(QThread):
 
         # Check source if not from zip
         if self.from_zip_file is None:
-            urls_to_check.append((module_package.download_url, "source.zip"))
+            # Only check if not already cached
+            cache_filename = self.__get_cache_filename("source.zip", module_package)
+            zip_file = os.path.join(self.__destination_directory, cache_filename)
+            if not self.__is_cached_and_valid(zip_file):
+                urls_to_check.append((module_package.download_url, "source.zip"))
 
         # Check project asset
         if module_package.asset_project is not None:
-            urls_to_check.append(
-                (
-                    module_package.asset_project.download_url,
-                    module_package.asset_project.type.value + ".zip",
-                )
+            cache_filename = self.__get_cache_filename(
+                module_package.asset_project.type.value + ".zip", module_package
             )
+            zip_file = os.path.join(self.__destination_directory, cache_filename)
+            if not self.__is_cached_and_valid(zip_file):
+                urls_to_check.append(
+                    (
+                        module_package.asset_project.download_url,
+                        module_package.asset_project.type.value + ".zip",
+                    )
+                )
 
         # Check plugin asset
         if module_package.asset_plugin is not None:
-            urls_to_check.append(
-                (
-                    module_package.asset_plugin.download_url,
-                    module_package.asset_plugin.type.value + ".zip",
-                )
+            cache_filename = self.__get_cache_filename(
+                module_package.asset_plugin.type.value + ".zip", module_package
             )
+            zip_file = os.path.join(self.__destination_directory, cache_filename)
+            if not self.__is_cached_and_valid(zip_file):
+                urls_to_check.append(
+                    (
+                        module_package.asset_plugin.download_url,
+                        module_package.asset_plugin.type.value + ".zip",
+                    )
+                )
+
+        # If everything is cached, skip size checking entirely
+        if not urls_to_check:
+            logger.debug("All files are cached, skipping size check")
+            self.__download_total_expected = 0
+            return
 
         total_size = 0
         for url, filename in urls_to_check:
-            cache_filename = self.__get_cache_filename(filename, module_package)
-            zip_file = os.path.join(self.__destination_directory, cache_filename)
-
-            # If file exists in cache, don't count it
-            if os.path.exists(zip_file):
-                try:
-                    with zipfile.ZipFile(zip_file, "r") as zip_test:
-                        zip_test.testzip()
-                    logger.debug(f"File '{cache_filename}' exists in cache, skipping size check")
-                    continue
-                except (zipfile.BadZipFile, Exception):
-                    # Invalid, will need to download
-                    pass
-
             # Get Content-Length via HEAD request
             try:
                 response = requests.head(url, allow_redirects=True, timeout=10)
@@ -199,10 +205,22 @@ class PackagePrepareTask(QThread):
             f"Progress tracking initialized: expected={self.__download_total_expected}, received={self.__download_total_received}"
         )
 
-        # If we couldn't determine size, use indeterminate progress
-        if total_size == 0:
-            logger.info("Using indeterminate progress (size unknown)")
-            self.signalPackagingProgress.emit(-1.0, 0)
+    def __is_cached_and_valid(self, zip_file):
+        """Check if a zip file is cached and valid (quick check)."""
+        if not os.path.exists(zip_file):
+            return False
+        # Quick check: file exists and has reasonable size
+        try:
+            size = os.path.getsize(zip_file)
+            if size < 100:  # Too small to be valid
+                return False
+            # Just check if it opens as a valid zip, don't read entire contents
+            with zipfile.ZipFile(zip_file, "r") as zip_test:
+                # Quick check - just verify we can read the file list
+                _ = zip_test.namelist()
+            return True
+        except (zipfile.BadZipFile, OSError, Exception):
+            return False
 
     def __get_cache_filename(self, base_filename: str, module_package):
         """Generate cache filename, including commit SHA for branches/PRs if available."""
@@ -227,19 +245,27 @@ class PackagePrepareTask(QThread):
         # Check if file already exists and is valid
         if os.path.exists(zip_file):
             try:
-                # Try to open it to verify it's a valid zip
-                with zipfile.ZipFile(zip_file, "r") as zip_test:
-                    zip_test.testzip()  # Test for corrupted files
-                logger.info(f"File '{zip_file}' already exists and is valid - skipping download")
-                # Still emit some progress to show we're not stuck
-                logger.debug(
-                    f"Returning from cache: expected={self.__download_total_expected}, received={self.__download_total_received}"
-                )
-                self.signalPackagingProgress.emit(-1.0, 0)
-                return zip_file
-            except (zipfile.BadZipFile, Exception) as e:
+                # Quick validation - just check if it's a valid zip structure
+                file_size = os.path.getsize(zip_file)
+                if file_size > 100:  # Has reasonable size
+                    with zipfile.ZipFile(zip_file, "r") as zip_test:
+                        # Just verify we can read file list, don't test entire contents
+                        _ = zip_test.namelist()
+                    logger.info(
+                        f"File '{zip_file}' already exists and is valid - skipping download"
+                    )
+                    # Still emit some progress to show we're not stuck
+                    logger.debug(
+                        f"Returning from cache: expected={self.__download_total_expected}, received={self.__download_total_received}"
+                    )
+                    self.signalPackagingProgress.emit(-1.0, 0)
+                    return zip_file
+            except (zipfile.BadZipFile, OSError, Exception) as e:
                 logger.warning(f"Existing file '{zip_file}' is invalid ({e}), will re-download")
-                os.remove(zip_file)
+                try:
+                    os.remove(zip_file)
+                except OSError:
+                    pass
 
         # Streaming, so we can iterate over the response.
         timeout = 60

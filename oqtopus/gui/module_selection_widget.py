@@ -118,23 +118,35 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_package_comboBox.setEnabled(True)
 
     def __moduleChanged(self, index):
+        logger.debug(f"__moduleChanged START, index={index}")
         if self.module_module_comboBox.currentData() == self.__current_module:
+            logger.debug("Same module selected, returning")
             return
 
+        logger.debug(f"Module changed to: {self.module_module_comboBox.currentText()}")
         self.__current_module = self.module_module_comboBox.currentData()
 
+        logger.debug("Resetting labels and UI")
         self.module_latestVersion_label.setText("")
         self.__reset_package_selection()
         self.module_seeChangeLog_pushButton.setEnabled(False)
 
         if self.__current_module is None:
+            logger.debug("No module selected")
             return
 
+        logger.debug(f"Module versions list length: {len(self.__current_module.versions)}")
         if self.__current_module.versions == list():
+            logger.debug("Versions empty, starting load")
             # Emit signal first to allow UI to update before showing wait cursor
             self.signal_loadingStarted.emit()
             QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             self.__current_module.start_load_versions()
+        else:
+            logger.debug("Versions already loaded, populating UI")
+            # Versions already loaded (from cache or previous selection) - populate UI
+            self.__loadVersionsFinished("")
+        logger.debug("__moduleChanged END")
 
     def __moduleVersionChanged(self, index):
 
