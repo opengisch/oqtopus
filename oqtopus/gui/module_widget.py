@@ -31,6 +31,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.moduleInfo_install_pushButton.clicked.connect(self.__installModuleClicked)
         self.moduleInfo_upgrade_pushButton.clicked.connect(self.__upgradeModuleClicked)
+        self.moduleInfo_roles_pushButton.clicked.connect(self.__rolesClicked)
         self.uninstall_button.clicked.connect(self.__uninstallModuleClicked)
         self.moduleInfo_cancel_button.clicked.connect(self.__cancelOperationClicked)
 
@@ -117,6 +118,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Main operation buttons - disable during operation
         self.moduleInfo_install_pushButton.setEnabled(not in_progress)
         self.moduleInfo_upgrade_pushButton.setEnabled(not in_progress)
+        self.moduleInfo_roles_pushButton.setEnabled(not in_progress)
         self.uninstall_button.setEnabled(not in_progress)
 
         # Stacked widget contains all the form controls
@@ -463,6 +465,38 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
+    def __rolesClicked(self):
+        """Create and grant roles for the current module."""
+        if self.__current_module_package is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please select a module package first."), None, self
+            ).exec()
+            return
+
+        if self.__database_connection is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please connect to a database first."), None, self
+            ).exec()
+            return
+
+        if self.__pum_config is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Module configuration not loaded."), None, self
+            ).exec()
+            return
+
+        try:
+            parameters = self.parameters_groupbox.parameters_values()
+
+            # Start background roles operation
+            self.__startOperation("roles", parameters, {})
+
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Can't create and grant roles:"), exception, self
+            ).exec()
+            return
+
     def __show_error_state(self, message: str, on_label=None):
         """Display an error state and hide the widget content."""
         label = on_label or self.moduleInfo_selected_label
@@ -505,14 +539,18 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Ensure the stacked widget is visible when showing a valid page
         self.moduleInfo_stackedWidget.setVisible(True)
 
-        # Enable/disable upgrade button based on version comparison
+        # Enable/disable upgrade button and show/hide roles button based on version comparison
         if target_version <= baseline_version:
             self.moduleInfo_upgrade_pushButton.setDisabled(True)
+            # Show roles button when upgrade is not possible (same or higher version installed)
+            self.moduleInfo_roles_pushButton.setVisible(True)
             logger.info(
                 f"Selected version {target_version} is equal to or lower than installed version {baseline_version}"
             )
         else:
             self.moduleInfo_upgrade_pushButton.setEnabled(True)
+            # Hide roles button when upgrade is possible
+            self.moduleInfo_roles_pushButton.setVisible(False)
 
     def __configure_uninstall_button(self):
         """Show/hide uninstall button based on configuration."""
@@ -589,6 +627,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.__operation_task.start_uninstall(
                 self.__pum_config, self.__database_connection, parameters, **options
             )
+        elif operation == "roles":
+            self.__operation_task.start_roles(
+                self.__pum_config, self.__database_connection, parameters, **options
+            )
 
     def __cancelOperationClicked(self):
         """Cancel the current operation."""
@@ -645,25 +687,27 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         if success:
             # Show success message
-            operation_name = (
-                "installed"
-                if self.__operation_task._ModuleOperationTask__operation == "install"
-                else (
-                    "upgraded"
-                    if self.__operation_task._ModuleOperationTask__operation == "upgrade"
-                    else "uninstalled"
-                )
-            )
+            operation = self.__operation_task._ModuleOperationTask__operation
+            if operation == "install":
+                operation_name = "installed"
+            elif operation == "upgrade":
+                operation_name = "upgraded"
+            elif operation == "uninstall":
+                operation_name = "uninstalled"
+            elif operation == "roles":
+                operation_name = "roles created and granted"
+            else:
+                operation_name = "completed"
 
             QMessageBox.information(
                 self,
                 self.tr(f"Module {operation_name}"),
                 self.tr(
-                    f"Module '{self.__current_module_package.module.name}' has been successfully {operation_name}."
+                    f"Module '{self.__current_module_package.module.name}': {operation_name} successfully."
                 ),
             )
             logger.info(
-                f"Module '{self.__current_module_package.module.name}' has been successfully {operation_name}."
+                f"Module '{self.__current_module_package.module.name}': {operation_name} successfully."
             )
 
             # Refresh module info

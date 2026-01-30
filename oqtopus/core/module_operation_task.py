@@ -74,6 +74,19 @@ class ModuleOperationTask(QThread):
         self.__error_message = None
         self.start()
 
+    def start_roles(
+        self, pum_config: PumConfig, connection: psycopg.Connection, parameters: dict, **options
+    ):
+        """Start a create and grant roles operation."""
+        self.__pum_config = pum_config
+        self.__connection = connection
+        self.__operation = "roles"
+        self.__parameters = parameters
+        self.__options = options
+        self.__canceled = False
+        self.__error_message = None
+        self.start()
+
     def cancel(self):
         """Cancel the current operation."""
         self.__canceled = True
@@ -94,6 +107,8 @@ class ModuleOperationTask(QThread):
                 self._run_upgrade(upgrader)
             elif self.__operation == "uninstall":
                 self._run_uninstall(upgrader)
+            elif self.__operation == "roles":
+                self._run_roles()
             else:
                 raise Exception(f"Unknown operation: {self.__operation}")
 
@@ -164,6 +179,25 @@ class ModuleOperationTask(QThread):
         )
 
         logger.info("Uninstall operation completed")
+
+    def _run_roles(self):
+        """Run create and grant roles operation."""
+        logger.info("Starting create and grant roles operation...")
+
+        role_manager = self.__pum_config.role_manager()
+
+        if not role_manager.roles:
+            logger.warning("No roles defined in the configuration")
+            return
+
+        # Create roles with grant=True to also grant permissions
+        role_manager.create_roles(
+            connection=self.__connection,
+            grant=True,
+            feedback=self.__feedback,
+        )
+
+        logger.info("Create and grant roles operation completed")
 
     def _create_feedback(self):
         """Create a Feedback instance that emits Qt signals."""
