@@ -54,6 +54,14 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_progressbar.setVisible(False)
 
     def setModulePackage(self, module_package: Module):
+        # Clean up old hook imports before loading new version
+        if self.__pum_config is not None:
+            try:
+                self.__pum_config.cleanup_hook_imports()
+            except Exception:
+                # Ignore errors during cleanup
+                pass
+
         self.__current_module_package = module_package
         self.__packagePrepareGetPUMConfig()
         self.__updateModuleInfo()
