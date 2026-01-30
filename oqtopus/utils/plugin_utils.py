@@ -58,7 +58,29 @@ class PluginUtils:
         return os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
     @staticmethod
+    def plugin_cache_path():
+        """Returns the persistent cache path for the plugin (GitHub API cache, downloaded packages).
+
+        Uses CacheLocation which is appropriate for data that should persist
+        across sessions but can be safely deleted.
+        On macOS: ~/Library/Caches/oqtopus
+        On Linux: ~/.cache/oqtopus
+        On Windows: C:/Users/<USER>/AppData/Local/oqtopus/cache
+        """
+        cache_dir = os.path.join(
+            QStandardPaths.writableLocation(QStandardPaths.StandardLocation.CacheLocation),
+            "oqtopus",
+        )
+        os.makedirs(cache_dir, exist_ok=True)
+        return cache_dir
+
+    @staticmethod
     def plugin_temp_path():
+        """Returns the temporary path for the plugin.
+
+        DEPRECATED: Use plugin_cache_path() instead for persistent cache.
+        This is kept for backward compatibility.
+        """
         plugin_basename = PluginUtils.plugin_root_path().split(os.sep)[-1]
 
         plugin_temp_dir = os.path.join(
@@ -69,6 +91,33 @@ class PluginUtils:
             os.makedirs(plugin_temp_dir)
 
         return plugin_temp_dir
+
+    @staticmethod
+    def get_all_cache_paths():
+        """Returns all cache directories used by the plugin.
+
+        This is used by the cleanup function to ensure all caches are deleted.
+        """
+        paths = []
+
+        # Main cache directory (CacheLocation)
+        cache_path = os.path.join(
+            QStandardPaths.writableLocation(QStandardPaths.StandardLocation.CacheLocation),
+            "oqtopus",
+        )
+        if os.path.exists(cache_path):
+            paths.append(cache_path)
+
+        # Legacy temp directory (TempLocation) - for backward compatibility
+        plugin_basename = PluginUtils.plugin_root_path().split(os.sep)[-1]
+        temp_path = os.path.join(
+            QStandardPaths.writableLocation(QStandardPaths.StandardLocation.TempLocation),
+            plugin_basename,
+        )
+        if os.path.exists(temp_path):
+            paths.append(temp_path)
+
+        return paths
 
     @staticmethod
     def get_plugin_icon_path(icon_filename):

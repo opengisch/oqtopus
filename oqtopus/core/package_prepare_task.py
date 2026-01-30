@@ -82,18 +82,18 @@ class PackagePrepareTask(QThread):
     def __prepare_destination_directory(self):
         """
         Prepare the destination directory for the module package.
-        This method creates a temporary directory for the package.
+        This method creates a cache directory for the package downloads.
         """
-        temp_dir = PluginUtils.plugin_temp_path()
-        destination_directory = os.path.join(
-            temp_dir,
+        cache_dir = os.path.join(
+            PluginUtils.plugin_cache_path(),
+            "packages",
             self.module_package.organisation,
             self.module_package.repository,
             self.module_package.name,
         )
-        os.makedirs(destination_directory, exist_ok=True)
+        os.makedirs(cache_dir, exist_ok=True)
 
-        return destination_directory
+        return cache_dir
 
     def __prepare_module_assets(self, module_package):
 

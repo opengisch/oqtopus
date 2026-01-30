@@ -163,24 +163,27 @@ class MainDialog(QDialog, DIALOG_UI):
         dlg.exec()
 
     def __cleanup_cache(self):
-        """Delete all cached downloaded data."""
-        cache_dir = PluginUtils.plugin_temp_path()
+        """Delete all cached data (downloaded packages and GitHub API cache)."""
+        cache_paths = PluginUtils.get_all_cache_paths()
 
-        if not os.path.exists(cache_dir):
+        if not cache_paths:
             QMessageBox.information(
                 self,
                 self.tr("Cache Cleanup"),
-                self.tr("Cache directory does not exist. Nothing to clean up."),
+                self.tr("No cache directories found. Nothing to clean up."),
             )
             return
+
+        # Format paths for display
+        paths_display = "\n".join(f"  • {p}" for p in cache_paths)
 
         # Ask for confirmation
         reply = QMessageBox.question(
             self,
             self.tr("Cleanup Cache"),
             self.tr(
-                f"This will delete all cached downloaded data from:\n{cache_dir}\n\n"
-                "Downloaded module packages will need to be re-downloaded next time.\n\n"
+                f"This will delete all cached data from:\n{paths_display}\n\n"
+                "Downloaded module packages and API cache will need to be re-fetched.\n\n"
                 "Are you sure you want to continue?"
             ),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -190,22 +193,24 @@ class MainDialog(QDialog, DIALOG_UI):
         if reply != QMessageBox.StandardButton.Yes:
             return
 
-        try:
-            # Delete the entire cache directory
-            shutil.rmtree(cache_dir)
-            # Recreate it empty
-            os.makedirs(cache_dir)
+        errors = []
+        for cache_dir in cache_paths:
+            try:
+                shutil.rmtree(cache_dir)
+            except Exception as e:
+                errors.append(f"{cache_dir}: {e}")
 
+        if errors:
+            QMessageBox.warning(
+                self,
+                self.tr("Cache Cleanup Warning"),
+                self.tr("Some cache directories could not be deleted:\n") + "\n".join(errors),
+            )
+        else:
             QMessageBox.information(
                 self,
                 self.tr("Cache Cleanup"),
                 self.tr("Cache has been successfully cleaned up."),
-            )
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                self.tr("Cache Cleanup Error"),
-                self.tr(f"Failed to cleanup cache:\n{str(e)}"),
             )
 
     def __show_about_dialog(self):

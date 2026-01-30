@@ -5,7 +5,6 @@ import time
 from qgis.PyQt.QtCore import (
     QByteArray,
     QObject,
-    QStandardPaths,
     QTimer,
     QUrl,
     pyqtSignal,
@@ -39,12 +38,9 @@ class Module(QObject):
 
     def __get_cache_dir(self):
         """Get the cache directory for GitHub API responses."""
-        # Use CacheLocation for persistence across plugin reloads
-        cache_base = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.CacheLocation)
         cache_dir = os.path.join(
-            cache_base, "oqtopus", "github_cache", self.organisation, self.repository
+            PluginUtils.plugin_cache_path(), "github_api", self.organisation, self.repository
         )
-        logger.debug(f"Cache dir: {cache_dir}")
         os.makedirs(cache_dir, exist_ok=True)
         return cache_dir
 
