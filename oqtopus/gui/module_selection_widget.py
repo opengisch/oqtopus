@@ -272,8 +272,11 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         asset_plugin = self.module_package_comboBox.currentData().asset_plugin
         if asset_plugin:
+            # Shorten long paths with ellipsis for better display
+            plugin_path = str(asset_plugin.package_dir)
+            display_path = self.__shorten_path(plugin_path, max_length=60)
             self.module_informationPlugin_label.setText(
-                f"<a href='file://{asset_plugin.package_dir}'>{asset_plugin.package_dir}</a>",
+                f"<a href='file://{plugin_path}'>{display_path}</a>",
             )
         else:
             self.module_informationPlugin_label.setText("No asset available")
@@ -441,3 +444,25 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             self.module_package_comboBox.addItem(module_package.display_name(), module_package)
 
         self.__enable_package_selection()
+
+    @staticmethod
+    def __shorten_path(path: str, max_length: int = 60) -> str:
+        """Shorten a long path by replacing middle part with ellipsis.
+
+        Args:
+            path: The full path to shorten
+            max_length: Maximum length before shortening
+
+        Returns:
+            Shortened path with … in the middle if too long
+        """
+        if len(path) <= max_length:
+            return path
+
+        # Calculate how many characters to keep from start and end
+        # Reserve 3 characters for the ellipsis
+        chars_to_keep = max_length - 3
+        start_chars = chars_to_keep // 2
+        end_chars = chars_to_keep - start_chars
+
+        return f"{path[:start_chars]}…{path[-end_chars:]}"
