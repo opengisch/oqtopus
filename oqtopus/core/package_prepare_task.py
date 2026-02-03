@@ -18,15 +18,22 @@ def sanitize_filename(name: str) -> str:
     """Sanitize a string to be safe for use as a filename/directory name.
 
     Replaces characters that are problematic on Windows or other filesystems.
+    For PR names like "#909 some title", extracts just the number to keep paths short.
     """
+    # For PR-style names starting with #, extract just the number
+    pr_match = re.match(r"#?(\d+)", name)
+    if pr_match:
+        return f"PR_{pr_match.group(1)}"
+
     # Replace characters that are invalid on Windows: < > : " / \\ | ? * #
     # Also replace spaces to avoid path issues
     sanitized = re.sub(r'[<>:"/\\|?*#\s]+', "_", name)
     # Remove leading/trailing underscores and dots
     sanitized = sanitized.strip("_.")
-    # Limit length to avoid path length issues on Windows
-    if len(sanitized) > 100:
-        sanitized = sanitized[:100]
+    # Limit length to avoid Windows MAX_PATH issues (260 char limit)
+    # Keep it very short since zip contents add more nested paths
+    if len(sanitized) > 40:
+        sanitized = sanitized[:40]
     return sanitized
 
 
@@ -106,7 +113,7 @@ class PackagePrepareTask(QThread):
         safe_name = sanitize_filename(self.module_package.name)
         cache_dir = os.path.join(
             PluginUtils.plugin_cache_path(),
-            "packages",
+            "pkgs",
             self.module_package.organisation,
             self.module_package.repository,
             safe_name,
@@ -371,9 +378,11 @@ class PackagePrepareTask(QThread):
 
         try:
             with zipfile.ZipFile(zip_file, "r") as zip_ref:
-                # Find the top-level directory
+                # Find the top-level directory in the zip
                 zip_dirname = zip_ref.namelist()[0].split("/")[0]
-                package_dir = os.path.join(self.__destination_directory, zip_dirname)
+
+                # Use short "src" name to avoid Windows MAX_PATH issues
+                package_dir = os.path.join(self.__destination_directory, "src")
 
                 # Check if already extracted and valid
                 if os.path.exists(package_dir) and os.path.isdir(package_dir):
@@ -389,6 +398,12 @@ class PackagePrepareTask(QThread):
 
                 logger.info(f"Extracting '{zip_file}'...")
                 zip_ref.extractall(self.__destination_directory)
+
+                # Rename extracted dir to "src" to shorten paths
+                extracted_dir = os.path.join(self.__destination_directory, zip_dirname)
+                if extracted_dir != package_dir:
+                    shutil.move(extracted_dir, package_dir)
+
                 logger.info(f"Extraction complete: '{package_dir}'")
 
         except zipfile.BadZipFile:
