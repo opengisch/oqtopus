@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import zipfile
 
@@ -11,6 +12,22 @@ from ..utils.plugin_utils import PluginUtils, logger
 
 class PackagePrepareTaskCanceled(Exception):
     pass
+
+
+def sanitize_filename(name: str) -> str:
+    """Sanitize a string to be safe for use as a filename/directory name.
+
+    Replaces characters that are problematic on Windows or other filesystems.
+    """
+    # Replace characters that are invalid on Windows: < > : " / \\ | ? * #
+    # Also replace spaces to avoid path issues
+    sanitized = re.sub(r'[<>:"/\\|?*#\s]+', "_", name)
+    # Remove leading/trailing underscores and dots
+    sanitized = sanitized.strip("_.")
+    # Limit length to avoid path length issues on Windows
+    if len(sanitized) > 100:
+        sanitized = sanitized[:100]
+    return sanitized
 
 
 class PackagePrepareTask(QThread):
@@ -84,12 +101,15 @@ class PackagePrepareTask(QThread):
         Prepare the destination directory for the module package.
         This method creates a cache directory for the package downloads.
         """
+        # Sanitize the package name to avoid filesystem issues (especially on Windows)
+        # PR names can contain special characters like # and spaces
+        safe_name = sanitize_filename(self.module_package.name)
         cache_dir = os.path.join(
             PluginUtils.plugin_cache_path(),
             "packages",
             self.module_package.organisation,
             self.module_package.repository,
-            self.module_package.name,
+            safe_name,
         )
         os.makedirs(cache_dir, exist_ok=True)
 
