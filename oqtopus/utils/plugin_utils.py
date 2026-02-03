@@ -170,13 +170,13 @@ class PluginUtils:
 
             # Create file handler for this session
             fileHandler = logging.FileHandler(logfile.filePath(), mode="w")
-            fileHandler.setLevel(logging.DEBUG)
+            fileHandler.setLevel(SQL)  # Use SQL level (5) to capture all messages including SQL
             fileHandler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-7s %(message)s"))
 
             # Configure logging - basicConfig might not work if already called
             # so we configure the root logger directly
             root_logger = logging.getLogger()
-            root_logger.setLevel(logging.DEBUG)
+            root_logger.setLevel(SQL)  # Set root to SQL level to allow SQL messages through
             root_logger.addHandler(fileHandler)
 
             # Set the pum library to SQL level (5) to capture all SQL statements
