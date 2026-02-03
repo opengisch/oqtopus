@@ -144,11 +144,28 @@ class MainDialog(QDialog, DIALOG_UI):
 
     def closeEvent(self, event):
         """Handle window close event (X button) to properly cleanup threads."""
+        if self.__moduleWidget.isOperationRunning():
+            QMessageBox.warning(
+                self,
+                self.tr("Operation in progress"),
+                self.tr("Cannot close the dialog while an operation is running."),
+            )
+            event.ignore()
+            return
+        self.__moduleWidget.close()
         self.__moduleSelectionWidget.close()
         self.__logsWidget.close()
         event.accept()
 
     def __closeDialog(self):
+        if self.__moduleWidget.isOperationRunning():
+            QMessageBox.warning(
+                self,
+                self.tr("Operation in progress"),
+                self.tr("Cannot close the dialog while an operation is running."),
+            )
+            return
+        self.__moduleWidget.close()
         self.__moduleSelectionWidget.close()
         self.__logsWidget.close()
         self.accept()

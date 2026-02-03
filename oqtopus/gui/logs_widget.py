@@ -2,8 +2,14 @@ import logging
 from datetime import datetime
 
 from qgis.PyQt.QtCore import QAbstractItemModel, QModelIndex, QSortFilterProxyModel, Qt
-from qgis.PyQt.QtGui import QKeySequence, QShortcut
-from qgis.PyQt.QtWidgets import QAbstractItemView, QApplication, QStyle, QWidget
+from qgis.PyQt.QtGui import QKeySequence
+from qgis.PyQt.QtWidgets import (
+    QAbstractItemView,
+    QApplication,
+    QShortcut,
+    QStyle,
+    QWidget,
+)
 
 # Import and register SQL logging level from pum
 from ..libs.pum import SQL
@@ -188,7 +194,7 @@ class LogsWidget(QWidget, DIALOG_UI):
         self.logs_filter_LineEdit.textChanged.connect(self.proxy_model.setFilterFixedString)
 
         # Add copy shortcut (Ctrl+C)
-        self.copy_shortcut = QShortcut(QKeySequence.StandardKey.Copy, self.logs_treeView)
+        self.copy_shortcut = QShortcut(QKeySequence.Copy, self.logs_treeView)
         self.copy_shortcut.activated.connect(self.__copySelectedRows)
 
     def close(self):

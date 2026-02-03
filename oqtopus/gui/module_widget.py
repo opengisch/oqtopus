@@ -92,6 +92,24 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.__data_model_dir = None
         self.__updateModuleInfo()
 
+    def close(self):
+        """Clean up resources when the widget is closed."""
+        # Cancel any running operations
+        if self.__operation_task.isRunning():
+            logger.warning("Canceling running operation due to widget close")
+            self.__operation_task.cancel()
+
+        # Clean up hook imports to release sys.path and sys.modules entries
+        if self.__pum_config is not None:
+            try:
+                self.__pum_config.cleanup_hook_imports()
+            except Exception:
+                pass
+
+    def isOperationRunning(self) -> bool:
+        """Return True if an operation is currently running."""
+        return self.__operation_task.isRunning()
+
     def setDatabaseConnection(self, connection: psycopg.Connection):
         # Cancel any running operations before changing database
         if self.__operation_task.isRunning():
