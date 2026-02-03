@@ -135,6 +135,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         """
         # Main operation buttons - disable during operation
         self.moduleInfo_install_pushButton.setEnabled(not in_progress)
+        self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.setEnabled(not in_progress)
         self.moduleInfo_upgrade_pushButton.setEnabled(not in_progress)
         self.moduleInfo_roles_pushButton.setEnabled(not in_progress)
         self.uninstall_button.setEnabled(not in_progress)
@@ -560,6 +561,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Enable/disable upgrade button and show/hide roles button based on version comparison
         if target_version <= baseline_version:
             self.moduleInfo_upgrade_pushButton.setDisabled(True)
+            self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.setDisabled(True)
             # Show roles button when upgrade is not possible (same or higher version installed)
             self.moduleInfo_roles_pushButton.setVisible(True)
             logger.info(
@@ -567,6 +569,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             )
         else:
             self.moduleInfo_upgrade_pushButton.setEnabled(True)
+            self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.setEnabled(True)
             # Hide roles button when upgrade is possible
             self.moduleInfo_roles_pushButton.setVisible(False)
 
