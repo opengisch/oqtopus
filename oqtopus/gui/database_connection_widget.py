@@ -79,8 +79,13 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
 
         try:
             self.db_services_comboBox.addItem(self.tr("Please select a service"), None)
+            # Disable the placeholder item
+            model = self.db_services_comboBox.model()
+            item = model.item(0)
+            item.setEnabled(False)
+
             for service_name in pgserviceparser_service_names():
-                self.db_services_comboBox.addItem(service_name)
+                self.db_services_comboBox.addItem(service_name, service_name)
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"), self.tr("Can't load database services:"), exception, self
@@ -88,7 +93,8 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             return
 
     def __serviceChanged(self, index=None):
-        if not self.db_services_comboBox.currentText():
+        # Check if placeholder is selected (currentData is None)
+        if self.db_services_comboBox.currentData() is None:
             self.db_database_label.setText(self.tr("No database"))
             QtUtils.setForegroundColor(self.db_database_label, PluginUtils.COLOR_WARNING)
             QtUtils.setFontItalic(self.db_database_label, True)
