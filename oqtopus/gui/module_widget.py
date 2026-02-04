@@ -554,10 +554,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
             )
         QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
 
-        # Show the stacked widget with install page (but disabled)
-        self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
-        self.moduleInfo_stackedWidget.setVisible(True)
-        self.moduleInfo_stackedWidget.setEnabled(False)
+        # Hide the stacked widget since no module is selected
+        self.moduleInfo_stackedWidget.setVisible(False)
 
         # Hide uninstall button
         self.uninstall_button.setVisible(False)
@@ -572,7 +570,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
         if installed_schemas:
             schema_list = ", ".join([f"<b>{schema}</b>" for schema in installed_schemas])
             self.moduleInfo_installation_label.setText(
-                self.tr(f"No module installed. Module(s) in other schema(s): {schema_list}")
+                self.tr(
+                    f"No module installed in this schema.<br>Module(s) in other schema(s): {schema_list}"
+                )
             )
         else:
             self.moduleInfo_installation_label.setText(self.tr("No module installed"))
@@ -591,9 +591,19 @@ class ModuleWidget(QWidget, DIALOG_UI):
     ):
         """Switch to upgrade page and configure it."""
         beta_text = " (BETA TESTING)" if beta_testing else ""
-        self.moduleInfo_installation_label.setText(
-            f"Installed: module {module_name} at version {baseline_version}{beta_text}."
-        )
+
+        # Check for modules in other schemas
+        sm = SchemaMigrations(self.__pum_config)
+        with self.__database_connection.transaction():
+            other_schemas = sm.exists_in_other_schemas(self.__database_connection)
+
+        # Build installation info text
+        install_text = f"Installed: module {module_name} at version {baseline_version}{beta_text}."
+        if other_schemas:
+            schema_list = ", ".join([f"<b>{schema}</b>" for schema in other_schemas])
+            install_text += f"<br>Module(s) in other schema(s): {schema_list}"
+
+        self.moduleInfo_installation_label.setText(install_text)
         if beta_testing:
             QtUtils.setForegroundColor(
                 self.moduleInfo_installation_label, PluginUtils.COLOR_WARNING
