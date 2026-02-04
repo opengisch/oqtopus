@@ -161,8 +161,6 @@ class PackagePrepareTask(QThread):
 
     def __prefetch_download_sizes(self, module_package):
         """Pre-fetch Content-Length for all files to be downloaded for accurate progress."""
-        logger.debug("Pre-fetching download sizes...")
-
         urls_to_check = []
 
         # Check source if not from zip
@@ -203,7 +201,6 @@ class PackagePrepareTask(QThread):
 
         # If everything is cached, skip size checking entirely
         if not urls_to_check:
-            logger.debug("All files are cached, skipping size check")
             self.__download_total_expected = 0
             return
 
@@ -216,7 +213,6 @@ class PackagePrepareTask(QThread):
                 if content_length:
                     file_size = int(content_length)
                     total_size += file_size
-                    logger.debug(f"File '{filename}' size: {file_size} bytes")
                 else:
                     logger.warning(
                         f"No Content-Length for '{filename}', progress may be inaccurate"
@@ -225,12 +221,8 @@ class PackagePrepareTask(QThread):
                 logger.warning(f"Failed to get size for '{filename}': {e}")
 
         self.__download_total_expected = total_size
-        logger.info(
-            f"Total expected download size: {total_size} bytes ({total_size / (1024 * 1024):.1f} MB)"
-        )
-        logger.debug(
-            f"Progress tracking initialized: expected={self.__download_total_expected}, received={self.__download_total_received}"
-        )
+        if total_size > 0:
+            logger.info(f"Total download size: {total_size / (1024 * 1024):.1f} MB")
 
     def __is_cached_and_valid(self, zip_file):
         """Check if a zip file is cached and valid (quick check)."""
@@ -278,13 +270,8 @@ class PackagePrepareTask(QThread):
                     with zipfile.ZipFile(zip_file, "r") as zip_test:
                         # Just verify we can read file list, don't test entire contents
                         _ = zip_test.namelist()
-                    logger.info(
-                        f"File '{zip_file}' already exists and is valid - skipping download"
-                    )
+                    logger.info(f"Using cached: {os.path.basename(zip_file)}")
                     # Still emit some progress to show we're not stuck
-                    logger.debug(
-                        f"Returning from cache: expected={self.__download_total_expected}, received={self.__download_total_received}"
-                    )
                     self.signalPackagingProgress.emit(-1.0, 0)
                     return zip_file
             except (zipfile.BadZipFile, OSError, Exception) as e:
@@ -296,12 +283,10 @@ class PackagePrepareTask(QThread):
 
         # Streaming, so we can iterate over the response.
         timeout = 60
-        logger.info(f"Starting download from '{url}'")
-        logger.debug(f"Making HTTP GET request with timeout={timeout}...")
+        logger.info(f"Downloading: {os.path.basename(zip_file)}")
 
         try:
             response = requests.get(url, allow_redirects=True, stream=True, timeout=timeout)
-            logger.debug(f"HTTP GET request completed, status={response.status_code}")
         except Exception as e:
             logger.error(f"HTTP request failed: {e}")
             raise
@@ -315,28 +300,14 @@ class PackagePrepareTask(QThread):
         content_length = response.headers.get("content-length")
         file_size = int(content_length) if content_length else 0
 
-        if file_size > 0:
-            # Size already added in __prefetch_download_sizes, just log it
-            logger.info(f"Downloading from '{url}' to '{zip_file}' (size: {file_size} bytes)")
-            logger.debug(
-                f"Before download: expected={self.__download_total_expected}, received={self.__download_total_received}"
-            )
-        else:
-            logger.info(f"Downloading from '{url}' to '{zip_file}' (size unknown)")
+        if file_size == 0:
             # Emit indeterminate progress
             self.signalPackagingProgress.emit(-1.0, 0)
 
         downloaded_size = 0
-        chunk_count = 0
-        logger.debug("Starting to write file chunks...")
         with open(zip_file, "wb") as file:
             chunk_size = 256 * 1024  # 256KB chunks
             for data in response.iter_content(chunk_size=chunk_size, decode_unicode=False):
-                chunk_count += 1
-                if chunk_count % 10 == 0:  # Log every 10th chunk
-                    logger.debug(
-                        f"Downloaded {chunk_count} chunks, {downloaded_size} bytes so far"
-                    )
                 file.write(data)
 
                 self.__checkForCanceled()
@@ -349,7 +320,6 @@ class PackagePrepareTask(QThread):
                 self.__emit_progress()
 
         # Ensure final progress reflects completion
-        logger.info(f"Download completed: {chunk_count} chunks, {downloaded_size} bytes total")
         self.__emit_progress(force=True)
 
         return zip_file
@@ -363,10 +333,6 @@ class PackagePrepareTask(QThread):
 
         percent = int((self.__download_total_received * 100) / self.__download_total_expected)
         percent = max(0, min(100, percent))  # Clamp to 0-100
-
-        logger.debug(
-            f"Progress: {self.__download_total_received}/{self.__download_total_expected} = {percent}%"
-        )
 
         if force or self.__last_emitted_percent != percent:
             self.__last_emitted_percent = percent

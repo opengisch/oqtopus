@@ -57,25 +57,20 @@ class Module(QObject):
     def __get_cache_file(self, cache_type):
         """Get the cache file path for a specific type (releases or pulls)."""
         cache_file = os.path.join(self.__get_cache_dir(), f"{cache_type}.json")
-        logger.debug(f"Cache file for {cache_type}: {cache_file}")
         return cache_file
 
     def __read_cache(self, cache_type):
         """Read cached data if it exists and is not expired."""
-        logger.debug(f"__read_cache START for {cache_type}")
         cache_file = self.__get_cache_file(cache_type)
         if not os.path.exists(cache_file):
-            logger.debug(f"Cache file does not exist: {cache_file}")
             return None
 
         # Check if cache is expired
         file_age = time.time() - os.path.getmtime(cache_file)
         if file_age > CACHE_DURATION:
-            logger.debug(f"Cache expired for {cache_type} (age: {file_age:.0f}s)")
             return None
 
         try:
-            logger.debug(f"Reading cache file: {cache_file}")
             with open(cache_file, encoding="utf-8") as f:
                 data = json.load(f)
                 logger.info(
@@ -92,34 +87,26 @@ class Module(QObject):
         try:
             with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(data, f)
-                logger.debug(f"Cached {cache_type} data to {cache_file}")
         except Exception as e:
             logger.warning(f"Failed to write cache for {cache_type}: {e}")
 
     def start_load_versions(self):
         # Read cache asynchronously to avoid blocking UI
-        logger.debug(f"start_load_versions called for {self.organisation}/{self.repository}")
         QTimer.singleShot(0, self.__async_load_versions)
-        logger.debug("start_load_versions returning immediately")
 
     def __async_load_versions(self):
         """Load versions asynchronously from cache or API."""
-        logger.debug(f"__async_load_versions START for {self.organisation}/{self.repository}")
         # Try to load from cache first
         cached_data = self.__read_cache("releases")
         if cached_data is not None:
-            logger.debug("Processing cached releases data")
             try:
                 self._process_versions_data(cached_data)
-                logger.debug("Emitting signal_versionsLoaded")
                 self.signal_versionsLoaded.emit("")
-                logger.debug("__async_load_versions END (from cache)")
                 return
             except Exception as e:
                 logger.warning(f"Failed to process cached releases: {e}")
 
         # Cache miss or invalid - fetch from API
-        logger.debug("Cache miss, fetching from API")
         url = f"https://api.github.com/repos/{self.organisation}/{self.repository}/releases"
         logger.info(f"Loading versions from '{url}'...")
         request = QNetworkRequest(QUrl(url))
@@ -128,7 +115,6 @@ class Module(QObject):
             request.setRawHeader(QByteArray(key.encode()), QByteArray(value.encode()))
         reply = self.network_manager.get(request)
         reply.finished.connect(lambda: self._on_versions_reply(reply))
-        logger.debug("__async_load_versions END (API request started)")
 
     def _on_versions_reply(self, reply):
         if reply.error() != QNetworkReply.NetworkError.NoError:
@@ -150,7 +136,6 @@ class Module(QObject):
 
     def _process_versions_data(self, json_versions):
         """Process versions data from cache or API response."""
-        logger.debug(f"_process_versions_data START, processing {len(json_versions)} versions")
         self.versions = []
         self.latest_version = None
 
@@ -159,7 +144,6 @@ class Module(QObject):
         if self.exclude_releases:
             try:
                 exclude_pattern = re.compile(self.exclude_releases)
-                logger.debug(f"Excluding releases matching pattern: {self.exclude_releases}")
             except re.error as e:
                 logger.warning(f"Invalid exclude_releases pattern '{self.exclude_releases}': {e}")
 
@@ -167,7 +151,6 @@ class Module(QObject):
             # Check if this release should be excluded
             tag_name = json_version.get("tag_name", "")
             if exclude_pattern and exclude_pattern.search(tag_name):
-                logger.debug(f"Excluding release '{tag_name}' (matches exclude pattern)")
                 continue
 
             module_package = ModulePackage(
@@ -189,7 +172,6 @@ class Module(QObject):
 
             if module_package.created_at > self.latest_version.created_at:
                 self.latest_version = module_package
-        logger.debug(f"_process_versions_data END, processed {len(self.versions)} versions")
 
     def start_load_development_versions(self):
         self.development_versions = []
