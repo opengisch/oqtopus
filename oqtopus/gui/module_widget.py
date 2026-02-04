@@ -348,68 +348,69 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Check that the module ID matches the installed module in the database
         sm = SchemaMigrations(self.__pum_config)
         installed_beta_testing = False
-        if sm.exists(self.__database_connection):
-            migration_details = sm.migration_details(self.__database_connection)
-            installed_module_id = migration_details.get("module")
-            installed_beta_testing = migration_details.get("beta_testing", False)
+        with self.__database_connection.transaction():
+            if sm.exists(self.__database_connection):
+                migration_details = sm.migration_details(self.__database_connection)
+                installed_module_id = migration_details.get("module")
+                installed_beta_testing = migration_details.get("beta_testing", False)
 
-            if installed_module_id and installed_module_id != pum_module_id:
-                CriticalMessageBox(
-                    self.tr("Error"),
-                    self.tr(
-                        f"Module ID mismatch: The database contains module '{installed_module_id}' but you are trying to upgrade with '{pum_module_id}'."
-                    ),
-                    None,
-                    self,
-                ).exec()
-                return
-
-            # Confirm upgrade if installed module is in beta testing
-            if installed_beta_testing:
-                reply = QMessageBox.question(
-                    self,
-                    self.tr("Confirm Upgrade"),
-                    self.tr(
-                        "The installed module is in BETA TESTING mode.\n\n"
-                        "Are you sure you want to upgrade? \n"
-                        "This is not a recommended action: \n"
-                        "if the installed version has missing or different changelogs, \n"
-                        "the upgrade may fail or cause further issues."
-                    ),
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
-                )
-                if reply != QMessageBox.StandardButton.Yes:
+                if installed_module_id and installed_module_id != pum_module_id:
+                    CriticalMessageBox(
+                        self.tr("Error"),
+                        self.tr(
+                            f"Module ID mismatch: The database contains module '{installed_module_id}' but you are trying to upgrade with '{pum_module_id}'."
+                        ),
+                        None,
+                        self,
+                    ).exec()
                     return
 
-        try:
-            parameters = self.parameters_groupbox.parameters_values()
+                # Confirm upgrade if installed module is in beta testing
+                if installed_beta_testing:
+                    reply = QMessageBox.question(
+                        self,
+                        self.tr("Confirm Upgrade"),
+                        self.tr(
+                            "The installed module is in BETA TESTING mode.\n\n"
+                            "Are you sure you want to upgrade? \n"
+                            "This is not a recommended action: \n"
+                            "if the installed version has missing or different changelogs, \n"
+                            "the upgrade may fail or cause further issues."
+                        ),
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No,
+                    )
+                    if reply != QMessageBox.StandardButton.Yes:
+                        return
 
-            beta_testing = False
-            if (
-                self.__current_module_package.type == ModulePackage.Type.PULL_REQUEST
-                or self.__current_module_package.type == ModulePackage.Type.BRANCH
-                or self.__current_module_package.prerelease
-            ):
-                logger.warning(
-                    "Upgrading module from branch, pull request, or prerelease: set parameter beta_testing to True"
-                )
-                beta_testing = True
+            try:
+                parameters = self.parameters_groupbox.parameters_values()
 
-            # Start background upgrade operation
-            options = {
-                "beta_testing": beta_testing,
-                "force": installed_beta_testing,
-                "roles": self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
-                "grant": self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
-            }
+                beta_testing = False
+                if (
+                    self.__current_module_package.type == ModulePackage.Type.PULL_REQUEST
+                    or self.__current_module_package.type == ModulePackage.Type.BRANCH
+                    or self.__current_module_package.prerelease
+                ):
+                    logger.warning(
+                        "Upgrading module from branch, pull request, or prerelease: set parameter beta_testing to True"
+                    )
+                    beta_testing = True
 
-            self.__startOperation("upgrade", parameters, options)
+                # Start background upgrade operation
+                options = {
+                    "beta_testing": beta_testing,
+                    "force": installed_beta_testing,
+                    "roles": self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
+                    "grant": self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
+                }
 
-        except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't upgrade the module:"), exception, self
-            ).exec()
+                self.__startOperation("upgrade", parameters, options)
+
+            except Exception as exception:
+                CriticalMessageBox(
+                    self.tr("Error"), self.tr("Can't upgrade the module:"), exception, self
+                ).exec()
 
     def __uninstallModuleClicked(self):
         if self.__current_module_package is None:
@@ -445,8 +446,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Check if the installed version matches the selected version
         sm = SchemaMigrations(self.__pum_config)
         version_warning = ""
-        if not sm.exists(self.__database_connection):
-            raise Exception("Module is not installed in the database. This should not happen.")
+        with self.__database_connection.transaction():
+            if not sm.exists(self.__database_connection):
+                raise Exception("Module is not installed in the database. This should not happen.")
         installed_version = sm.baseline(self.__database_connection)
         selected_version = self.__pum_config.last_version()
         if installed_version != selected_version:
@@ -527,9 +529,53 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Also hide uninstall button since module info is not valid
         self.uninstall_button.setVisible(False)
 
+    def __show_database_info_page(self):
+        """Show database information page when no module package is selected."""
+        with self.__database_connection.transaction():
+            installed_schemas = SchemaMigrations.schemas_with_migrations(
+                self.__database_connection
+            )
+
+        # Show selected module label with prompt
+        self.moduleInfo_selected_label.setText(
+            self.tr("No module package selected. Please select a module from the left panel.")
+        )
+        QtUtils.setForegroundColor(self.moduleInfo_selected_label, PluginUtils.COLOR_WARNING)
+
+        # Show database info in installation label
+        if installed_schemas:
+            schema_list = ", ".join([f"<b>{schema}</b>" for schema in installed_schemas])
+            self.moduleInfo_installation_label.setText(
+                self.tr(f"Database has installed modules in schemas: {schema_list}")
+            )
+        else:
+            self.moduleInfo_installation_label.setText(
+                self.tr("No modules installed in this database")
+            )
+        QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
+
+        # Show the stacked widget with install page (but disabled)
+        self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
+        self.moduleInfo_stackedWidget.setVisible(True)
+        self.moduleInfo_stackedWidget.setEnabled(False)
+
+        # Hide uninstall button
+        self.uninstall_button.setVisible(False)
+
     def __show_install_page(self, version: str):
         """Switch to install page and configure it."""
-        self.moduleInfo_installation_label.setText(self.tr("No module installed"))
+        # Check for modules in other schemas
+        with self.__database_connection.transaction():
+            installed_schemas = SchemaMigrations.schemas_with_migrations(
+                self.__database_connection
+            )
+        if installed_schemas:
+            schema_list = ", ".join([f"<b>{schema}</b>" for schema in installed_schemas])
+            self.moduleInfo_installation_label.setText(
+                self.tr(f"No module installed. Module(s) in other schema(s): {schema_list}")
+            )
+        else:
+            self.moduleInfo_installation_label.setText(self.tr("No module installed"))
         QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
         self.moduleInfo_install_pushButton.setText(self.tr(f"Install {version}"))
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
@@ -585,7 +631,11 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
     def __updateModuleInfo(self):
         if self.__current_module_package is None:
-            self.__show_error_state("No module package selected")
+            # List installed modules if available
+            if self.__database_connection is not None:
+                self.__show_database_info_page()
+            else:
+                self.__show_error_state("No module package selected")
             return
 
         if self.__database_connection is None:
