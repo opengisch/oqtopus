@@ -11,6 +11,7 @@ class SettingsDialog(QDialog, DIALOG_UI):
         self.setupUi(self)
 
         self.githubToken_lineEdit.setText(PluginUtils.get_github_token())
+        self.allow_multiple_modules_checkBox.setChecked(PluginUtils.get_allow_multiple_modules())
 
         self.helpButton.setIcon(
             QApplication.style().standardIcon(QStyle.StandardPixmap.SP_DialogHelpButton)
@@ -19,6 +20,7 @@ class SettingsDialog(QDialog, DIALOG_UI):
 
     def accept(self):
         PluginUtils.set_github_token(self.githubToken_lineEdit.text())
+        PluginUtils.set_allow_multiple_modules(self.allow_multiple_modules_checkBox.isChecked())
         super().accept()
 
     def __show_github_token_help(self):

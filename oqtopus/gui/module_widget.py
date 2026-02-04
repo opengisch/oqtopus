@@ -295,6 +295,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 "roles": self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
                 "grant": self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
                 "beta_testing": beta_testing,
+                "allow_multiple_modules": PluginUtils.get_allow_multiple_modules(),
                 "install_demo_data": self.db_demoData_checkBox.isChecked(),
                 "demo_data_name": (
                     self.db_demoData_comboBox.currentText()

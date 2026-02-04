@@ -232,6 +232,16 @@ class PluginUtils:
         settings.setValue("oqtopus/github_token", token)
 
     @staticmethod
+    def get_allow_multiple_modules():
+        settings = QSettings()
+        return settings.value("oqtopus/allow_multiple_modules", False, type=bool)
+
+    @staticmethod
+    def set_allow_multiple_modules(allow: bool):
+        settings = QSettings()
+        settings.setValue("oqtopus/allow_multiple_modules", allow)
+
+    @staticmethod
     def get_github_headers():
         token = PluginUtils.get_github_token()
         headers = {}
