@@ -1,6 +1,12 @@
 import psycopg
 from qgis.PyQt.QtCore import pyqtSignal
-from qgis.PyQt.QtGui import QAction
+
+try:
+    from qgis.PyQt.QtGui import QAction
+except ImportError:
+    # Import for Qt5
+    from qgis.PyQt.QtWidgets import QAction
+
 from qgis.PyQt.QtWidgets import QDialog, QMenu, QWidget
 
 from ..libs.pgserviceparser import conf_path as pgserviceparser_conf_path
