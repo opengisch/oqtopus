@@ -87,6 +87,32 @@ class ModuleOperationTask(QThread):
         self.__error_message = None
         self.start()
 
+    def start_drop_app(
+        self, pum_config: PumConfig, connection: psycopg.Connection, parameters: dict, **options
+    ):
+        """Start a drop app operation."""
+        self.__pum_config = pum_config
+        self.__connection = connection
+        self.__operation = "drop_app"
+        self.__parameters = parameters
+        self.__options = options
+        self.__canceled = False
+        self.__error_message = None
+        self.start()
+
+    def start_recreate_app(
+        self, pum_config: PumConfig, connection: psycopg.Connection, parameters: dict, **options
+    ):
+        """Start a recreate app operation."""
+        self.__pum_config = pum_config
+        self.__connection = connection
+        self.__operation = "recreate_app"
+        self.__parameters = parameters
+        self.__options = options
+        self.__canceled = False
+        self.__error_message = None
+        self.start()
+
     def cancel(self):
         """Cancel the current operation."""
         self.__canceled = True
@@ -109,6 +135,10 @@ class ModuleOperationTask(QThread):
                 self._run_uninstall(upgrader)
             elif self.__operation == "roles":
                 self._run_roles()
+            elif self.__operation == "drop_app":
+                self._run_drop_app(upgrader)
+            elif self.__operation == "recreate_app":
+                self._run_recreate_app(upgrader)
             else:
                 raise Exception(f"Unknown operation: {self.__operation}")
 
@@ -198,6 +228,34 @@ class ModuleOperationTask(QThread):
         )
 
         logger.info("Create and grant roles operation completed")
+
+    def _run_drop_app(self, upgrader: Upgrader):
+        """Run drop app operation."""
+        logger.info("Starting drop app operation...")
+        logger.debug(f"Parameters: {self.__parameters}")
+        logger.debug(f"Options: {self.__options}")
+
+        upgrader.drop_app(
+            connection=self.__connection,
+            parameters=self.__parameters,
+            commit=False,
+        )
+
+        logger.info("Drop app operation completed")
+
+    def _run_recreate_app(self, upgrader: Upgrader):
+        """Run recreate app operation."""
+        logger.info("Starting recreate app operation...")
+        logger.debug(f"Parameters: {self.__parameters}")
+        logger.debug(f"Options: {self.__options}")
+
+        upgrader.recreate_app(
+            connection=self.__connection,
+            parameters=self.__parameters,
+            commit=False,
+        )
+
+        logger.info("Recreate app operation completed")
 
     def _create_feedback(self):
         """Create a Feedback instance that emits Qt signals."""

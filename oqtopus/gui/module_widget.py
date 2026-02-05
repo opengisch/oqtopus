@@ -32,6 +32,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_install_pushButton.clicked.connect(self.__installModuleClicked)
         self.moduleInfo_upgrade_pushButton.clicked.connect(self.__upgradeModuleClicked)
         self.moduleInfo_roles_pushButton.clicked.connect(self.__rolesClicked)
+        self.moduleInfo_drop_app_pushButton.clicked.connect(self.__dropAppClicked)
+        self.moduleInfo_recreate_app_pushButton.clicked.connect(self.__recreateAppClicked)
         self.uninstall_button.clicked.connect(self.__uninstallModuleClicked)
         self.uninstall_button_maintain.clicked.connect(self.__uninstallModuleClicked)
         self.moduleInfo_cancel_button.clicked.connect(self.__cancelOperationClicked)
@@ -520,6 +522,98 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
+    def __dropAppClicked(self):
+        """Execute drop app handlers for the current module."""
+        if self.__current_module_package is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please select a module package first."), None, self
+            ).exec()
+            return
+
+        if self.__database_connection is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please connect to a database first."), None, self
+            ).exec()
+            return
+
+        if self.__pum_config is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Module configuration not loaded."), None, self
+            ).exec()
+            return
+
+        reply = QMessageBox.question(
+            self,
+            self.tr("Drop app"),
+            self.tr(
+                "Are you sure you want to drop the application?\n\n"
+                "This will execute drop app handlers defined in the module configuration."
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            parameters = self.parameters_groupbox.parameters_values()
+
+            # Start background drop app operation
+            self.__startOperation("drop_app", parameters, {})
+
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Can't drop app:"), exception, self
+            ).exec()
+            return
+
+    def __recreateAppClicked(self):
+        """Execute recreate app (drop + create) handlers for the current module."""
+        if self.__current_module_package is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please select a module package first."), None, self
+            ).exec()
+            return
+
+        if self.__database_connection is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please connect to a database first."), None, self
+            ).exec()
+            return
+
+        if self.__pum_config is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Module configuration not loaded."), None, self
+            ).exec()
+            return
+
+        reply = QMessageBox.question(
+            self,
+            self.tr("(Re)create app"),
+            self.tr(
+                "Are you sure you want to recreate the application?\n\n"
+                "This will first drop the app and then create it again, executing the corresponding handlers."
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            parameters = self.parameters_groupbox.parameters_values()
+
+            # Start background recreate app operation
+            self.__startOperation("recreate_app", parameters, {})
+
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Can't recreate app:"), exception, self
+            ).exec()
+            return
+
     def __show_error_state(self, message: str, on_label=None):
         """Display an error state and hide the widget content."""
         label = on_label or self.moduleInfo_selected_label
@@ -756,6 +850,14 @@ class ModuleWidget(QWidget, DIALOG_UI):
             )
         elif operation == "roles":
             self.__operation_task.start_roles(
+                self.__pum_config, self.__database_connection, parameters, **options
+            )
+        elif operation == "drop_app":
+            self.__operation_task.start_drop_app(
+                self.__pum_config, self.__database_connection, parameters, **options
+            )
+        elif operation == "recreate_app":
+            self.__operation_task.start_recreate_app(
                 self.__pum_config, self.__database_connection, parameters, **options
             )
 
