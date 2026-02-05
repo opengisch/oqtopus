@@ -238,6 +238,7 @@ class ModuleOperationTask(QThread):
         upgrader.drop_app(
             connection=self.__connection,
             parameters=self.__parameters,
+            feedback=self.__feedback,
             commit=False,
         )
 
@@ -252,6 +253,7 @@ class ModuleOperationTask(QThread):
         upgrader.recreate_app(
             connection=self.__connection,
             parameters=self.__parameters,
+            feedback=self.__feedback,
             commit=False,
         )
 
