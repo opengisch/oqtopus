@@ -177,7 +177,9 @@ class MainDialog(QDialog, DIALOG_UI):
 
     def __open_settings_dialog(self):
         dlg = SettingsDialog(self)
-        dlg.exec()
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            # Update column visibility from settings
+            self.__logsWidget.update_column_visibility_from_settings()
 
     def __cleanup_cache(self):
         """Delete all cached data (downloaded packages and GitHub API cache)."""

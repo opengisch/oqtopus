@@ -242,6 +242,36 @@ class PluginUtils:
         settings.setValue("oqtopus/allow_multiple_modules", allow)
 
     @staticmethod
+    def get_log_show_datetime():
+        settings = QSettings()
+        return settings.value("oqtopus/log_show_datetime", True, type=bool)
+
+    @staticmethod
+    def set_log_show_datetime(show: bool):
+        settings = QSettings()
+        settings.setValue("oqtopus/log_show_datetime", show)
+
+    @staticmethod
+    def get_log_show_level():
+        settings = QSettings()
+        return settings.value("oqtopus/log_show_level", True, type=bool)
+
+    @staticmethod
+    def set_log_show_level(show: bool):
+        settings = QSettings()
+        settings.setValue("oqtopus/log_show_level", show)
+
+    @staticmethod
+    def get_log_show_module():
+        settings = QSettings()
+        return settings.value("oqtopus/log_show_module", True, type=bool)
+
+    @staticmethod
+    def set_log_show_module(show: bool):
+        settings = QSettings()
+        settings.setValue("oqtopus/log_show_module", show)
+
+    @staticmethod
     def get_github_headers():
         token = PluginUtils.get_github_token()
         headers = {}

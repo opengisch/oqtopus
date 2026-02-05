@@ -20,7 +20,7 @@ logging.addLevelName(SQL, "SQL")
 
 DIALOG_UI = PluginUtils.get_ui_class("logs_widget.ui")
 
-COLUMNS = ["Level", "Module", "Message"]
+COLUMNS = ["Timestamp", "Level", "Module", "Message"]
 
 
 class LogModel(QAbstractItemModel):
@@ -103,9 +103,9 @@ class LogFilterProxyModel(QSortFilterProxyModel):
 
     def filterAcceptsRow(self, source_row, source_parent):
         model = self.sourceModel()
-        index_level = model.index(source_row, 0, source_parent)  # Level column
-        index_message = model.index(source_row, 2, source_parent)  # Message column
-        index_module = model.index(source_row, 1, source_parent)  # Module column
+        index_level = model.index(source_row, 1, source_parent)  # Level column
+        index_message = model.index(source_row, 3, source_parent)  # Message column
+        index_module = model.index(source_row, 2, source_parent)  # Module column
         # Level filter (show entries with at least the selected level)
         if self.level_filter and self.level_filter != "ALL":
             level = model.data(index_level, Qt.ItemDataRole.DisplayRole)
@@ -155,9 +155,15 @@ class LogsWidget(QWidget, DIALOG_UI):
         # Configure column widths
         header = self.logs_treeView.header()
         header.setStretchLastSection(True)  # Message column stretches to fill space
-        header.resizeSection(0, 100)  # Level column - fixed width
-        header.resizeSection(1, 150)  # Module column - fixed width
+        header.resizeSection(0, 150)  # Timestamp column - fixed width
+        header.resizeSection(1, 100)  # Level column - fixed width
+        header.resizeSection(2, 150)  # Module column - fixed width
         # Message column will take remaining space due to setStretchLastSection
+
+        # Apply initial column visibility from settings
+        self.logs_treeView.setColumnHidden(0, not PluginUtils.get_log_show_datetime())
+        self.logs_treeView.setColumnHidden(1, not PluginUtils.get_log_show_level())
+        self.logs_treeView.setColumnHidden(2, not PluginUtils.get_log_show_module())
 
         # Enable automatic row height adjustment
         self.logs_treeView.setUniformRowHeights(False)
@@ -226,6 +232,28 @@ class LogsWidget(QWidget, DIALOG_UI):
 
     def __logsClearClicked(self):
         self.logs_model.clear()
+
+    def set_datetime_column_visible(self, visible: bool):
+        """Set visibility of the timestamp column."""
+        self.logs_treeView.setColumnHidden(0, not visible)
+
+    def set_level_column_visible(self, visible: bool):
+        """Set visibility of the level column."""
+        self.logs_treeView.setColumnHidden(1, not visible)
+
+    def set_module_column_visible(self, visible: bool):
+        """Set visibility of the module column."""
+        self.logs_treeView.setColumnHidden(2, not visible)
+
+    def update_column_visibility_from_settings(self):
+        """Update column visibility based on current settings."""
+        show_datetime = PluginUtils.get_log_show_datetime()
+        show_level = PluginUtils.get_log_show_level()
+        show_module = PluginUtils.get_log_show_module()
+
+        self.set_datetime_column_visible(show_datetime)
+        self.set_level_column_visible(show_level)
+        self.set_module_column_visible(show_module)
 
     def __copySelectedRows(self):
         """Copy selected rows to clipboard in CSV format."""
