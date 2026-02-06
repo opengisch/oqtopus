@@ -75,19 +75,34 @@ class PluginWidget(QWidget, DIALOG_UI):
         # Check if the package exists
         asset_plugin = self.__current_module_package.asset_plugin
         if not os.path.exists(asset_plugin.package_zip):
-            self.info_label.setText(
-                self.tr(f"Plugin zip file '{asset_plugin.package_zip}' does not exist.")
+            QMessageBox.critical(
+                self,
+                self.tr("Error"),
+                self.tr(f"Plugin zip file '{asset_plugin.package_zip}' does not exist."),
             )
-            QtUtils.setForegroundColor(self.info_label, PluginUtils.COLOR_WARNING)
-            QtUtils.setFontItalic(self.info_label, True)
             return
 
         try:
             from pyplugin_installer import instance as plugin_installer_instance
+            from qgis.core import Qgis
 
             installer = plugin_installer_instance()
-            installer.installFromZipFile(asset_plugin.package_zip)
+            success = installer.installFromZipFile(asset_plugin.package_zip)
 
+            # installFromZipFile return success from QGIS 3.44.08
+            if not success and Qgis.QGIS_VERSION_INT > 34407:
+                QMessageBox.critical(
+                    self,
+                    self.tr("Error"),
+                    self.tr(f"Plugin '{asset_plugin.name}' installation failed."),
+                )
+                return
+
+            QMessageBox.information(
+                self,
+                self.tr("Success"),
+                self.tr(f"Plugin '{asset_plugin.name}' installed successfully."),
+            )
             return
 
         except ImportError:
