@@ -84,10 +84,12 @@ In the `Project` tab:
 
 ## Install the module plugin
 
-In the `Plugin` tab, you can install the module plugin (ie. TWW plugin). Direct install using the `Install` button is currently not implemented.
+In the `Plugin` tab, you can install the module plugin (ie. TWW plugin). There are two possibilities:
 
-* Click `Copy ZIP to directory`
-* In QGIS > Extension > Install and manage extension > Install from ZIP
+1. Click `Install` and it will be installed in the current QGIS profile. Note: this is possible only if running oQtopus from QGIS.
+2. Click `Copy ZIP to directory`:
+   * You can copy the plugin zip file to a directory of your choice.
+   * Then in QGIS > Extension > Install and manage extension > Install from ZIP.
 
 
 ## oQtopus as a standalone python executable

@@ -13,7 +13,6 @@ DIALOG_UI = PluginUtils.get_ui_class("plugin_widget.ui")
 
 
 class PluginWidget(QWidget, DIALOG_UI):
-
     def __init__(self, parent=None):
         QWidget.__init__(self, parent)
         self.setupUi(self)
@@ -76,21 +75,51 @@ class PluginWidget(QWidget, DIALOG_UI):
         # Check if the package exists
         asset_plugin = self.__current_module_package.asset_plugin
         if not os.path.exists(asset_plugin.package_zip):
-            self.info_label.setText(
-                self.tr(f"Plugin zip file '{asset_plugin.package_zip}' does not exist.")
+            QMessageBox.critical(
+                self,
+                self.tr("Error"),
+                self.tr(f"Plugin zip file '{asset_plugin.package_zip}' does not exist."),
             )
-            QtUtils.setForegroundColor(self.info_label, PluginUtils.COLOR_WARNING)
-            QtUtils.setFontItalic(self.info_label, True)
             return
 
-        QMessageBox.warning(
-            self,
-            self.tr("Not implemented"),
-            self.tr(
-                'Installation is not implemented yet.\nAt the moment, you can only copy the plugin zip file to a directory and use "Install from ZIP" in QGIS.'
-            ),
-        )
-        return
+        try:
+            from pyplugin_installer import instance as plugin_installer_instance
+            from qgis.core import Qgis
+
+            installer = plugin_installer_instance()
+            success = installer.installFromZipFile(asset_plugin.package_zip)
+
+            # installFromZipFile return success from QGIS 3.44.08
+            if not success and Qgis.QGIS_VERSION_INT > 34407:
+                QMessageBox.critical(
+                    self,
+                    self.tr("Error"),
+                    self.tr(f"Plugin '{asset_plugin.name}' installation failed."),
+                )
+                return
+
+            QMessageBox.information(
+                self,
+                self.tr("Success"),
+                self.tr(f"Plugin '{asset_plugin.name}' installed successfully."),
+            )
+            return
+
+        except ImportError:
+            QMessageBox.warning(
+                self,
+                self.tr("Error"),
+                self.tr("Plugin installation is not possible when oQtopus is running standalone."),
+            )
+            return
+
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                self.tr("Error"),
+                self.tr("Plugin installation failed with an exception: {0}").format(str(e)),
+            )
+            return
 
     def __seeChangelogClicked(self):
         if self.__current_module_package is None:
