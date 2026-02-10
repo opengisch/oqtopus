@@ -2,10 +2,11 @@ import logging
 from datetime import datetime
 
 from qgis.PyQt.QtCore import QAbstractItemModel, QModelIndex, QSortFilterProxyModel, Qt
-from qgis.PyQt.QtGui import QKeySequence, QShortcut
+from qgis.PyQt.QtGui import QAction, QKeySequence, QShortcut
 from qgis.PyQt.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QMenu,
     QStyle,
     QWidget,
 )
@@ -202,6 +203,10 @@ class LogsWidget(QWidget, DIALOG_UI):
         self.copy_shortcut = QShortcut(QKeySequence.StandardKey.Copy, self.logs_treeView)
         self.copy_shortcut.activated.connect(self.__copySelectedRows)
 
+        # Enable context menu
+        self.logs_treeView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.logs_treeView.customContextMenuRequested.connect(self.__showContextMenu)
+
     def close(self):
         # uninstall the logging bridge
         logging.getLogger().removeHandler(self.loggingBridge)
@@ -232,6 +237,50 @@ class LogsWidget(QWidget, DIALOG_UI):
     def __logsClearClicked(self):
         self.logs_model.clear()
 
+    def __showContextMenu(self, position):
+        """Show context menu on right-click."""
+        selection_model = self.logs_treeView.selectionModel()
+        has_selection = selection_model.hasSelection()
+        selected_rows = selection_model.selectedRows() if has_selection else []
+
+        menu = QMenu(self.logs_treeView)
+
+        copy_action = QAction(self.tr("Copy"), menu)
+        copy_action.setShortcut(QKeySequence.StandardKey.Copy)
+        copy_action.triggered.connect(self.__copySelectedRows)
+        copy_action.setEnabled(has_selection)
+        menu.addAction(copy_action)
+
+        copy_message_action = QAction(self.tr("Copy message"), menu)
+        copy_message_action.triggered.connect(self.__copySelectedMessage)
+        copy_message_action.setEnabled(len(selected_rows) == 1)
+        menu.addAction(copy_message_action)
+
+        menu.addSeparator()
+
+        # Columns submenu
+        columns_menu = menu.addMenu(self.tr("Columns"))
+
+        datetime_action = QAction(self.tr("Timestamp"), columns_menu)
+        datetime_action.setCheckable(True)
+        datetime_action.setChecked(PluginUtils.get_log_show_datetime())
+        datetime_action.toggled.connect(self.__toggleDatetimeColumn)
+        columns_menu.addAction(datetime_action)
+
+        level_action = QAction(self.tr("Level"), columns_menu)
+        level_action.setCheckable(True)
+        level_action.setChecked(PluginUtils.get_log_show_level())
+        level_action.toggled.connect(self.__toggleLevelColumn)
+        columns_menu.addAction(level_action)
+
+        module_action = QAction(self.tr("Module"), columns_menu)
+        module_action.setCheckable(True)
+        module_action.setChecked(PluginUtils.get_log_show_module())
+        module_action.toggled.connect(self.__toggleModuleColumn)
+        columns_menu.addAction(module_action)
+
+        menu.exec(self.logs_treeView.viewport().mapToGlobal(position))
+
     def set_datetime_column_visible(self, visible: bool):
         """Set visibility of the timestamp column."""
         self.logs_treeView.setColumnHidden(0, not visible)
@@ -253,6 +302,21 @@ class LogsWidget(QWidget, DIALOG_UI):
         self.set_datetime_column_visible(show_datetime)
         self.set_level_column_visible(show_level)
         self.set_module_column_visible(show_module)
+
+    def __toggleDatetimeColumn(self, checked: bool):
+        """Toggle timestamp column visibility and persist to settings."""
+        PluginUtils.set_log_show_datetime(checked)
+        self.set_datetime_column_visible(checked)
+
+    def __toggleLevelColumn(self, checked: bool):
+        """Toggle level column visibility and persist to settings."""
+        PluginUtils.set_log_show_level(checked)
+        self.set_level_column_visible(checked)
+
+    def __toggleModuleColumn(self, checked: bool):
+        """Toggle module column visibility and persist to settings."""
+        PluginUtils.set_log_show_module(checked)
+        self.set_module_column_visible(checked)
 
     def __copySelectedRows(self):
         """Copy selected rows to clipboard in CSV format."""
@@ -294,3 +358,18 @@ class LogsWidget(QWidget, DIALOG_UI):
         # Copy to clipboard
         clipboard = QApplication.clipboard()
         clipboard.setText("\n".join(csv_lines))
+
+    def __copySelectedMessage(self):
+        """Copy the message of the single selected row to clipboard."""
+        selection_model = self.logs_treeView.selectionModel()
+        selected_indexes = selection_model.selectedRows()
+
+        if len(selected_indexes) != 1:
+            return
+
+        source_index = self.proxy_model.mapToSource(selected_indexes[0])
+        row = source_index.row()
+        log_entry = self.logs_model.logs[row]
+
+        clipboard = QApplication.clipboard()
+        clipboard.setText(str(log_entry["Message"]))
