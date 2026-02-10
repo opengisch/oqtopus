@@ -1,5 +1,6 @@
 import os
 import shutil
+from zipfile import ZipFile
 
 from qgis.PyQt.QtCore import QUrl
 from qgis.PyQt.QtGui import QDesktopServices
@@ -13,7 +14,7 @@ DIALOG_UI = PluginUtils.get_ui_class("plugin_widget.ui")
 
 
 class PluginWidget(QWidget, DIALOG_UI):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, qgis_iface=None):
         QWidget.__init__(self, parent)
         self.setupUi(self)
 
@@ -22,9 +23,17 @@ class PluginWidget(QWidget, DIALOG_UI):
         self.copyZipToDirectory_pushButton.clicked.connect(self.__copyZipToDirectoryClicked)
 
         self.__current_module_package = None
+        self.__plugin_name = None
+        self.__iface = qgis_iface
+
+        if self.__iface:
+            self.qgisProfile_label.setText(self.__iface.userProfileManager().userProfile().name())
+        else:
+            self.qgisProfile_label.setText("Unknown")
 
     def setModulePackage(self, module_package: ModulePackage):
         self.__current_module_package = module_package
+        self.__plugin_name = None
         self.__packagePrepareGetPluginFilename()
 
     def clearModulePackage(self):
@@ -56,6 +65,20 @@ class PluginWidget(QWidget, DIALOG_UI):
             QtUtils.setForegroundColor(self.info_label, PluginUtils.COLOR_WARNING)
             QtUtils.setFontItalic(self.info_label, True)
             return
+
+        # Get the plugin name
+        self.__plugin_name = self.__extractPluginName(asset_plugin.package_zip)
+        if not self.__plugin_name:
+            self.info_label.setText(
+                self.tr(f"Couldn't determinate the plugin name for '{asset_plugin.package_zip}'.")
+            )
+            QtUtils.setForegroundColor(self.info_label, PluginUtils.COLOR_WARNING)
+            QtUtils.setFontItalic(self.info_label, True)
+            return
+
+        # Get the installed plugin current version
+        version = self.__getInstalledPluginVersion(self.__plugin_name)
+        self.currentVersion_label.setText(version)
 
         QtUtils.resetForegroundColor(self.info_label)
         QtUtils.setFontItalic(self.info_label, False)
@@ -99,30 +122,29 @@ class PluginWidget(QWidget, DIALOG_UI):
 
             # installFromZipFile return success from QGIS 3.44.08
             if Qgis.QGIS_VERSION_INT < 34408:
-                QMessageBox.warning(
+                version = self.__getInstalledPluginVersion(self.__plugin_name)
+                QMessageBox.information(
                     self,
                     self.tr("Installation finished"),
-                    self.tr(
-                        "Since your QGIS version is older than 3.44.8, we cannot determine if the installation was successful.\n"
-                        "Please check the installation status in the plugin manager."
-                    ),
+                    self.tr(f"Current '{self.__plugin_name}' plugin version is {version}"),
                 )
+                self.__packagePrepareGetPluginFilename()
                 return
 
             if not success:
                 QMessageBox.critical(
                     self,
                     self.tr("Error"),
-                    self.tr(f"Plugin '{asset_plugin.name}' installation failed."),
+                    self.tr(f"Plugin '{self.__plugin_name}' installation failed."),
                 )
                 return
 
             QMessageBox.information(
                 self,
                 self.tr("Success"),
-                self.tr(f"Plugin '{asset_plugin.name}' installed successfully."),
+                self.tr(f"Plugin '{self.__plugin_name}' installed successfully."),
             )
-            return
+            self.__packagePrepareGetPluginFilename()
 
         except Exception as e:
             QMessageBox.critical(
@@ -208,3 +230,23 @@ class PluginWidget(QWidget, DIALOG_UI):
                 self.tr(f"Failed to copy plugin package: {e}"),
             )
             return
+
+    def __extractPluginName(self, package_zip: str) -> str:
+        with ZipFile(package_zip, "r") as zip_ref:
+            for name in zip_ref.namelist():
+                print(f"name: {name}")
+                if name.endswith("/metadata.txt"):
+                    return name.split("/")[0]
+        return ""
+
+    def __getInstalledPluginVersion(self, plugin_name: str):
+        if not self.__iface:
+            return self.tr("Unknown")
+
+        import qgis
+
+        version = qgis.utils.pluginMetadata(plugin_name, "version")
+        if version == "__error__":
+            return self.tr("Not installed")
+
+        return version
