@@ -85,12 +85,31 @@ class PluginWidget(QWidget, DIALOG_UI):
         try:
             from pyplugin_installer import instance as plugin_installer_instance
             from qgis.core import Qgis
+        except ImportError:
+            QMessageBox.critical(
+                self,
+                self.tr("Error"),
+                self.tr("Plugin installation is not possible when oQtopus is running standalone."),
+            )
+            return
 
+        try:
             installer = plugin_installer_instance()
             success = installer.installFromZipFile(asset_plugin.package_zip)
 
             # installFromZipFile return success from QGIS 3.44.08
-            if not success and Qgis.QGIS_VERSION_INT > 34407:
+            if Qgis.QGIS_VERSION_INT < 34408:
+                QMessageBox.warning(
+                    self,
+                    self.tr("Installation finished"),
+                    self.tr(
+                        "Since your QGIS version is older than 3.44.8, we cannot determine if the installation was successful.\n"
+                        "Please check the installation status in the plugin manager."
+                    ),
+                )
+                return
+
+            if not success:
                 QMessageBox.critical(
                     self,
                     self.tr("Error"),
@@ -105,16 +124,8 @@ class PluginWidget(QWidget, DIALOG_UI):
             )
             return
 
-        except ImportError:
-            QMessageBox.warning(
-                self,
-                self.tr("Error"),
-                self.tr("Plugin installation is not possible when oQtopus is running standalone."),
-            )
-            return
-
         except Exception as e:
-            QMessageBox.warning(
+            QMessageBox.critical(
                 self,
                 self.tr("Error"),
                 self.tr("Plugin installation failed with an exception: {0}").format(str(e)),
