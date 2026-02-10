@@ -152,6 +152,7 @@ class MainDialog(QDialog, DIALOG_UI):
             )
             event.ignore()
             return
+        self.__databaseConnectionWidget.close()
         self.__moduleWidget.close()
         self.__moduleSelectionWidget.close()
         self.__logsWidget.close()
@@ -165,6 +166,7 @@ class MainDialog(QDialog, DIALOG_UI):
                 self.tr("Cannot close the dialog while an operation is running."),
             )
             return
+        self.__databaseConnectionWidget.close()
         self.__moduleWidget.close()
         self.__moduleSelectionWidget.close()
         self.__logsWidget.close()

@@ -53,6 +53,10 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             # Silence errors during widget initialization
             pass
 
+    def close(self):
+        """Close the database connection."""
+        self.__set_connection(None)
+
     def getConnection(self):
         """
         Returns the current database connection.
