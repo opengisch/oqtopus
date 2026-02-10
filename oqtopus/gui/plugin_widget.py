@@ -26,9 +26,10 @@ class PluginWidget(QWidget, DIALOG_UI):
         self.__plugin_name = None
         self.__iface = qgis_iface
 
-        if self.__iface:
+        try:
+            from qgis.utils import iface
             self.qgisProfile_label.setText(self.__iface.userProfileManager().userProfile().name())
-        else:
+        except ImportError:
             self.qgisProfile_label.setText("Unknown")
 
     def setModulePackage(self, module_package: ModulePackage):

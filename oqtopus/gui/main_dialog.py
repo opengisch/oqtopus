@@ -55,7 +55,7 @@ DIALOG_UI = PluginUtils.get_ui_class("main_dialog.ui")
 
 
 class MainDialog(QDialog, DIALOG_UI):
-    def __init__(self, modules_config_path, about_dialog_cls=None, parent=None, qgis_iface=None):
+    def __init__(self, modules_config_path, about_dialog_cls=None, parent=None):
         QDialog.__init__(self, parent)
         self.setupUi(self)
 
@@ -81,7 +81,7 @@ class MainDialog(QDialog, DIALOG_UI):
         self.project_tab.layout().addWidget(self.__projectWidget)
 
         # Init GUI Plugin
-        self.__pluginWidget = PluginWidget(self, qgis_iface=qgis_iface)
+        self.__pluginWidget = PluginWidget(self)
         self.plugin_tab.layout().addWidget(self.__pluginWidget)
 
         # Init GUI Logs
