@@ -215,14 +215,19 @@ class PluginWidget(QWidget, DIALOG_UI):
         if not install_destination:
             return
 
+        install_filename = os.path.join(
+            install_destination,
+            f"{self.__plugin_name}_{self.__current_module_package.name}.zip",
+        )
+
         # Copy the plugin package to the selected directory
         try:
-            shutil.copy2(asset_plugin.package_zip, install_destination)
+            shutil.copy2(asset_plugin.package_zip, install_filename)
 
             QMessageBox.information(
                 self,
                 self.tr("Plugin copied"),
-                self.tr(f"Plugin package has been copied to '{install_destination}'."),
+                self.tr(f"Plugin package has been copied to '{install_filename}'."),
             )
         except Exception as e:
             QMessageBox.critical(
