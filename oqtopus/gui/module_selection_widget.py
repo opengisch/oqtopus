@@ -43,23 +43,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         self.module_progressBar.setVisible(False)
 
-        self.module_module_comboBox.clear()
-        self.module_module_comboBox.addItem(self.tr("Please select a module"), None)
-        if self.__modules_config is not None:
-            for config_module in self.__modules_config.modules:
-                module = Module(
-                    name=config_module.name,
-                    id=config_module.id,
-                    organisation=config_module.organisation,
-                    repository=config_module.repository,
-                    exclude_releases=config_module.exclude_releases,
-                    parent=self,
-                )
-                self.module_module_comboBox.addItem(module.name, module)
-                module.signal_versionsLoaded.connect(self.__loadVersionsFinished)
-                module.signal_developmentVersionsLoaded.connect(
-                    self.__loadDevelopmentVersionsFinished
-                )
+        self.__populate_module_combobox()
 
         self.module_latestVersion_label.setText("")
         QtUtils.setForegroundColor(self.module_latestVersion_label, PluginUtils.COLOR_GREEN)
@@ -79,6 +63,39 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.__packagePrepareTask.signalPackagingProgress.connect(
             self.__packagePrepareTaskProgress
         )
+
+    def reloadModules(self):
+        """Reload the module combobox, e.g. after settings change."""
+        self.__populate_module_combobox()
+
+    def __populate_module_combobox(self):
+        """Populate the module combobox based on config and current settings."""
+        self.module_module_comboBox.blockSignals(True)
+        self.module_module_comboBox.clear()
+        self.module_module_comboBox.addItem(self.tr("Please select a module"), None)
+        show_experimental = PluginUtils.get_show_experimental_modules()
+        if self.__modules_config is not None:
+            for config_module in self.__modules_config.modules:
+                if config_module.experimental and not show_experimental:
+                    continue
+                module = Module(
+                    name=config_module.name,
+                    id=config_module.id,
+                    organisation=config_module.organisation,
+                    repository=config_module.repository,
+                    exclude_releases=config_module.exclude_releases,
+                    parent=self,
+                )
+                display_name = (
+                    f"{module.name} (experimental)" if config_module.experimental else module.name
+                )
+                self.module_module_comboBox.addItem(display_name, module)
+                module.signal_versionsLoaded.connect(self.__loadVersionsFinished)
+                module.signal_developmentVersionsLoaded.connect(
+                    self.__loadDevelopmentVersionsFinished
+                )
+        self.module_module_comboBox.blockSignals(False)
+        self.module_module_comboBox.setCurrentIndex(0)
 
     def close(self):
         if self.__packagePrepareTask.isRunning():

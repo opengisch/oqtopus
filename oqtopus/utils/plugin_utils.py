@@ -242,6 +242,16 @@ class PluginUtils:
         settings.setValue("oqtopus/allow_multiple_modules", allow)
 
     @staticmethod
+    def get_show_experimental_modules():
+        settings = QSettings()
+        return settings.value("oqtopus/show_experimental_modules", False, type=bool)
+
+    @staticmethod
+    def set_show_experimental_modules(show: bool):
+        settings = QSettings()
+        settings.setValue("oqtopus/show_experimental_modules", show)
+
+    @staticmethod
     def get_log_show_datetime():
         settings = QSettings()
         return settings.value("oqtopus/log_show_datetime", True, type=bool)

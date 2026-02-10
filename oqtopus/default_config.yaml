@@ -15,6 +15,7 @@ modules:
     id: tce
     organisation: teksi
     repository: cemetery
+    experimental: true
 
   - name: SIGNALO
     id: signalo

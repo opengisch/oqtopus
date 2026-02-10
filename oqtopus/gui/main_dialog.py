@@ -180,6 +180,8 @@ class MainDialog(QDialog, DIALOG_UI):
         if dlg.exec() == QDialog.DialogCode.Accepted:
             # Update column visibility from settings
             self.__logsWidget.update_column_visibility_from_settings()
+            # Reload modules in case experimental visibility changed
+            self.__moduleSelectionWidget.reloadModules()
 
     def __cleanup_cache(self):
         """Delete all cached data (downloaded packages and GitHub API cache)."""

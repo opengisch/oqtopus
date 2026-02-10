@@ -12,6 +12,9 @@ class SettingsDialog(QDialog, DIALOG_UI):
 
         self.githubToken_lineEdit.setText(PluginUtils.get_github_token())
         self.allow_multiple_modules_checkBox.setChecked(PluginUtils.get_allow_multiple_modules())
+        self.show_experimental_modules_checkBox.setChecked(
+            PluginUtils.get_show_experimental_modules()
+        )
 
         # Load log column visibility settings
         self.log_show_datetime_checkBox.setChecked(PluginUtils.get_log_show_datetime())
@@ -26,6 +29,9 @@ class SettingsDialog(QDialog, DIALOG_UI):
     def accept(self):
         PluginUtils.set_github_token(self.githubToken_lineEdit.text())
         PluginUtils.set_allow_multiple_modules(self.allow_multiple_modules_checkBox.isChecked())
+        PluginUtils.set_show_experimental_modules(
+            self.show_experimental_modules_checkBox.isChecked()
+        )
         PluginUtils.set_log_show_datetime(self.log_show_datetime_checkBox.isChecked())
         PluginUtils.set_log_show_level(self.log_show_level_checkBox.isChecked())
         PluginUtils.set_log_show_module(self.log_show_module_checkBox.isChecked())
