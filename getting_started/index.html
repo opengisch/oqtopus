@@ -1,0 +1,839 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="oQtopus is an open-source platform designed to simplify and automate the deployment and management of PostgreSQL/postgis modules with QGIS projects.">
+      
+      
+        <meta name="author" content="opengisch">
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../adding_modules/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Getting Started - oQtopus documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#getting-started" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="oQtopus documentation" class="md-header__button md-logo" aria-label="oQtopus documentation" data-md-component="logo">
+      
+  <img src="../assets/images/oqtopus.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            oQtopus documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Getting Started
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/opengisch/oqtopus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    opengisch/oqtopus
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  About
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../adding_modules/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Adding Modules
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="oQtopus documentation" class="md-nav__button md-logo" aria-label="oQtopus documentation" data-md-component="logo">
+      
+  <img src="../assets/images/oqtopus.png" alt="logo">
+
+    </a>
+    oQtopus documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/opengisch/oqtopus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    opengisch/oqtopus
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    About
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#oqtopus-as-a-qgis-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      oQtopus as a QGIS Plugin
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="oQtopus as a QGIS Plugin">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites-mainly-python-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔧 Prerequisites (Mainly python packages)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-the-module-management-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the Module management plugin
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#download-a-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      Download a module
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-or-prepare-the-host-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create or prepare the host database
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-the-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the module
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#get-the-projet" class="md-nav__link">
+    <span class="md-ellipsis">
+      Get the projet
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install-the-module-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the module plugin
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oqtopus-as-a-standalone-python-executable" class="md-nav__link">
+    <span class="md-ellipsis">
+      oQtopus as a standalone python executable
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="oQtopus as a standalone python executable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-module-and-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install module and requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run the application
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adding_modules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Adding Modules
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#oqtopus-as-a-qgis-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      oQtopus as a QGIS Plugin
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="oQtopus as a QGIS Plugin">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites-mainly-python-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔧 Prerequisites (Mainly python packages)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-the-module-management-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the Module management plugin
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#download-a-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      Download a module
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-or-prepare-the-host-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create or prepare the host database
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-the-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the module
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#get-the-projet" class="md-nav__link">
+    <span class="md-ellipsis">
+      Get the projet
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install-the-module-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the module plugin
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oqtopus-as-a-standalone-python-executable" class="md-nav__link">
+    <span class="md-ellipsis">
+      oQtopus as a standalone python executable
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="oQtopus as a standalone python executable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-module-and-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install module and requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-the-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run the application
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="getting-started">Getting Started</h1>
+<p>oQtopus is designed to deploy, manage and upgrade QGIS projects and plugins along with their associated postgreSQL / PostGIS datamodel implementations.</p>
+<p>Installation and upgrade* of your datamodel implementations are managed through the PostgreSQL Upgrade Manager (<a href="https://github.com/opengisch/pum/">pum</a>).</p>
+<p>It can be installed either as a QGIS plugin or as a standalone Python executable.</p>
+<p>*Upgrade functionnality has now reach the development phase, it should be available in the next months.</p>
+<h2 id="oqtopus-as-a-qgis-plugin">oQtopus as a QGIS Plugin</h2>
+<h3 id="installation">Installation</h3>
+<h4 id="prerequisites-mainly-python-packages">🔧 Prerequisites (Mainly python packages)</h4>
+<blockquote>
+<p>[!WARNING]
+On Windows, QGIS installation doesn't provide the necessary Python libraries yet.
+You need to install psycopg and pydantic using pip.</p>
+</blockquote>
+<p>Before anything, you should check for these python packages to be available in your QGIS environment :</p>
+<p>On windows start the osgeo4w shell and run following command :
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install --upgrade pum pirogue pydantic psycopg
+</span></code></pre></div></p>
+<h4 id="install-the-module-management-plugin">Install the Module management plugin</h4>
+<ol>
+<li>Run your QGIS (&gt;=) 3.40 (LTR)</li>
+<li>Under the extensions manager / parameters -&gt; tick the experimental plugins</li>
+</ol>
+<p><img alt="image" src="https://github.com/user-attachments/assets/cad47237-2d3e-457c-8ce3-aaef31dc7254" /></p>
+<ol>
+<li>Search for <code>oQtopus</code> with a <code>Q</code> like <code>QGIS</code> and install the latest release</li>
+</ol>
+<p><img alt="image" src="https://github.com/user-attachments/assets/0438c435-efaf-477f-97c2-9d42968b760a" /></p>
+<h3 id="download-a-module">Download a module</h3>
+<p>In the <code>Module selection</code> box:</p>
+<ol>
+<li>Launch the plugin</li>
+<li>Select the desired module (ie. <code>TWW</code> and the version (ie. <code>2025.0.1rc2</code>))</li>
+<li>Wait for the assests being downloaded</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Alternative versions</p>
+<p>By default oQtopus lists versions listed in the releases list of the Github project.
+But it is also possible to install from a .zip archive of the source code.
+By selecting "Load pre-releases and development branches" in the versions combobox oQtopus will load
+additional installable versions including pre-releases, the main branch and all branches from open pull requests.</p>
+</div>
+<h3 id="create-or-prepare-the-host-database">Create or prepare the host database</h3>
+<p>In the <code>Database connection</code> box, you can either:</p>
+<ul>
+<li>Choose a defined PG Service for an existing database</li>
+<li><code>...</code> Create an empty database and create the corresponding PG service</li>
+<li><code>...</code> Duplicate an existing database</li>
+</ul>
+<h3 id="install-the-module">Install the module</h3>
+<p>In the previous steps, you selected the module to be installed and defined the destination database.</p>
+<p>In the <code>Module</code> tab:</p>
+<ul>
+<li>Tick if you want to create and grant roles. Attention, if the module users are not existing in the postgresql server, the installation of the module might fail.</li>
+<li>Tick if you want to install demo data and choose which demo dataset</li>
+<li><strong>advanced users</strong>: specify advanced installation parameters in the <code>Parameters</code> box.</li>
+<li>Click <code>Install XXXXX</code></li>
+</ul>
+<h2 id="get-the-projet">Get the projet</h2>
+<p>In the <code>Project</code> tab:</p>
+<ul>
+<li>Click <code>Install template project</code> and choose the project destination. The project is initialized with the defined service.</li>
+<li>If the langage setting are properly defined (QGIS local is defined and corresponding translation <code>.qm</code> file is existing. Ie. fr_CH and <code>module_name_fr_CH.qgs</code>), the project is translated in your langage.</li>
+<li>If a pg service is selected, all references in the project file are updated to use it.</li>
+</ul>
+<h2 id="install-the-module-plugin">Install the module plugin</h2>
+<p>In the <code>Plugin</code> tab, you can install the module plugin (ie. TWW plugin). Direct install using the <code>Install</code> button is currently not implemented.</p>
+<ul>
+<li>Click <code>Copy ZIP to directory</code></li>
+<li>In QGIS &gt; Extension &gt; Install and manage extension &gt; Install from ZIP</li>
+</ul>
+<h2 id="oqtopus-as-a-standalone-python-executable">oQtopus as a standalone python executable</h2>
+<h3 id="install-module-and-requirements">Install module and requirements</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span>pyqt6<span class="w">  </span><span class="c1"># pyqt5 is not supported for the standalone version</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pip<span class="w"> </span>install<span class="w"> </span>oqtopus
+</span></code></pre></div>
+<h3 id="run-the-application">Run the application</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python3<span class="w"> </span>-m<span class="w"> </span>oqtopus.oqtopus
+</span></code></pre></div>
+<blockquote>
+<p>[!WARNING]
+At the moment the path to <code>default_config.yaml</code>is hard coded in Oqtopus, if you need
+to change the config, for example for adding new modules, you will have to find
+the installation directory of the pip package to locate the file.</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.expand", "navigation.indexes", "navigation.top", "navigation.tracking", {"pymdownx.highlight": {"anchor_linenums": true, "line_spans": "__span", "pygments_lang_class": true}}, "pymdownx.inlinehilite", "pymdownx.snippets", "pymdownx.superfences"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
