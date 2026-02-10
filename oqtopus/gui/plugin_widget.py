@@ -14,7 +14,7 @@ DIALOG_UI = PluginUtils.get_ui_class("plugin_widget.ui")
 
 
 class PluginWidget(QWidget, DIALOG_UI):
-    def __init__(self, parent=None, qgis_iface=None):
+    def __init__(self, parent=None):
         QWidget.__init__(self, parent)
         self.setupUi(self)
 
@@ -24,11 +24,11 @@ class PluginWidget(QWidget, DIALOG_UI):
 
         self.__current_module_package = None
         self.__plugin_name = None
-        self.__iface = qgis_iface
 
         try:
             from qgis.utils import iface
-            self.qgisProfile_label.setText(self.__iface.userProfileManager().userProfile().name())
+
+            self.qgisProfile_label.setText(iface.userProfileManager().userProfile().name())
         except ImportError:
             self.qgisProfile_label.setText("Unknown")
 
@@ -241,12 +241,12 @@ class PluginWidget(QWidget, DIALOG_UI):
         return ""
 
     def __getInstalledPluginVersion(self, plugin_name: str):
-        if not self.__iface:
+        try:
+            from qgis.utils import pluginMetadata
+        except ImportError:
             return self.tr("Unknown")
 
-        import qgis
-
-        version = qgis.utils.pluginMetadata(plugin_name, "version")
+        version = pluginMetadata(plugin_name, "version")
         if version == "__error__":
             return self.tr("Not installed")
 
