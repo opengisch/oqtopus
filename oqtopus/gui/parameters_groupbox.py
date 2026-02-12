@@ -37,11 +37,16 @@ class ParameterWidget(QWidget):
         else:
             param_type_value = str(param_type).split(".")[-1].lower()
 
+        tooltip = parameter_definition.description or ""
+
         if param_type_value != "boolean":
-            self.layout.addWidget(QLabel(parameter_definition.name, self))
+            label = QLabel(parameter_definition.name, self)
+            label.setToolTip(tooltip)
+            self.layout.addWidget(label)
 
         if param_type_value == "boolean":
             self.widget = QCheckBox(parameter_definition.name, self)
+            self.widget.setToolTip(tooltip)
             if parameter_definition.default is not None:
                 self.widget.setChecked(parameter_definition.default)
             self.layout.addWidget(self.widget)
@@ -50,6 +55,7 @@ class ParameterWidget(QWidget):
         elif param_type_value in ("decimal", "integer", "text", "path"):
             if parameter_definition.values:
                 self.widget = QComboBox(self)
+                self.widget.setToolTip(tooltip)
                 for v in parameter_definition.values:
                     self.widget.addItem(str(v), v)
                 if parameter_definition.default is not None:
@@ -66,6 +72,7 @@ class ParameterWidget(QWidget):
                     self.value = lambda: self.widget.currentData()
             else:
                 self.widget = QLineEdit(self)
+                self.widget.setToolTip(tooltip)
                 if parameter_definition.default is not None:
                     self.widget.setPlaceholderText(str(parameter_definition.default))
                 self.layout.addWidget(self.widget)
