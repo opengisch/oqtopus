@@ -90,6 +90,14 @@ class PackagePrepareTask(QThread):
             self.__destination_directory = self.__prepare_destination_directory()
             logger.info(f"Destination directory: {self.__destination_directory}")
 
+            # For branches/PRs, always fetch the latest commit SHA before
+            # checking the cache so we detect new commits
+            if self.module_package.type in (
+                ModulePackage.Type.BRANCH,
+                ModulePackage.Type.PULL_REQUEST,
+            ):
+                self.module_package.fetch_commit_sha()
+
             # Reset progress tracking
             self.__download_total_expected = 0
             self.__download_total_received = 0
@@ -128,9 +136,14 @@ class PackagePrepareTask(QThread):
         self.__prefetch_download_sizes(module_package)
 
         # Download the source or use from zip
-        zip_file = self.from_zip_file or self.__download_module_asset(
-            module_package.download_url, "source.zip", module_package
-        )
+        if self.from_zip_file:
+            zip_file = self.from_zip_file
+        else:
+            zip_file, was_downloaded = self.__download_module_asset(
+                module_package.download_url, "source.zip", module_package
+            )
+            if was_downloaded:
+                self.__remove_extracted_dir("src")
 
         module_package.source_package_zip = zip_file
         package_dir = self.__extract_zip_file(zip_file, "src")
@@ -139,22 +152,26 @@ class PackagePrepareTask(QThread):
         # Download the release assets
         self.__checkForCanceled()
         if module_package.asset_project is not None:
-            zip_file = self.__download_module_asset(
+            zip_file, was_downloaded = self.__download_module_asset(
                 module_package.asset_project.download_url,
                 module_package.asset_project.type.value + ".zip",
                 module_package,
             )
+            if was_downloaded:
+                self.__remove_extracted_dir("project")
             package_dir = self.__extract_zip_file(zip_file, "project")
             module_package.asset_project.package_zip = zip_file
             module_package.asset_project.package_dir = package_dir
 
         self.__checkForCanceled()
         if module_package.asset_plugin is not None:
-            zip_file = self.__download_module_asset(
+            zip_file, was_downloaded = self.__download_module_asset(
                 module_package.asset_plugin.download_url,
                 module_package.asset_plugin.type.value + ".zip",
                 module_package,
             )
+            if was_downloaded:
+                self.__remove_extracted_dir("plugin")
             package_dir = self.__extract_zip_file(zip_file, "plugin")
             module_package.asset_plugin.package_zip = zip_file
             module_package.asset_plugin.package_dir = package_dir
@@ -256,6 +273,26 @@ class PackagePrepareTask(QThread):
                 return f"{name}-{int(time.time())}{ext}"
         return base_filename
 
+    def __remove_extracted_dir(self, subdir):
+        """Remove an extracted directory to force re-extraction."""
+        package_dir = os.path.join(self.__destination_directory, subdir)
+        if os.path.exists(package_dir):
+            shutil.rmtree(package_dir)
+            logger.info(f"Removed stale extracted directory: {subdir}")
+
+    def __cleanup_old_cached_files(self, base_filename, current_cache_filename):
+        """Remove old SHA-versioned cache files for the same asset."""
+        name, ext = os.path.splitext(base_filename)
+        prefix = f"{name}-"
+        for f in os.listdir(self.__destination_directory):
+            if f.startswith(prefix) and f.endswith(ext) and f != current_cache_filename:
+                old_file = os.path.join(self.__destination_directory, f)
+                try:
+                    os.remove(old_file)
+                    logger.info(f"Removed old cached file: {f}")
+                except OSError as e:
+                    logger.warning(f"Failed to remove old cached file {f}: {e}")
+
     def __download_module_asset(self, url: str, filename: str, module_package):
 
         cache_filename = self.__get_cache_filename(filename, module_package)
@@ -273,13 +310,16 @@ class PackagePrepareTask(QThread):
                     logger.info(f"Using cached: {os.path.basename(zip_file)}")
                     # Still emit some progress to show we're not stuck
                     self.signalPackagingProgress.emit(-1.0, 0)
-                    return zip_file
+                    return zip_file, False
             except (zipfile.BadZipFile, OSError, Exception) as e:
                 logger.warning(f"Existing file '{zip_file}' is invalid ({e}), will re-download")
                 try:
                     os.remove(zip_file)
                 except OSError:
                     pass
+
+        # Clean up old SHA-versioned files for the same asset
+        self.__cleanup_old_cached_files(filename, cache_filename)
 
         # Streaming, so we can iterate over the response.
         timeout = 60
@@ -322,7 +362,7 @@ class PackagePrepareTask(QThread):
         # Ensure final progress reflects completion
         self.__emit_progress(force=True)
 
-        return zip_file
+        return zip_file, True
 
     def __emit_progress(self, force: bool = False):
         """Emit download progress as percentage (0-100) or -1 for indeterminate."""
