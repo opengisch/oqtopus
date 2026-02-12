@@ -2,6 +2,7 @@ import logging
 
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -45,16 +46,32 @@ class ParameterWidget(QWidget):
             self.layout.addWidget(self.widget)
             self.value = lambda: self.widget.isChecked()
         elif param_type_value in ("decimal", "integer", "text", "path"):
-            self.widget = QLineEdit(self)
-            if parameter_definition.default is not None:
-                self.widget.setPlaceholderText(str(parameter_definition.default))
-            self.layout.addWidget(self.widget)
-            if param_type_value == "integer":
-                self.value = lambda: int(self.widget.text() or self.widget.placeholderText())
-            elif param_type_value == "decimal":
-                self.value = lambda: float(self.widget.text() or self.widget.placeholderText())
+            if parameter_definition.values:
+                self.widget = QComboBox(self)
+                for v in parameter_definition.values:
+                    self.widget.addItem(str(v), v)
+                if parameter_definition.default is not None:
+                    idx = self.widget.findData(parameter_definition.default)
+                    if idx >= 0:
+                        self.widget.setCurrentIndex(idx)
+                self.layout.addWidget(self.widget)
+                if param_type_value == "integer":
+                    self.value = lambda: int(self.widget.currentData())
+                elif param_type_value == "decimal":
+                    self.value = lambda: float(self.widget.currentData())
+                else:
+                    self.value = lambda: self.widget.currentData()
             else:
-                self.value = lambda: self.widget.text() or self.widget.placeholderText()
+                self.widget = QLineEdit(self)
+                if parameter_definition.default is not None:
+                    self.widget.setPlaceholderText(str(parameter_definition.default))
+                self.layout.addWidget(self.widget)
+                if param_type_value == "integer":
+                    self.value = lambda: int(self.widget.text() or self.widget.placeholderText())
+                elif param_type_value == "decimal":
+                    self.value = lambda: float(self.widget.text() or self.widget.placeholderText())
+                else:
+                    self.value = lambda: self.widget.text() or self.widget.placeholderText()
         else:
             raise ValueError(
                 f"Unknown parameter type '{parameter_definition.type}' "
