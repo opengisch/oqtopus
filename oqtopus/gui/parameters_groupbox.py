@@ -6,7 +6,6 @@ from qgis.PyQt.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QScrollArea,
     QWidget,
 )
 
@@ -67,39 +66,34 @@ class ParametersGroupBox(QGroupBox):
     def __init__(self, parent):
         QGroupBox.__init__(self, parent)
         self.parameter_widgets = {}
+        self.parameters = []
 
     def setParameters(self, parameters: list[ParameterDefinition]):
         logger.debug(f"Setting parameters in ParametersGroupBox ({len(parameters)})")
         self.clean()
         self.parameters = parameters
 
-        # Add parameter widgets into the scroll area's content widget
-        scroll_area = self.findChild(QScrollArea, "parameters_area")
-        if scroll_area is not None:
-            content_widget = scroll_area.widget()
-            layout = content_widget.layout()
-            if layout is None:
-                from qgis.PyQt.QtWidgets import QVBoxLayout
+        if not parameters:
+            self.setVisible(False)
+            return
 
-                layout = QVBoxLayout(content_widget)
-                layout.setContentsMargins(0, 0, 0, 0)
-                content_widget.setLayout(layout)
-            for parameter in parameters:
-                pw = ParameterWidget(parameter, content_widget)
-                layout.addWidget(pw)
-                self.parameter_widgets[parameter.name] = pw
-        else:
-            # Fallback: add directly to the groupbox layout
-            for parameter in parameters:
-                pw = ParameterWidget(parameter, self)
-                self.layout().addWidget(pw)
-                self.parameter_widgets[parameter.name] = pw
+        self.setVisible(True)
+
+        for parameter in parameters:
+            pw = ParameterWidget(parameter, self)
+            self.layout().addWidget(pw)
+            self.parameter_widgets[parameter.name] = pw
 
     def parameters_values(self):
         values = {}
         for parameter in self.parameters:
             values[parameter.name] = self.parameter_widgets[parameter.name].value()
         return values
+
+    def setParametersEnabled(self, enabled: bool):
+        """Enable or disable the parameter widgets without affecting the scroll area."""
+        for pw in self.parameter_widgets.values():
+            pw.setEnabled(enabled)
 
     def clean(self):
         for widget in self.parameter_widgets.values():

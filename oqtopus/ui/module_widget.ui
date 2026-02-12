@@ -118,7 +118,7 @@
             <property name="title">
              <string>Parameters</string>
             </property>
-            <layout class="QGridLayout" name="gridLayout_6">
+            <layout class="QVBoxLayout" name="parameters_layout">
              <property name="leftMargin">
               <number>3</number>
              </property>
@@ -131,23 +131,27 @@
              <property name="bottomMargin">
               <number>3</number>
              </property>
-             <item row="0" column="0">
-              <widget class="QScrollArea" name="parameters_area">
-               <property name="widgetResizable">
-                <bool>true</bool>
-               </property>
-               <widget class="QWidget" name="scrollAreaWidgetContents">
-                <property name="geometry">
-                 <rect>
-                  <x>0</x>
-                  <y>0</y>
-                  <width>416</width>
-                  <height>51</height>
-                 </rect>
-                </property>
-               </widget>
-              </widget>
-             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="ParametersGroupBox" name="parameters_app_only_groupbox">
+            <property name="title">
+             <string>Application parameters</string>
+            </property>
+            <layout class="QVBoxLayout" name="parameters_app_only_layout">
+             <property name="leftMargin">
+              <number>3</number>
+             </property>
+             <property name="topMargin">
+              <number>3</number>
+             </property>
+             <property name="rightMargin">
+              <number>3</number>
+             </property>
+             <property name="bottomMargin">
+              <number>3</number>
+             </property>
             </layout>
            </widget>
           </item>
@@ -255,7 +259,49 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
+       <item row="2" column="0" colspan="4">
+        <widget class="ParametersGroupBox" name="parameters_groupbox_upgrade">
+         <property name="title">
+          <string>Parameters</string>
+         </property>
+         <layout class="QVBoxLayout" name="parameters_layout_upgrade">
+          <property name="leftMargin">
+           <number>3</number>
+          </property>
+          <property name="topMargin">
+           <number>3</number>
+          </property>
+          <property name="rightMargin">
+           <number>3</number>
+          </property>
+          <property name="bottomMargin">
+           <number>3</number>
+          </property>
+         </layout>
+        </widget>
+       </item>
+       <item row="3" column="0" colspan="4">
+        <widget class="ParametersGroupBox" name="parameters_app_only_groupbox_upgrade">
+         <property name="title">
+          <string>Application parameters</string>
+         </property>
+         <layout class="QVBoxLayout" name="parameters_app_only_layout_upgrade">
+          <property name="leftMargin">
+           <number>3</number>
+          </property>
+          <property name="topMargin">
+           <number>3</number>
+          </property>
+          <property name="rightMargin">
+           <number>3</number>
+          </property>
+          <property name="bottomMargin">
+           <number>3</number>
+          </property>
+         </layout>
+        </widget>
+       </item>
+       <item row="4" column="0">
         <spacer name="verticalSpacer_4">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
