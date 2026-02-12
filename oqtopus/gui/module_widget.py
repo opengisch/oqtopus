@@ -652,18 +652,18 @@ class ModuleWidget(QWidget, DIALOG_UI):
         QtUtils.setForegroundColor(label, PluginUtils.COLOR_WARNING)
         # Hide the stacked widget entirely when in error state
         self.moduleInfo_stackedWidget.setVisible(False)
-        # Also hide uninstall buttons since module info is not valid
-        self.uninstall_button.setVisible(False)
-        self.uninstall_button_maintain.setVisible(False)
+        # Also disable uninstall buttons since module info is not valid
+        self.uninstall_button.setEnabled(False)
+        self.uninstall_button_maintain.setEnabled(False)
 
     def __show_no_module_selected_page(self):
         """Show message when no module package is selected."""
         # Hide the stacked widget since no module is selected
         self.moduleInfo_stackedWidget.setVisible(False)
 
-        # Hide uninstall buttons
-        self.uninstall_button.setVisible(False)
-        self.uninstall_button_maintain.setVisible(False)
+        # Disable uninstall buttons
+        self.uninstall_button.setEnabled(False)
+        self.uninstall_button_maintain.setEnabled(False)
 
     def __show_install_page(self, version: str):
         """Switch to install page and configure it."""
@@ -838,14 +838,14 @@ class ModuleWidget(QWidget, DIALOG_UI):
         )
 
     def __configure_uninstall_button(self):
-        """Show/hide uninstall buttons based on configuration."""
+        """Enable/disable uninstall buttons based on configuration."""
         has_uninstall = bool(
             self.__pum_config
             and self.__pum_config.config.uninstall
             and len(self.__pum_config.config.uninstall) > 0
         )
-        self.uninstall_button.setVisible(has_uninstall)
-        self.uninstall_button_maintain.setVisible(has_uninstall)
+        self.uninstall_button.setEnabled(has_uninstall)
+        self.uninstall_button_maintain.setEnabled(has_uninstall)
 
     def __updateModuleInfo(self):
         if self.__current_module_package is None:
