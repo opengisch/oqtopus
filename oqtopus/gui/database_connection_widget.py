@@ -223,24 +223,29 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             beta_text = " \u26a0\ufe0f" if info["beta_testing"] else ""
             display = f"\u2022 <b>{module_label}</b> ({version}){beta_text}"
 
-            # Build tooltip with details
+            # Build tooltip with details (rich HTML for bigger text)
             tooltip_lines = []
-            tooltip_lines.append(f"Module: {module_label}")
-            tooltip_lines.append(f"Schema: {schema}")
-            tooltip_lines.append(f"Version: {version}")
+            tooltip_lines.append(f"<b>Module:</b> {module_label}")
+            tooltip_lines.append(f"<b>Schema:</b> {schema}")
+            tooltip_lines.append(f"<b>Version:</b> {version}")
             if info["beta_testing"]:
-                tooltip_lines.append("\u26a0\ufe0f Beta testing")
+                tooltip_lines.append("\u26a0\ufe0f <b>Beta testing</b>")
             if info["installed_date"]:
                 tooltip_lines.append(
-                    f"Installed: {info['installed_date'].strftime('%Y-%m-%d %H:%M')}"
+                    f"<b>Installed:</b> {info['installed_date'].strftime('%Y-%m-%d %H:%M')}"
                 )
             if info["upgrade_date"]:
                 tooltip_lines.append(
-                    f"Last upgrade: {info['upgrade_date'].strftime('%Y-%m-%d %H:%M')}"
+                    f"<b>Last upgrade:</b> {info['upgrade_date'].strftime('%Y-%m-%d %H:%M')}"
                 )
+            if info.get("parameters") and isinstance(info["parameters"], dict):
+                tooltip_lines.append("<br><b>Parameters:</b>")
+                for param_name, param_value in info["parameters"].items():
+                    tooltip_lines.append(f"&nbsp;&nbsp;{param_name} = {param_value}")
 
+            tooltip_html = "<p style='font-size:11pt'>" + "<br>".join(tooltip_lines) + "</p>"
             label = QLabel(display)
-            label.setToolTip("\n".join(tooltip_lines))
+            label.setToolTip(tooltip_html)
             layout.addWidget(label)
 
         self.installed_modules_groupbox.setVisible(True)
