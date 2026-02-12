@@ -13,6 +13,7 @@ from ..libs.pum.pum_config import PumConfig
 from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
+from .recreate_app_dialog import RecreateAppDialog
 
 DIALOG_UI = PluginUtils.get_ui_class("module_widget.ui")
 
@@ -217,7 +218,13 @@ class ModuleWidget(QWidget, DIALOG_UI):
         logger.info(f"PUM config loaded from '{pumConfigFilename}'")
 
         try:
-            self.parameters_groupbox.setParameters(self.__pum_config.parameters())
+            all_params = self.__pum_config.parameters()
+            standard_params = [p for p in all_params if not p.app_only]
+            app_only_params = [p for p in all_params if p.app_only]
+            self.parameters_groupbox.setParameters(standard_params)
+            self.parameters_app_only_groupbox.setParameters(app_only_params)
+            self.parameters_groupbox_upgrade.setParameters(standard_params)
+            self.parameters_app_only_groupbox_upgrade.setParameters(app_only_params)
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"),
@@ -266,7 +273,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.parameters_groupbox.parameters_values()
+            parameters = self.__get_all_parameters()
 
             beta_testing = self.beta_testing_checkbox_pageInstall.isChecked()
             if beta_testing:
@@ -383,7 +390,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
                         return
 
             try:
-                parameters = self.parameters_groupbox.parameters_values()
+                parameters = self.__get_all_parameters()
 
                 beta_testing = self.beta_testing_checkbox_pageUpgrade.isChecked()
                 if beta_testing:
@@ -485,7 +492,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.parameters_groupbox.parameters_values()
+            parameters = self.__get_all_parameters()
 
             # Start background uninstall operation
             self.__startOperation("uninstall", parameters, {})
@@ -517,7 +524,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.parameters_groupbox.parameters_values()
+            parameters = self.__get_all_parameters()
 
             # Start background roles operation
             self.__startOperation("roles", parameters, {})
@@ -563,7 +570,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.parameters_groupbox.parameters_values()
+            parameters = self.__get_all_parameters()
 
             # Start background drop app operation
             self.__startOperation("drop_app", parameters, {})
@@ -594,22 +601,22 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
-        reply = QMessageBox.question(
-            self,
-            self.tr("(Re)create app"),
-            self.tr(
-                "Are you sure you want to recreate the application?\n\n"
-                "This will first drop the app and then create it again, executing the corresponding handlers."
-            ),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
+        try:
+            all_params = self.__pum_config.parameters()
+            standard_params = [p for p in all_params if not p.app_only]
+            app_only_params = [p for p in all_params if p.app_only]
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Can't load parameters:"), exception, self
+            ).exec()
+            return
 
-        if reply != QMessageBox.StandardButton.Yes:
+        dialog = RecreateAppDialog(standard_params, app_only_params, self)
+        if dialog.exec() != RecreateAppDialog.DialogCode.Accepted:
             return
 
         try:
-            parameters = self.parameters_groupbox.parameters_values()
+            parameters = dialog.parameters()
 
             # Start background recreate app operation
             self.__startOperation("recreate_app", parameters, {})
@@ -619,6 +626,24 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 self.tr("Error"), self.tr("Can't recreate app:"), exception, self
             ).exec()
             return
+
+    def __get_all_parameters(self) -> dict:
+        """Collect parameter values from both standard and app_only groupboxes.
+
+        Uses the upgrade-specific groupboxes when on the upgrade page,
+        otherwise uses the install page groupboxes.
+        """
+        values = {}
+        if (
+            self.moduleInfo_stackedWidget.currentWidget()
+            == self.moduleInfo_stackedWidget_pageUpgrade
+        ):
+            values.update(self.parameters_groupbox_upgrade.parameters_values())
+            values.update(self.parameters_app_only_groupbox_upgrade.parameters_values())
+        else:
+            values.update(self.parameters_groupbox.parameters_values())
+            values.update(self.parameters_app_only_groupbox.parameters_values())
+        return values
 
     def __show_error_state(self, message: str, on_label=None):
         """Display an error state and hide the widget content."""
@@ -652,6 +677,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         # Configure beta testing checkbox based on package source
         self.__configure_beta_testing_checkbox(self.beta_testing_checkbox_pageInstall)
+
+        # On install, both standard and app_only parameters are editable
+        self.parameters_groupbox.setEnabled(True)
+        self.parameters_app_only_groupbox.setEnabled(True)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
         # Ensure the stacked widget is visible when showing a valid page
@@ -726,6 +755,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         # Configure beta testing checkbox based on package source
         self.__configure_beta_testing_checkbox(self.beta_testing_checkbox_pageUpgrade)
+
+        # On upgrade, standard parameters cannot be changed but remain scrollable
+        self.parameters_groupbox_upgrade.setParametersEnabled(False)
+        self.parameters_app_only_groupbox_upgrade.setParametersEnabled(True)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageUpgrade)
         self.moduleInfo_stackedWidget.setVisible(True)
