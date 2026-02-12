@@ -13,6 +13,7 @@ from ..libs.pum.pum_config import PumConfig
 from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
+from .recreate_app_dialog import RecreateAppDialog
 
 DIALOG_UI = PluginUtils.get_ui_class("module_widget.ui")
 
@@ -600,22 +601,22 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
-        reply = QMessageBox.question(
-            self,
-            self.tr("(Re)create app"),
-            self.tr(
-                "Are you sure you want to recreate the application?\n\n"
-                "This will first drop the app and then create it again, executing the corresponding handlers."
-            ),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
+        try:
+            all_params = self.__pum_config.parameters()
+            standard_params = [p for p in all_params if not p.app_only]
+            app_only_params = [p for p in all_params if p.app_only]
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Can't load parameters:"), exception, self
+            ).exec()
+            return
 
-        if reply != QMessageBox.StandardButton.Yes:
+        dialog = RecreateAppDialog(standard_params, app_only_params, self)
+        if dialog.exec() != RecreateAppDialog.DialogCode.Accepted:
             return
 
         try:
-            parameters = self.__get_all_parameters()
+            parameters = dialog.parameters()
 
             # Start background recreate app operation
             self.__startOperation("recreate_app", parameters, {})
