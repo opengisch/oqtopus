@@ -1002,28 +1002,43 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         if success:
             # Show success message
+            module_name = self.__current_module_package.module.name
             operation = self.__operation_task._ModuleOperationTask__operation
             if operation == "install":
-                operation_name = "installed"
+                title = self.tr("Module installed")
+                target_version = self.__pum_config.last_version()
+                message = self.tr(
+                    f"Module '{module_name}' has been installed ({target_version}) successfully."
+                )
             elif operation == "upgrade":
-                operation_name = "upgraded"
+                title = self.tr("Module upgraded")
+                target_version = self.__pum_config.last_version()
+                message = self.tr(
+                    f"Module '{module_name}' has been upgraded to {target_version} successfully."
+                )
             elif operation == "uninstall":
-                operation_name = "uninstalled"
+                title = self.tr("Module uninstalled")
+                message = self.tr(f"Module '{module_name}' has been uninstalled successfully.")
             elif operation == "roles":
-                operation_name = "roles created and granted"
+                title = self.tr("Roles created")
+                message = self.tr(
+                    f"Roles for module '{module_name}' have been created and granted successfully."
+                )
+            elif operation == "recreate_app":
+                title = self.tr("Application recreated")
+                message = self.tr(
+                    f"Application schema of module '{module_name}' has been recreated successfully."
+                )
             else:
-                operation_name = "completed"
+                title = self.tr("Task completed")
+                message = self.tr(f"Task on module '{module_name}' completed successfully.")
 
             QMessageBox.information(
                 self,
-                self.tr(f"Module {operation_name}"),
-                self.tr(
-                    f"Module '{self.__current_module_package.module.name}': {operation_name} successfully."
-                ),
+                title,
+                message,
             )
-            logger.info(
-                f"Module '{self.__current_module_package.module.name}': {operation_name} successfully."
-            )
+            logger.info(message)
 
             # Refresh module info
             self.__updateModuleInfo()
