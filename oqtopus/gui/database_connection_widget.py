@@ -1,7 +1,10 @@
+import os
+import sys
+
 import psycopg
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtGui import QAction
-from qgis.PyQt.QtWidgets import QDialog, QMenu, QWidget
+from qgis.PyQt.QtWidgets import QDialog, QLabel, QMenu, QWidget
 
 from ..libs.pgserviceparser import conf_path as pgserviceparser_conf_path
 from ..libs.pgserviceparser import service_config as pgserviceparser_service_config
@@ -10,6 +13,12 @@ from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
 from .database_create_dialog import DatabaseCreateDialog
 from .database_duplicate_dialog import DatabaseDuplicateDialog
+
+libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "libs"))
+if libs_path not in sys.path:
+    sys.path.insert(0, libs_path)
+
+from ..libs.pum.schema_migrations import SchemaMigrations  # noqa: E402
 
 DIALOG_UI = PluginUtils.get_ui_class("database_connection_widget.ui")
 
@@ -141,6 +150,8 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         logger.info(f"Connected to service '{service_name}'.")
         QtUtils.resetForegroundColor(self.db_moduleInfo_label)
 
+        self.refreshInstalledModules()
+
     def __createDatabaseClicked(self):
         databaseCreateDialog = DatabaseCreateDialog(
             selected_service=self.db_services_comboBox.currentText(), parent=self
@@ -171,6 +182,65 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
 
         self.__loadDatabaseInformations()
 
+    def refreshInstalledModules(self):
+        """Refresh the installed modules list in the groupbox."""
+        # Clear existing labels
+        layout = self.installed_modules_groupbox.layout()
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if self.__database_connection is None:
+            self.installed_modules_groupbox.setVisible(False)
+            return
+
+        try:
+            with self.__database_connection.transaction():
+                migration_details = SchemaMigrations.schemas_with_migration_details(
+                    self.__database_connection
+                )
+        except Exception:
+            self.installed_modules_groupbox.setVisible(False)
+            return
+
+        if not migration_details:
+            label = QLabel(self.tr("No modules installed"))
+            layout.addWidget(label)
+            self.installed_modules_groupbox.setVisible(True)
+            return
+
+        for info in migration_details:
+            module_label = info["module"] or info["schema"]
+            schema = info["schema"]
+            version = info["version"] or "?"
+
+            # Build display text
+            beta_text = " \u26a0\ufe0f" if info["beta_testing"] else ""
+            display = f"\u2022 <b>{module_label}</b> ({version}){beta_text}"
+
+            # Build tooltip with details
+            tooltip_lines = []
+            tooltip_lines.append(f"Module: {module_label}")
+            tooltip_lines.append(f"Schema: {schema}")
+            tooltip_lines.append(f"Version: {version}")
+            if info["beta_testing"]:
+                tooltip_lines.append("\u26a0\ufe0f Beta testing")
+            if info["installed_date"]:
+                tooltip_lines.append(
+                    f"Installed: {info['installed_date'].strftime('%Y-%m-%d %H:%M')}"
+                )
+            if info["upgrade_date"]:
+                tooltip_lines.append(
+                    f"Last upgrade: {info['upgrade_date'].strftime('%Y-%m-%d %H:%M')}"
+                )
+
+            label = QLabel(display)
+            label.setToolTip("\n".join(tooltip_lines))
+            layout.addWidget(label)
+
+        self.installed_modules_groupbox.setVisible(True)
+
     def __set_connection(self, connection):
         """
         Set the current database connection and emit the signal_connectionChanged signal.
@@ -182,4 +252,5 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             except Exception:
                 pass
         self.__database_connection = connection
+        self.refreshInstalledModules()
         self.signal_connectionChanged.emit()

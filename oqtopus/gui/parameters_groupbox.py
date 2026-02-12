@@ -6,6 +6,7 @@ from qgis.PyQt.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QScrollArea,
     QWidget,
 )
 
@@ -71,11 +72,28 @@ class ParametersGroupBox(QGroupBox):
         logger.debug(f"Setting parameters in ParametersGroupBox ({len(parameters)})")
         self.clean()
         self.parameters = parameters
-        # Remove all widgets from the parameters_group_box layout
-        for parameter in parameters:
-            pw = ParameterWidget(parameter, self)
-            self.layout().addWidget(pw)
-            self.parameter_widgets[parameter.name] = pw
+
+        # Add parameter widgets into the scroll area's content widget
+        scroll_area = self.findChild(QScrollArea, "parameters_area")
+        if scroll_area is not None:
+            content_widget = scroll_area.widget()
+            layout = content_widget.layout()
+            if layout is None:
+                from qgis.PyQt.QtWidgets import QVBoxLayout
+
+                layout = QVBoxLayout(content_widget)
+                layout.setContentsMargins(0, 0, 0, 0)
+                content_widget.setLayout(layout)
+            for parameter in parameters:
+                pw = ParameterWidget(parameter, content_widget)
+                layout.addWidget(pw)
+                self.parameter_widgets[parameter.name] = pw
+        else:
+            # Fallback: add directly to the groupbox layout
+            for parameter in parameters:
+                pw = ParameterWidget(parameter, self)
+                self.layout().addWidget(pw)
+                self.parameter_widgets[parameter.name] = pw
 
     def parameters_values(self):
         values = {}
