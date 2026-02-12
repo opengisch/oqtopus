@@ -268,16 +268,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
         try:
             parameters = self.parameters_groupbox.parameters_values()
 
-            beta_testing = False
-            if (
-                self.__current_module_package.type == ModulePackage.Type.PULL_REQUEST
-                or self.__current_module_package.type == ModulePackage.Type.BRANCH
-                or self.__current_module_package.prerelease
-            ):
-                logger.warning(
-                    "Installing module from branch, pull request, or prerelease: set parameter beta_testing to True"
-                )
-                beta_testing = True
+            beta_testing = self.beta_testing_checkbox_pageInstall.isChecked()
+            if beta_testing:
+                logger.warning("Installing module with beta_testing enabled")
 
                 # Warn user before installing in beta testing mode
                 reply = QMessageBox.warning(
@@ -285,7 +278,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
                     self.tr("Beta Testing Installation"),
                     self.tr(
                         "You are about to install this module in BETA TESTING mode.\n\n"
-                        "This means the module will not be allowed to receive future updates through normal upgrade process.\n"
+                        "This means the module will not be allowed to receive future updates "
+                        "through normal upgrade process.\n"
                         "We strongly discourage using this for production databases.\n\n"
                         "Are you sure you want to continue?"
                     ),
@@ -391,16 +385,26 @@ class ModuleWidget(QWidget, DIALOG_UI):
             try:
                 parameters = self.parameters_groupbox.parameters_values()
 
-                beta_testing = False
-                if (
-                    self.__current_module_package.type == ModulePackage.Type.PULL_REQUEST
-                    or self.__current_module_package.type == ModulePackage.Type.BRANCH
-                    or self.__current_module_package.prerelease
-                ):
-                    logger.warning(
-                        "Upgrading module from branch, pull request, or prerelease: set parameter beta_testing to True"
+                beta_testing = self.beta_testing_checkbox_pageUpgrade.isChecked()
+                if beta_testing:
+                    logger.warning("Upgrading module with beta_testing enabled")
+
+                    # Warn user before upgrading in beta testing mode
+                    reply = QMessageBox.warning(
+                        self,
+                        self.tr("Beta Testing Upgrade"),
+                        self.tr(
+                            "You are about to upgrade this module in BETA TESTING mode.\n\n"
+                            "This means the module will not be allowed to receive future updates "
+                            "through normal upgrade process.\n"
+                            "We strongly discourage using this for production databases.\n\n"
+                            "Are you sure you want to continue?"
+                        ),
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No,
                     )
-                    beta_testing = True
+                    if reply != QMessageBox.StandardButton.Yes:
+                        return
 
                 # Start background upgrade operation
                 options = {
@@ -645,6 +649,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
         )
         QtUtils.resetForegroundColor(self.moduleInfo_installation_label_install)
         self.moduleInfo_install_pushButton.setText(self.tr(f"Install {version}"))
+
+        # Configure beta testing checkbox based on package source
+        self.__configure_beta_testing_checkbox(self.beta_testing_checkbox_pageInstall)
+
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
         # Ensure the stacked widget is visible when showing a valid page
         self.moduleInfo_stackedWidget.setVisible(True)
@@ -667,6 +675,37 @@ class ModuleWidget(QWidget, DIALOG_UI):
         else:
             QtUtils.resetForegroundColor(label)
 
+    def __configure_beta_testing_checkbox(self, checkbox):
+        """Configure a beta testing checkbox based on the current module package source.
+
+        - Release: disabled and unchecked
+        - Dev branch or PR: disabled and checked
+        - Zip file: enabled and checked by default
+        """
+        tooltip = self.tr(
+            "If checked, the module is installed in beta testing mode.\n"
+            "This means that the module will not be allowed to receive\n"
+            "any future updates. We strongly discourage using this\n"
+            "for production."
+        )
+        checkbox.setToolTip(tooltip)
+
+        pkg = self.__current_module_package
+        if pkg.type == ModulePackage.Type.FROM_ZIP:
+            checkbox.setEnabled(True)
+            checkbox.setChecked(True)
+        elif (
+            pkg.type == ModulePackage.Type.BRANCH
+            or pkg.type == ModulePackage.Type.PULL_REQUEST
+            or pkg.prerelease
+        ):
+            checkbox.setEnabled(False)
+            checkbox.setChecked(True)
+        else:
+            # Release
+            checkbox.setEnabled(False)
+            checkbox.setChecked(False)
+
     def __show_upgrade_page(
         self,
         module_name: str,
@@ -684,6 +723,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
         )
         QtUtils.resetForegroundColor(self.moduleInfo_selected_label)
         self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {target_version}"))
+
+        # Configure beta testing checkbox based on package source
+        self.__configure_beta_testing_checkbox(self.beta_testing_checkbox_pageUpgrade)
+
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageUpgrade)
         self.moduleInfo_stackedWidget.setVisible(True)
 
