@@ -1,3 +1,7 @@
 plugin_path: oqtopus
 github_organization_slug: opengisch
 project_slug: oqtopus
+
+translation_languages:
+  - fr
+  - de
