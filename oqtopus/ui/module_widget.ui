@@ -156,13 +156,6 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="moduleInfo_install_pushButton">
-            <property name="text">
-             <string>Install</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <spacer name="verticalSpacer_3">
             <property name="orientation">
              <enum>Qt::Vertical</enum>
@@ -174,6 +167,13 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="moduleInfo_install_pushButton">
+            <property name="text">
+             <string>Install</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>

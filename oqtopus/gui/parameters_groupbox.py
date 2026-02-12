@@ -7,6 +7,7 @@ from qgis.PyQt.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QSizePolicy,
     QWidget,
 )
 
@@ -44,6 +45,7 @@ class ParameterWidget(QWidget):
             if parameter_definition.default is not None:
                 self.widget.setChecked(parameter_definition.default)
             self.layout.addWidget(self.widget)
+            self.layout.addStretch()
             self.value = lambda: self.widget.isChecked()
         elif param_type_value in ("decimal", "integer", "text", "path"):
             if parameter_definition.values:
@@ -55,6 +57,7 @@ class ParameterWidget(QWidget):
                     if idx >= 0:
                         self.widget.setCurrentIndex(idx)
                 self.layout.addWidget(self.widget)
+                self.layout.addStretch()
                 if param_type_value == "integer":
                     self.value = lambda: int(self.widget.currentData())
                 elif param_type_value == "decimal":
@@ -84,6 +87,8 @@ class ParametersGroupBox(QGroupBox):
         QGroupBox.__init__(self, parent)
         self.parameter_widgets = {}
         self.parameters = []
+        # Don't expand vertically beyond what the contents need
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
     def setParameters(self, parameters: list[ParameterDefinition]):
         logger.debug(f"Setting parameters in ParametersGroupBox ({len(parameters)})")
