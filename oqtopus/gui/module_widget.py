@@ -3,7 +3,7 @@ from pathlib import Path
 
 import psycopg
 import yaml
-from qgis.PyQt.QtCore import QTimer
+from qgis.PyQt.QtCore import QTimer, pyqtSignal
 from qgis.PyQt.QtWidgets import QMessageBox, QWidget
 
 from ..core.module import Module
@@ -18,6 +18,8 @@ DIALOG_UI = PluginUtils.get_ui_class("module_widget.ui")
 
 
 class ModuleWidget(QWidget, DIALOG_UI):
+
+    signal_operationFinished = pyqtSignal()
 
     def __init__(self, parent=None):
         QWidget.__init__(self, parent)
@@ -625,31 +627,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.uninstall_button.setVisible(False)
         self.uninstall_button_maintain.setVisible(False)
 
-    def __show_database_info_page(self):
-        """Show database information page when no module package is selected."""
-        with self.__database_connection.transaction():
-            installed_schemas = SchemaMigrations.schemas_with_migrations(
-                self.__database_connection
-            )
-
-        # Show selected module label with prompt
-        self.moduleInfo_selected_label.setText(
-            self.tr("No module package selected. Please select a module from the left panel.")
-        )
-        QtUtils.setForegroundColor(self.moduleInfo_selected_label, PluginUtils.COLOR_WARNING)
-
-        # Show database info in installation label
-        if installed_schemas:
-            schema_list = ", ".join([f"<b>{schema}</b>" for schema in installed_schemas])
-            self.moduleInfo_installation_label.setText(
-                self.tr(f"Database has installed modules in schemas: {schema_list}")
-            )
-        else:
-            self.moduleInfo_installation_label.setText(
-                self.tr("No modules installed in this database")
-            )
-        QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
-
+    def __show_no_module_selected_page(self):
+        """Show message when no module package is selected."""
         # Hide the stacked widget since no module is selected
         self.moduleInfo_stackedWidget.setVisible(False)
 
@@ -659,26 +638,12 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
     def __show_install_page(self, version: str):
         """Switch to install page and configure it."""
-        # Check for modules in other schemas
-        with self.__database_connection.transaction():
-            installed_schemas = SchemaMigrations.schemas_with_migrations(
-                self.__database_connection
-            )
-
         module_name = self.__current_module_package.module.name
         module_id = self.__current_module_package.module.id
-        if installed_schemas:
-            schema_list = ", ".join([f"<b>{schema}</b>" for schema in installed_schemas])
-            self.moduleInfo_installation_label.setText(
-                self.tr(
-                    f"No module <b>{module_name} ({module_id})</b> installed in this schema.<br>Module(s) in other schema(s): {schema_list}"
-                )
-            )
-        else:
-            self.moduleInfo_installation_label.setText(
-                self.tr(f"No module <b>{module_name} ({module_id})</b> installed")
-            )
-        QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
+        self.moduleInfo_installation_label_install.setText(
+            self.tr(f"No module <b>{module_name} ({module_id})</b> installed")
+        )
+        QtUtils.resetForegroundColor(self.moduleInfo_installation_label_install)
         self.moduleInfo_install_pushButton.setText(self.tr(f"Install {version}"))
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
         # Ensure the stacked widget is visible when showing a valid page
@@ -689,25 +654,18 @@ class ModuleWidget(QWidget, DIALOG_UI):
         module_name: str,
         baseline_version: str,
         beta_testing: bool = False,
-        other_schemas: list = None,
     ) -> str:
         """Build the installation info text shown above the action pages."""
         beta_text = " (BETA TESTING)" if beta_testing else ""
-        install_text = f"Installed: module {module_name} at version {baseline_version}{beta_text}."
-        if other_schemas:
-            schema_list = ", ".join([f"<b>{schema}</b>" for schema in other_schemas])
-            install_text += f"<br>Module(s) in other schema(s): {schema_list}"
-        return install_text
+        return f"Installed: module {module_name} at version {baseline_version}{beta_text}."
 
-    def __set_installation_label(self, install_text: str, beta_testing: bool = False):
-        """Set the installation label text and color."""
-        self.moduleInfo_installation_label.setText(install_text)
+    def __set_installation_label(self, label, install_text: str, beta_testing: bool = False):
+        """Set the installation label text and color on the given label widget."""
+        label.setText(install_text)
         if beta_testing:
-            QtUtils.setForegroundColor(
-                self.moduleInfo_installation_label, PluginUtils.COLOR_WARNING
-            )
+            QtUtils.setForegroundColor(label, PluginUtils.COLOR_WARNING)
         else:
-            QtUtils.resetForegroundColor(self.moduleInfo_installation_label)
+            QtUtils.resetForegroundColor(label)
 
     def __show_upgrade_page(
         self,
@@ -718,7 +676,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
         beta_testing: bool = False,
     ):
         """Switch to upgrade page when selected version is newer than installed."""
-        self.__set_installation_label(install_text, beta_testing)
+        self.__set_installation_label(
+            self.moduleInfo_installation_label_upgrade, install_text, beta_testing
+        )
         self.moduleInfo_selected_label.setText(
             self.tr(f"Module selected: {module_name} - {target_version}")
         )
@@ -740,7 +700,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
         beta_testing: bool = False,
     ):
         """Switch to maintain page when selected version matches installed version."""
-        self.__set_installation_label(install_text, beta_testing)
+        self.__set_installation_label(
+            self.moduleInfo_installation_label_maintain, install_text, beta_testing
+        )
 
         self.moduleInfo_selected_label_maintain.setText(
             self.tr(f"Module selected: {module_name} - {target_version}")
@@ -769,7 +731,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
         beta_testing: bool = False,
     ):
         """Switch to maintain page with limited operations when selected version is older than installed."""
-        self.__set_installation_label(install_text, beta_testing)
+        self.__set_installation_label(
+            self.moduleInfo_installation_label_maintain, install_text, beta_testing
+        )
 
         self.moduleInfo_selected_label_maintain.setText(
             self.tr(
@@ -809,17 +773,11 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
     def __updateModuleInfo(self):
         if self.__current_module_package is None:
-            # List installed modules if available
-            if self.__database_connection is not None:
-                self.__show_database_info_page()
-            else:
-                self.__show_error_state("No module package selected")
+            self.__show_no_module_selected_page()
             return
 
         if self.__database_connection is None:
-            self.__show_error_state(
-                "No database connection available", on_label=self.moduleInfo_installation_label
-            )
+            self.__show_error_state("No database connection available")
             return
 
         if self.__pum_config is None:
@@ -840,10 +798,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 baseline_version = sm.baseline(self.__database_connection)
                 migration_details = sm.migration_details(self.__database_connection)
                 installed_beta_testing = migration_details.get("beta_testing", False)
-                other_schemas = sm.exists_in_other_schemas(self.__database_connection)
 
                 install_text = self.__build_installation_text(
-                    module_name, baseline_version, installed_beta_testing, other_schemas
+                    module_name, baseline_version, installed_beta_testing
                 )
 
                 logger.info(
@@ -994,6 +951,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
             # Refresh module info
             self.__updateModuleInfo()
+
+            # Signal that an operation finished (for refreshing installed modules list)
+            self.signal_operationFinished.emit()
         else:
             # Show error message only if there's an actual error (not just cancellation)
             if error_message:

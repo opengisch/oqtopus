@@ -67,13 +67,6 @@
      </widget>
     </widget>
    </item>
-   <item row="5" column="0" colspan="3">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="standardButtons">
-      <set>QDialogButtonBox::NoButton</set>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="0" rowspan="2">
     <widget class="QGroupBox" name="moduleSelection_groupBox">
      <property name="title">

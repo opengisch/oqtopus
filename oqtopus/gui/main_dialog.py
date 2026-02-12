@@ -61,9 +61,6 @@ class MainDialog(QDialog, DIALOG_UI):
 
         self.__about_dialog_cls = about_dialog_cls or AboutDialog
 
-        self.buttonBox.rejected.connect(self.__closeDialog)
-        self.buttonBox.helpRequested.connect(self.__helpRequested)
-
         # Init GUI Modules
         self.__moduleSelectionWidget = ModuleSelectionWidget(modules_config_path, self)
         self.moduleSelection_groupBox.layout().addWidget(self.__moduleSelectionWidget)
@@ -134,6 +131,9 @@ class MainDialog(QDialog, DIALOG_UI):
 
         self.__databaseConnectionWidget.signal_connectionChanged.connect(
             self.__databaseConnectionWidget_connectionChanged
+        )
+        self.__moduleWidget.signal_operationFinished.connect(
+            self.__databaseConnectionWidget.refreshInstalledModules
         )
         self.__databaseConnectionWidget_connectionChanged()
 

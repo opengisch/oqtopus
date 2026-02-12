@@ -133,7 +133,7 @@ class PackagePrepareTask(QThread):
         )
 
         module_package.source_package_zip = zip_file
-        package_dir = self.__extract_zip_file(zip_file)
+        package_dir = self.__extract_zip_file(zip_file, "src")
         module_package.source_package_dir = package_dir
 
         # Download the release assets
@@ -144,7 +144,7 @@ class PackagePrepareTask(QThread):
                 module_package.asset_project.type.value + ".zip",
                 module_package,
             )
-            package_dir = self.__extract_zip_file(zip_file)
+            package_dir = self.__extract_zip_file(zip_file, "project")
             module_package.asset_project.package_zip = zip_file
             module_package.asset_project.package_dir = package_dir
 
@@ -155,7 +155,7 @@ class PackagePrepareTask(QThread):
                 module_package.asset_plugin.type.value + ".zip",
                 module_package,
             )
-            package_dir = self.__extract_zip_file(zip_file)
+            package_dir = self.__extract_zip_file(zip_file, "plugin")
             module_package.asset_plugin.package_zip = zip_file
             module_package.asset_plugin.package_dir = package_dir
 
@@ -338,7 +338,7 @@ class PackagePrepareTask(QThread):
             self.__last_emitted_percent = percent
             self.signalPackagingProgress.emit(float(percent), self.__download_total_received)
 
-    def __extract_zip_file(self, zip_file):
+    def __extract_zip_file(self, zip_file, subdir="src"):
         # Unzip the file to plugin temp dir
         # Don't set indeterminate here - it confuses the progress when downloading multiple files
 
@@ -347,8 +347,8 @@ class PackagePrepareTask(QThread):
                 # Find the top-level directory in the zip
                 zip_dirname = zip_ref.namelist()[0].split("/")[0]
 
-                # Use short "src" name to avoid Windows MAX_PATH issues
-                package_dir = os.path.join(self.__destination_directory, "src")
+                # Use short name to avoid Windows MAX_PATH issues
+                package_dir = os.path.join(self.__destination_directory, subdir)
 
                 # Check if already extracted and valid
                 if os.path.exists(package_dir) and os.path.isdir(package_dir):
