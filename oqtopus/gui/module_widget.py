@@ -14,6 +14,7 @@ from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
 from .recreate_app_dialog import RecreateAppDialog
+from .upgrade_dialog import UpgradeDialog
 
 DIALOG_UI = PluginUtils.get_ui_class("module_widget.ui")
 
@@ -149,7 +150,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
         """
         # Main operation buttons - disable during operation
         self.moduleInfo_install_pushButton.setEnabled(not in_progress)
-        self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.setEnabled(not in_progress)
         self.moduleInfo_upgrade_pushButton.setEnabled(not in_progress)
         self.moduleInfo_roles_pushButton.setEnabled(not in_progress)
         self.uninstall_button.setEnabled(not in_progress)
@@ -231,8 +231,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
             app_only_params = [p for p in all_params if p.app_only]
             self.parameters_groupbox.setParameters(standard_params)
             self.parameters_app_only_groupbox.setParameters(app_only_params)
-            self.parameters_groupbox_upgrade.setParameters(standard_params)
-            self.parameters_app_only_groupbox_upgrade.setParameters(app_only_params)
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"),
@@ -398,35 +396,33 @@ class ModuleWidget(QWidget, DIALOG_UI):
                         return
 
             try:
-                parameters = self.__get_all_parameters()
+                all_params = self.__pum_config.parameters()
+                standard_params = [p for p in all_params if not p.app_only]
+                app_only_params = [p for p in all_params if p.app_only]
+                target_version = self.__pum_config.last_version()
 
-                beta_testing = self.beta_testing_checkbox_pageUpgrade.isChecked()
+                dialog = UpgradeDialog(
+                    self.__current_module_package,
+                    standard_params,
+                    app_only_params,
+                    target_version,
+                    self,
+                )
+                if dialog.exec() != UpgradeDialog.DialogCode.Accepted:
+                    return
+
+                parameters = dialog.parameters()
+                beta_testing = dialog.beta_testing()
+
                 if beta_testing:
                     logger.warning("Upgrading module with beta_testing enabled")
-
-                    # Warn user before upgrading in beta testing mode
-                    reply = QMessageBox.warning(
-                        self,
-                        self.tr("Beta Testing Upgrade"),
-                        self.tr(
-                            "You are about to upgrade this module in BETA TESTING mode.\n\n"
-                            "This means the module will not be allowed to receive future updates "
-                            "through normal upgrade process.\n"
-                            "We strongly discourage using this for production databases.\n\n"
-                            "Are you sure you want to continue?"
-                        ),
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                        QMessageBox.StandardButton.No,
-                    )
-                    if reply != QMessageBox.StandardButton.Yes:
-                        return
 
                 # Start background upgrade operation
                 options = {
                     "beta_testing": beta_testing,
                     "force": installed_beta_testing,
-                    "roles": self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
-                    "grant": self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
+                    "roles": dialog.roles(),
+                    "grant": dialog.roles(),
                 }
 
                 self.__startOperation("upgrade", parameters, options)
@@ -636,27 +632,16 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
     def __get_all_parameters(self) -> dict:
-        """Collect parameter values from both standard and app_only groupboxes.
-
-        Uses the upgrade-specific groupboxes when on the upgrade page,
-        otherwise uses the install page groupboxes.
-        """
+        """Collect parameter values from both standard and app_only groupboxes on the install page."""
         values = {}
-        if (
-            self.moduleInfo_stackedWidget.currentWidget()
-            == self.moduleInfo_stackedWidget_pageUpgrade
-        ):
-            values.update(self.parameters_groupbox_upgrade.parameters_values())
-            values.update(self.parameters_app_only_groupbox_upgrade.parameters_values())
-        else:
-            values.update(self.parameters_groupbox.parameters_values())
-            values.update(self.parameters_app_only_groupbox.parameters_values())
+        values.update(self.parameters_groupbox.parameters_values())
+        values.update(self.parameters_app_only_groupbox.parameters_values())
         return values
 
     def __show_error_state(self, message: str, on_label=None):
         """Display an error state and hide the widget content."""
-        label = on_label or self.moduleInfo_selected_label
-        label.setText(self.tr(message))
+        label = on_label or self.moduleInfo_installation_label_upgrade
+        label.setHtml(self.tr(message))
         QtUtils.setForegroundColor(label, PluginUtils.COLOR_WARNING)
         # Hide the stacked widget entirely when in error state
         self.moduleInfo_stackedWidget.setVisible(False)
@@ -767,7 +752,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 "  border-radius: 4px; "
                 "  padding: 6px; "
                 "  color: #664d03; "
-                "  font-size: 11pt; "
                 "}"
             )
         else:
@@ -778,7 +762,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 "  border-radius: 4px; "
                 "  padding: 6px; "
                 "  color: #333333; "
-                "  font-size: 11pt; "
                 "}"
             )
 
@@ -830,25 +813,13 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.__set_installation_label(
             self.moduleInfo_installation_label_upgrade, install_text, beta_testing
         )
-        self.moduleInfo_selected_label.setText(
-            self.tr(f"Module selected: {module_name} - {target_version}")
-        )
-        QtUtils.resetForegroundColor(self.moduleInfo_selected_label)
         self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {target_version}"))
-
-        # Configure beta testing checkbox based on package source
-        self.__configure_beta_testing_checkbox(self.beta_testing_checkbox_pageUpgrade)
-
-        # On upgrade, standard parameters cannot be changed but remain scrollable
-        self.parameters_groupbox_upgrade.setParametersEnabled(False)
-        self.parameters_app_only_groupbox_upgrade.setParametersEnabled(True)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageUpgrade)
         self.moduleInfo_stackedWidget.setVisible(True)
 
-        # Enable upgrade controls
+        # Enable upgrade button
         self.moduleInfo_upgrade_pushButton.setEnabled(True)
-        self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.setEnabled(True)
 
     def __show_maintain_page(
         self,
