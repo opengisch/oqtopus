@@ -164,12 +164,14 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.moduleInfo_progressbar.setValue(0)
 
         # Parent controls (module selection, database connection)
-        if self.parent() is not None:
-            parent_dialog = self.parent()
-            if hasattr(parent_dialog, "moduleSelection_groupBox"):
-                parent_dialog.moduleSelection_groupBox.setEnabled(not in_progress)
-            if hasattr(parent_dialog, "db_groupBox"):
-                parent_dialog.db_groupBox.setEnabled(not in_progress)
+        # Use window() to get the top-level MainDialog, since self.parent()
+        # returns the immediate tab widget, not the dialog itself.
+        main_dialog = self.window()
+        if main_dialog is not None:
+            if hasattr(main_dialog, "moduleSelection_groupBox"):
+                main_dialog.moduleSelection_groupBox.setEnabled(not in_progress)
+            if hasattr(main_dialog, "db_groupBox"):
+                main_dialog.db_groupBox.setEnabled(not in_progress)
 
     def __packagePrepareGetPUMConfig(self):
         package_dir = self.__current_module_package.source_package_dir
