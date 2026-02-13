@@ -421,9 +421,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 parameters = dialog.parameters()
                 beta_testing = dialog.beta_testing()
 
-                if beta_testing:
-                    logger.warning("Upgrading module with beta_testing enabled")
-
                 # Start background upgrade operation
                 options = {
                     "beta_testing": beta_testing,

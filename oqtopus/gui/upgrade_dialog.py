@@ -5,6 +5,7 @@ from qgis.PyQt.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QLabel,
+    QMessageBox,
     QVBoxLayout,
 )
 
@@ -91,6 +92,26 @@ class UpgradeDialog(QDialog):
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
+
+    def accept(self):
+        """Override accept to warn about beta testing before confirming."""
+        if self.__beta_testing_checkbox.isChecked():
+            reply = QMessageBox.warning(
+                self,
+                self.tr("Beta Testing Upgrade"),
+                self.tr(
+                    "You are about to upgrade this module in BETA TESTING mode.\n\n"
+                    "This means the module will not be allowed to receive future updates "
+                    "through normal upgrade process.\n"
+                    "We strongly discourage using this for production databases.\n\n"
+                    "Are you sure you want to continue?"
+                ),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+        super().accept()
 
     def __configure_beta_testing_checkbox(self, module_package: ModulePackage):
         """Configure beta testing checkbox based on the module package source."""
