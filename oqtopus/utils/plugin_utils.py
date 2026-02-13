@@ -282,6 +282,16 @@ class PluginUtils:
         settings.setValue("oqtopus/log_show_module", show)
 
     @staticmethod
+    def get_show_logs():
+        settings = QSettings()
+        return settings.value("oqtopus/show_logs", False, type=bool)
+
+    @staticmethod
+    def set_show_logs(show: bool):
+        settings = QSettings()
+        settings.setValue("oqtopus/show_logs", show)
+
+    @staticmethod
     def get_github_headers():
         token = PluginUtils.get_github_token()
         headers = {}
