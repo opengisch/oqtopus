@@ -16,7 +16,6 @@ from unittest.mock import MagicMock, patch
 
 import psycopg
 import pytest
-import yaml
 
 # ---------------------------------------------------------------------------
 # Bootstrap the qgis.PyQt shim (same approach as oqtopus.py) so that
@@ -65,6 +64,7 @@ from oqtopus.core.module_package import ModulePackage  # noqa: E402
 from oqtopus.gui.module_widget import ModuleWidget  # noqa: E402
 from oqtopus.libs.pum.pum_config import PumConfig  # noqa: E402
 from oqtopus.libs.pum.schema_migrations import SchemaMigrations  # noqa: E402
+from oqtopus.libs.pum.upgrader import Upgrader  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -99,43 +99,27 @@ def _make_module_package(source_dir: str, module: _FakeModule) -> ModulePackage:
 
 def _wait_for_operation(widget: ModuleWidget, timeout_ms: int = 10000):
     """Block until ModuleWidget.signal_operationFinished is emitted (or timeout)."""
+    if not widget.isOperationRunning():
+        return
     loop = QEventLoop()
     widget.signal_operationFinished.connect(loop.quit)
     QTimer.singleShot(timeout_ms, loop.quit)
     loop.exec()
 
 
-def _clean_database(pg_service: str):
-    """Drop all test schemas, migration tables, and roles."""
-    with psycopg.connect(f"service={pg_service}") as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT schema_name FROM information_schema.schemata "
-            "WHERE schema_name LIKE 'oqtopus_test%'"
-        )
-        schemas = [row[0] for row in cur.fetchall()]
-        for schema in schemas:
-            cur.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
-        cur.execute("DROP TABLE IF EXISTS public.pum_migrations CASCADE;")
-        for role in ("oqtopus_test_viewer", "oqtopus_test_editor"):
-            cur.execute(f"DROP ROLE IF EXISTS {role};")
-        conn.commit()
-
-
-def _pg_service_available() -> bool:
-    try:
-        with psycopg.connect("service=oqtopus_test") as conn:
-            conn.execute("SELECT 1")
-        return True
-    except Exception:
-        return False
-
-
-PG_SERVICE = "oqtopus_test"
-requires_pg = pytest.mark.skipif(
-    not _pg_service_available(),
-    reason="PostgreSQL service 'oqtopus_test' is not available",
-)
+def _configure_mock_dialog(cls_mock, *, roles: bool = False):
+    """Wire up a mock InstallDialog / UpgradeDialog so it auto-accepts."""
+    dialog = MagicMock()
+    dialog.exec.return_value = 1  # QDialog.Accepted
+    dialog.parameters.return_value = {}
+    dialog.roles.return_value = roles
+    dialog.beta_testing.return_value = False
+    dialog.install_demo_data.return_value = False
+    dialog.demo_data_name.return_value = None
+    cls_mock.return_value = dialog
+    cls_mock.DialogCode = MagicMock()
+    cls_mock.DialogCode.Accepted = 1
+    return dialog
 
 
 # ---------------------------------------------------------------------------
@@ -144,17 +128,13 @@ requires_pg = pytest.mark.skipif(
 
 
 @pytest.fixture()
-def clean_db():
-    """Ensure a clean database state before and after each test."""
-    _clean_database(PG_SERVICE)
-    yield
-    _clean_database(PG_SERVICE)
+def db_connection(clean_db, pg_service):
+    """Provide a psycopg connection to the test database.
 
-
-@pytest.fixture()
-def db_connection():
-    """Provide a psycopg connection to the test database."""
-    conn = psycopg.connect(f"service={PG_SERVICE}", autocommit=False)
+    Depends on clean_db so the connection is opened after cleanup
+    and closed before the post-test cleanup runs.
+    """
+    conn = psycopg.connect(f"service={pg_service}", autocommit=False)
     yield conn
     conn.close()
 
@@ -188,12 +168,11 @@ def roles_module_package():
 # ---------------------------------------------------------------------------
 
 
-@requires_pg
 class TestModuleWidgetInstall:
     """Test installing a module through the ModuleWidget."""
 
     def test_install_page_shown_for_new_module(
-        self, module_widget, simple_module_package, db_connection, clean_db
+        self, module_widget, simple_module_package, db_connection
     ):
         """When a module is not installed, the install page should be shown."""
         module_widget.setModulePackage(simple_module_package)
@@ -204,31 +183,16 @@ class TestModuleWidgetInstall:
         assert current_page == module_widget.moduleInfo_stackedWidget_pageInstall
 
     @patch("oqtopus.gui.module_widget.InstallDialog")
-    @patch("oqtopus.gui.module_widget.QMessageBox.information")
     def test_install_creates_schema(
         self,
-        mock_msgbox,
         mock_install_dialog_cls,
         module_widget,
         simple_module_package,
         db_connection,
-        clean_db,
         test_data_dir,
     ):
         """Clicking install should create the module schema in the database."""
-        # Configure mock dialog to auto-accept
-        mock_dialog = MagicMock()
-        mock_dialog.exec.return_value = MagicMock()  # Will be compared with Accepted
-        mock_dialog.exec.return_value = 1  # QDialog.Accepted
-        mock_dialog.parameters.return_value = {}
-        mock_dialog.roles.return_value = False
-        mock_dialog.beta_testing.return_value = False
-        mock_dialog.install_demo_data.return_value = False
-        mock_dialog.demo_data_name.return_value = None
-        mock_install_dialog_cls.return_value = mock_dialog
-        # Make DialogCode.Accepted available
-        mock_install_dialog_cls.DialogCode = MagicMock()
-        mock_install_dialog_cls.DialogCode.Accepted = 1
+        _configure_mock_dialog(mock_install_dialog_cls)
 
         module_widget.setModulePackage(simple_module_package)
         module_widget.setDatabaseConnection(db_connection)
@@ -240,11 +204,8 @@ class TestModuleWidgetInstall:
         _wait_for_operation(module_widget)
 
         # Verify the module was installed using pum API
-        pum_config_path = test_data_dir / "simple_module" / "datamodel" / ".pum.yaml"
-        with open(pum_config_path) as f:
-            config_data = yaml.safe_load(f)
-        pum_config = PumConfig(
-            base_path=pum_config_path.parent, install_dependencies=False, **config_data
+        pum_config = PumConfig.from_yaml(
+            test_data_dir / "simple_module" / "datamodel" / ".pum.yaml"
         )
         sm = SchemaMigrations(pum_config)
 
@@ -259,27 +220,15 @@ class TestModuleWidgetInstall:
         assert str(baseline) == "1.1.0", f"Expected baseline 1.1.0, got {baseline}"
 
     @patch("oqtopus.gui.module_widget.InstallDialog")
-    @patch("oqtopus.gui.module_widget.QMessageBox.information")
     def test_install_shows_maintain_page_after(
         self,
-        mock_msgbox,
         mock_install_dialog_cls,
         module_widget,
         simple_module_package,
         db_connection,
-        clean_db,
     ):
         """After installing, the widget should switch to the maintain page."""
-        mock_dialog = MagicMock()
-        mock_dialog.exec.return_value = 1
-        mock_dialog.parameters.return_value = {}
-        mock_dialog.roles.return_value = False
-        mock_dialog.beta_testing.return_value = False
-        mock_dialog.install_demo_data.return_value = False
-        mock_dialog.demo_data_name.return_value = None
-        mock_install_dialog_cls.return_value = mock_dialog
-        mock_install_dialog_cls.DialogCode = MagicMock()
-        mock_install_dialog_cls.DialogCode.Accepted = 1
+        _configure_mock_dialog(mock_install_dialog_cls)
 
         module_widget.setModulePackage(simple_module_package)
         module_widget.setDatabaseConnection(db_connection)
@@ -291,57 +240,31 @@ class TestModuleWidgetInstall:
         assert current_page == module_widget.moduleInfo_stackedWidget_pageMaintain
 
 
-@requires_pg
 class TestModuleWidgetUpgrade:
     """Test upgrading a module through the ModuleWidget."""
 
     @patch("oqtopus.gui.module_widget.InstallDialog")
     @patch("oqtopus.gui.module_widget.UpgradeDialog")
-    @patch("oqtopus.gui.module_widget.QMessageBox.information")
     def test_upgrade_bumps_version(
         self,
-        mock_msgbox,
         mock_upgrade_dialog_cls,
         mock_install_dialog_cls,
         module_widget,
         simple_module_package,
         db_connection,
-        clean_db,
+        pg_service,
     ):
         """Installing at 1.0.0 then upgrading should reach 1.1.0."""
-        # Setup mock install dialog
-        mock_install_dialog = MagicMock()
-        mock_install_dialog.exec.return_value = 1
-        mock_install_dialog.parameters.return_value = {}
-        mock_install_dialog.roles.return_value = False
-        mock_install_dialog.beta_testing.return_value = False
-        mock_install_dialog.install_demo_data.return_value = False
-        mock_install_dialog.demo_data_name.return_value = None
-        mock_install_dialog_cls.return_value = mock_install_dialog
-        mock_install_dialog_cls.DialogCode = MagicMock()
-        mock_install_dialog_cls.DialogCode.Accepted = 1
-
-        # Setup mock upgrade dialog
-        mock_upgrade_dialog = MagicMock()
-        mock_upgrade_dialog.exec.return_value = 1
-        mock_upgrade_dialog.parameters.return_value = {}
-        mock_upgrade_dialog.beta_testing.return_value = False
-        mock_upgrade_dialog.roles.return_value = False
-        mock_upgrade_dialog_cls.return_value = mock_upgrade_dialog
-        mock_upgrade_dialog_cls.DialogCode = MagicMock()
-        mock_upgrade_dialog_cls.DialogCode.Accepted = 1
+        _configure_mock_dialog(mock_install_dialog_cls)
+        _configure_mock_dialog(mock_upgrade_dialog_cls)
 
         module_widget.setModulePackage(simple_module_package)
         module_widget.setDatabaseConnection(db_connection)
 
         # Step 1: Install at version 1.0.0 (need to temporarily restrict max_version)
         # We use the operation task directly for the initial install at 1.0.0
-        from oqtopus.libs.pum.pum_config import PumConfig
-
         pum_dir = TEST_DATA_DIR / "simple_module" / "datamodel"
         cfg = PumConfig.from_yaml(pum_dir / ".pum.yaml")
-        from oqtopus.libs.pum.upgrader import Upgrader
-
         upgrader = Upgrader(cfg)
         upgrader.install(connection=db_connection, max_version="1.0.0")
         db_connection.commit()
@@ -358,19 +281,15 @@ class TestModuleWidgetUpgrade:
         _wait_for_operation(module_widget)
 
         # Verify the version was upgraded to 1.1.0
-        from oqtopus.libs.pum.schema_migrations import SchemaMigrations
-
         sm = SchemaMigrations(cfg)
-        with psycopg.connect(f"service={PG_SERVICE}") as conn:
+        with psycopg.connect(f"service={pg_service}") as conn:
             assert str(sm.baseline(conn)) == "1.1.0"
 
 
-@requires_pg
 class TestModuleWidgetUninstall:
     """Test uninstalling a module through the ModuleWidget."""
 
     @patch("oqtopus.gui.module_widget.InstallDialog")
-    @patch("oqtopus.gui.module_widget.QMessageBox.information")
     @patch(
         "oqtopus.gui.module_widget.QMessageBox.question",
         return_value=QMessageBox.StandardButton.Yes,
@@ -378,25 +297,14 @@ class TestModuleWidgetUninstall:
     def test_uninstall_removes_module(
         self,
         mock_question,
-        mock_msgbox,
         mock_install_dialog_cls,
         module_widget,
         simple_module_package,
         db_connection,
-        clean_db,
+        pg_service,
     ):
         """Installing then uninstalling should remove the module schema."""
-        # Setup mock install dialog
-        mock_dialog = MagicMock()
-        mock_dialog.exec.return_value = 1
-        mock_dialog.parameters.return_value = {}
-        mock_dialog.roles.return_value = False
-        mock_dialog.beta_testing.return_value = False
-        mock_dialog.install_demo_data.return_value = False
-        mock_dialog.demo_data_name.return_value = None
-        mock_install_dialog_cls.return_value = mock_dialog
-        mock_install_dialog_cls.DialogCode = MagicMock()
-        mock_install_dialog_cls.DialogCode.Accepted = 1
+        _configure_mock_dialog(mock_install_dialog_cls)
 
         module_widget.setModulePackage(simple_module_package)
         module_widget.setDatabaseConnection(db_connection)
@@ -406,7 +314,7 @@ class TestModuleWidgetUninstall:
         _wait_for_operation(module_widget)
 
         # Verify installed
-        with psycopg.connect(f"service={PG_SERVICE}") as conn:
+        with psycopg.connect(f"service={pg_service}") as conn:
             cur = conn.cursor()
             cur.execute(
                 "SELECT EXISTS ("
@@ -422,7 +330,7 @@ class TestModuleWidgetUninstall:
 
         # Verify uninstalled - the uninstall hook runs but doesn't necessarily
         # drop the schema (depends on uninstall.sql contents)
-        with psycopg.connect(f"service={PG_SERVICE}") as conn:
+        with psycopg.connect(f"service={pg_service}") as conn:
             cur = conn.cursor()
             cur.execute(
                 "SELECT EXISTS ("
@@ -434,32 +342,20 @@ class TestModuleWidgetUninstall:
             assert not cur.fetchone()[0], "Table 'items' should be gone after uninstall"
 
 
-@requires_pg
 class TestModuleWidgetRoles:
     """Test role management through the ModuleWidget."""
 
     @patch("oqtopus.gui.module_widget.InstallDialog")
-    @patch("oqtopus.gui.module_widget.QMessageBox.information")
     def test_install_with_roles(
         self,
-        mock_msgbox,
         mock_install_dialog_cls,
         module_widget,
         roles_module_package,
         db_connection,
-        clean_db,
+        pg_service,
     ):
         """Installing a module with roles=True should create database roles."""
-        mock_dialog = MagicMock()
-        mock_dialog.exec.return_value = 1
-        mock_dialog.parameters.return_value = {}
-        mock_dialog.roles.return_value = True  # Enable roles
-        mock_dialog.beta_testing.return_value = False
-        mock_dialog.install_demo_data.return_value = False
-        mock_dialog.demo_data_name.return_value = None
-        mock_install_dialog_cls.return_value = mock_dialog
-        mock_install_dialog_cls.DialogCode = MagicMock()
-        mock_install_dialog_cls.DialogCode.Accepted = 1
+        _configure_mock_dialog(mock_install_dialog_cls, roles=True)
 
         module_widget.setModulePackage(roles_module_package)
         module_widget.setDatabaseConnection(db_connection)
@@ -468,7 +364,7 @@ class TestModuleWidgetRoles:
         _wait_for_operation(module_widget)
 
         # Verify roles were created
-        with psycopg.connect(f"service={PG_SERVICE}") as conn:
+        with psycopg.connect(f"service={pg_service}") as conn:
             cur = conn.cursor()
             cur.execute(
                 "SELECT rolname FROM pg_roles "
@@ -480,28 +376,17 @@ class TestModuleWidgetRoles:
             assert "oqtopus_test_viewer" in roles
 
     @patch("oqtopus.gui.module_widget.InstallDialog")
-    @patch("oqtopus.gui.module_widget.QMessageBox.information")
     def test_roles_button_grants_permissions(
         self,
-        mock_msgbox,
         mock_install_dialog_cls,
         module_widget,
         roles_module_package,
         db_connection,
-        clean_db,
+        pg_service,
     ):
         """Clicking the Roles button should create and grant roles."""
         # Install without roles first
-        mock_dialog = MagicMock()
-        mock_dialog.exec.return_value = 1
-        mock_dialog.parameters.return_value = {}
-        mock_dialog.roles.return_value = False  # No roles during install
-        mock_dialog.beta_testing.return_value = False
-        mock_dialog.install_demo_data.return_value = False
-        mock_dialog.demo_data_name.return_value = None
-        mock_install_dialog_cls.return_value = mock_dialog
-        mock_install_dialog_cls.DialogCode = MagicMock()
-        mock_install_dialog_cls.DialogCode.Accepted = 1
+        _configure_mock_dialog(mock_install_dialog_cls)
 
         module_widget.setModulePackage(roles_module_package)
         module_widget.setDatabaseConnection(db_connection)
@@ -514,7 +399,7 @@ class TestModuleWidgetRoles:
         _wait_for_operation(module_widget)
 
         # Verify viewer has SELECT permission
-        with psycopg.connect(f"service={PG_SERVICE}") as conn:
+        with psycopg.connect(f"service={pg_service}") as conn:
             cur = conn.cursor()
             cur.execute(
                 "SELECT has_table_privilege("
@@ -529,20 +414,10 @@ class TestModuleWidgetUninstallDisabled:
 
     @patch("oqtopus.gui.module_widget.InstallDialog")
     def test_uninstall_disabled_for_module_without_uninstall(
-        self, mock_install_dialog_cls, clean_db, module_widget, db_connection, roles_module_package
+        self, mock_install_dialog_cls, module_widget, db_connection, roles_module_package
     ):
         """Uninstall button should be disabled for modules without uninstall config."""
-        # Mock InstallDialog
-        mock_dialog = MagicMock()
-        mock_dialog.exec.return_value = 1
-        mock_dialog.parameters.return_value = {}
-        mock_dialog.roles.return_value = False
-        mock_dialog.beta_testing.return_value = False
-        mock_dialog.install_demo_data.return_value = False
-        mock_dialog.demo_data_name.return_value = None
-        mock_install_dialog_cls.return_value = mock_dialog
-        mock_install_dialog_cls.DialogCode = MagicMock()
-        mock_install_dialog_cls.DialogCode.Accepted = 1
+        _configure_mock_dialog(mock_install_dialog_cls)
 
         module_widget.setModulePackage(roles_module_package)
         module_widget.setDatabaseConnection(db_connection)
