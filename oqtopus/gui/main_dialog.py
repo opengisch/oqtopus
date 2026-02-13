@@ -282,3 +282,8 @@ class MainDialog(QDialog, DIALOG_UI):
         self.__moduleWidget.setDatabaseConnection(self.__databaseConnectionWidget.getConnection())
 
         self.__projectWidget.setService(self.__databaseConnectionWidget.getService())
+
+        # Auto-select the first installed module matching an entry in the module combobox
+        for module_id in self.__databaseConnectionWidget.getInstalledModuleIds():
+            if self.__moduleSelectionWidget.selectModuleById(module_id):
+                break

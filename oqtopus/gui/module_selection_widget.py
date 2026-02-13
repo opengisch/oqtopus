@@ -110,6 +110,22 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             self.__packagePrepareTask.cancel()
             self.__packagePrepareTask.wait()
 
+    def selectModuleById(self, module_id: str) -> bool:
+        """Select a module in the combobox by its ID.
+
+        Args:
+            module_id: The module ID to select.
+
+        Returns:
+            True if a matching module was found and selected.
+        """
+        for i in range(self.module_module_comboBox.count()):
+            module = self.module_module_comboBox.itemData(i)
+            if module is not None and module.id == module_id:
+                self.module_module_comboBox.setCurrentIndex(i)
+                return True
+        return False
+
     def getSelectedModulePackage(self):
         return self.__current_module_package
 

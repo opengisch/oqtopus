@@ -55,6 +55,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         self.db_operations_toolButton.setMenu(db_operations_menu)
 
         self.__database_connection = None
+        self.__installed_module_ids = []
 
         try:
             self.__serviceChanged()
@@ -186,6 +187,10 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
 
         self.__loadDatabaseInformations()
 
+    def getInstalledModuleIds(self) -> list[str]:
+        """Return the list of module IDs currently installed in the database."""
+        return self.__installed_module_ids
+
     def refreshInstalledModules(self):
         """Refresh the installed modules list in the groupbox."""
         # Clear existing labels
@@ -194,6 +199,8 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             item = layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+
+        self.__installed_module_ids = []
 
         if self.__database_connection is None:
             self.installed_modules_groupbox.setVisible(False)
@@ -213,6 +220,10 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             layout.addWidget(label)
             self.installed_modules_groupbox.setVisible(True)
             return
+
+        self.__installed_module_ids = [
+            info["module"] for info in migration_details if info["module"]
+        ]
 
         for info in migration_details:
             module_label = info["module"] or info["schema"]
