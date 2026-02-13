@@ -24,6 +24,7 @@ class UpgradeDialog(QDialog):
         standard_params: list[ParameterDefinition],
         app_only_params: list[ParameterDefinition],
         target_version: str,
+        installed_parameters: dict | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -51,6 +52,8 @@ class UpgradeDialog(QDialog):
         self.__standard_groupbox.setLayout(gb_layout)
         self.__standard_groupbox.setParameters(standard_params)
         self.__standard_groupbox.setParametersEnabled(False)
+        if installed_parameters:
+            self.__standard_groupbox.setParameterValues(installed_parameters)
         layout.addWidget(self.__standard_groupbox)
 
         # App-only parameters (editable)
@@ -60,6 +63,8 @@ class UpgradeDialog(QDialog):
         gb_layout.setContentsMargins(3, 3, 3, 3)
         self.__app_only_groupbox.setLayout(gb_layout)
         self.__app_only_groupbox.setParameters(app_only_params)
+        if installed_parameters:
+            self.__app_only_groupbox.setParameterValues(installed_parameters)
         layout.addWidget(self.__app_only_groupbox)
 
         # Beta testing checkbox

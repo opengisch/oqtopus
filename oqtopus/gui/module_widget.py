@@ -401,11 +401,18 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 app_only_params = [p for p in all_params if p.app_only]
                 target_version = self.__pum_config.last_version()
 
+                # Get installed parameter values to preset in the dialog
+                installed_parameters = None
+                migration_summary = sm.migration_summary(self.__database_connection)
+                if migration_summary.get("parameters"):
+                    installed_parameters = migration_summary["parameters"]
+
                 dialog = UpgradeDialog(
                     self.__current_module_package,
                     standard_params,
                     app_only_params,
                     target_version,
+                    installed_parameters,
                     self,
                 )
                 if dialog.exec() != UpgradeDialog.DialogCode.Accepted:

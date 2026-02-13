@@ -1,7 +1,10 @@
 import logging
 
 from qgis.PyQt.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QGroupBox,
+    QLineEdit,
     QSizePolicy,
 )
 
@@ -45,6 +48,32 @@ class ParametersGroupBox(QGroupBox):
         """Enable or disable the parameter widgets without affecting the scroll area."""
         for pw in self.parameter_widgets.values():
             pw.setEnabled(enabled)
+
+    def setParameterValues(self, values: dict):
+        """Pre-set parameter widget values from a dict (e.g. installed parameters)."""
+        for name, value in values.items():
+            pw = self.parameter_widgets.get(name)
+            if pw is None:
+                continue
+            widget = pw.widget
+            if isinstance(widget, QCheckBox):
+                widget.setChecked(bool(value))
+            elif isinstance(widget, QComboBox):
+                idx = widget.findData(value)
+                if idx >= 0:
+                    widget.setCurrentIndex(idx)
+                else:
+                    idx = widget.findText(str(value))
+                    if idx >= 0:
+                        widget.setCurrentIndex(idx)
+            elif isinstance(widget, QLineEdit):
+                widget.setText(str(value))
+            else:
+                # QgsFileWidget or other widgets with setText/setFilePath
+                if hasattr(widget, "setFilePath"):
+                    widget.setFilePath(str(value))
+                elif hasattr(widget, "setText"):
+                    widget.setText(str(value))
 
     def clean(self):
         for widget in self.parameter_widgets.values():
