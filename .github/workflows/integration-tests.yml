@@ -74,7 +74,9 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-standalone.txt
           pip install pytest
-          pip install dist/*.whl
+          # Extract bundled libs from the wheel into the local source tree
+          # (the local oqtopus/ shadows the installed package, so libs must be present locally)
+          unzip -o dist/*.whl "oqtopus/libs/*" -d .
 
       - name: Setup test database
         run: bash scripts/setup_test_db.sh
