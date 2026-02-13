@@ -4,7 +4,7 @@ from pathlib import Path
 import psycopg
 import yaml
 from qgis.PyQt.QtCore import QTimer, pyqtSignal
-from qgis.PyQt.QtWidgets import QMessageBox, QWidget
+from qgis.PyQt.QtWidgets import QMessageBox, QTextBrowser, QWidget
 
 from ..core.module import Module
 from ..core.module_operation_task import ModuleOperationTask
@@ -27,6 +27,14 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.setupUi(self)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
+
+        # Replace installation info QLabels with QTextBrowser for scrollable content
+        for label_name in (
+            "moduleInfo_installation_label_install",
+            "moduleInfo_installation_label_upgrade",
+            "moduleInfo_installation_label_maintain",
+        ):
+            self.__replace_label_with_text_browser(label_name)
 
         self.db_demoData_checkBox.clicked.connect(
             lambda checked: self.db_demoData_comboBox.setEnabled(checked)
@@ -669,7 +677,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         """Switch to install page and configure it."""
         module_name = self.__current_module_package.module.name
         module_id = self.__current_module_package.module.id
-        self.moduleInfo_installation_label_install.setText(
+        self.moduleInfo_installation_label_install.setHtml(
             self.tr(f"No module <b>{module_name} ({module_id})</b> installed")
         )
         self.__style_info_label(self.moduleInfo_installation_label_install)
@@ -685,6 +693,34 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
         # Ensure the stacked widget is visible when showing a valid page
         self.moduleInfo_stackedWidget.setVisible(True)
+
+    def __replace_label_with_text_browser(self, label_name: str):
+        """Replace a QLabel with a QTextBrowser for scrollable installation info."""
+        from qgis.PyQt.QtWidgets import QGridLayout
+
+        old_label = getattr(self, label_name)
+        parent_layout = old_label.parentWidget().layout()
+
+        browser = QTextBrowser(old_label.parentWidget())
+        browser.setObjectName(label_name)
+        browser.setReadOnly(True)
+        browser.setOpenExternalLinks(False)
+        browser.setMaximumHeight(120)
+        browser.setFrameShape(QTextBrowser.Shape.NoFrame)
+
+        # Find position in layout and replace
+        idx = parent_layout.indexOf(old_label)
+        if idx >= 0 and isinstance(parent_layout, QGridLayout):
+            row, col, rowspan, colspan = parent_layout.getItemPosition(idx)
+            parent_layout.removeWidget(old_label)
+            old_label.deleteLater()
+            parent_layout.addWidget(browser, row, col, rowspan, colspan)
+        else:
+            parent_layout.removeWidget(old_label)
+            old_label.deleteLater()
+            parent_layout.addWidget(browser)
+
+        setattr(self, label_name, browser)
 
     def __build_installation_text(
         self,
@@ -725,28 +761,30 @@ class ModuleWidget(QWidget, DIALOG_UI):
         """Apply a framed style to an installation info label."""
         if warning:
             label.setStyleSheet(
-                "QLabel { "
+                "QTextBrowser { "
                 "  background-color: #fff3cd; "
                 "  border: 1px solid #e0c76a; "
                 "  border-radius: 4px; "
                 "  padding: 6px; "
                 "  color: #664d03; "
+                "  font-size: 11pt; "
                 "}"
             )
         else:
             label.setStyleSheet(
-                "QLabel { "
+                "QTextBrowser { "
                 "  background-color: #f5f5f5; "
                 "  border: 1px solid #d0d0d0; "
                 "  border-radius: 4px; "
                 "  padding: 6px; "
                 "  color: #333333; "
+                "  font-size: 11pt; "
                 "}"
             )
 
     def __set_installation_label(self, label, install_text: str, beta_testing: bool = False):
         """Set the installation label text and style on the given label widget."""
-        label.setText(install_text)
+        label.setHtml(install_text)
         self.__style_info_label(label)
 
     def __configure_beta_testing_checkbox(self, checkbox):
@@ -856,7 +894,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 f"Please select the matching version ({baseline_version}) to perform maintenance."
             )
         )
-        self.moduleInfo_installation_label_maintain.setText(warning_text)
+        self.moduleInfo_installation_label_maintain.setHtml(warning_text)
         self.__style_info_label(self.moduleInfo_installation_label_maintain, warning=True)
 
         # Disable all maintenance buttons
