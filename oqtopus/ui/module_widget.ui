@@ -306,50 +306,144 @@
        <property name="bottomMargin">
         <number>3</number>
        </property>
-       <item row="5" column="0" colspan="4">
-        <layout class="QGridLayout" name="gridLayout_3">
-         <item row="3" column="2">
-          <widget class="QPushButton" name="uninstall_button_maintain">
-           <property name="text">
-            <string>Uninstall</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0">
-          <widget class="QPushButton" name="moduleInfo_drop_app_pushButton">
-           <property name="text">
-            <string>Drop app</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="0">
-          <widget class="QPushButton" name="moduleInfo_roles_pushButton">
-           <property name="text">
-            <string>Create and grant roles</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="1">
-          <spacer name="horizontalSpacer_2">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item row="2" column="0">
-          <widget class="QPushButton" name="moduleInfo_recreate_app_pushButton">
-           <property name="text">
-            <string>(Re)create app</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+       <item row="1" column="0" colspan="4">
+        <widget class="QGroupBox" name="maintain_app_groupBox">
+         <property name="title">
+          <string>App</string>
+         </property>
+         <property name="flat">
+          <bool>true</bool>
+         </property>
+         <layout class="QHBoxLayout" name="maintain_app_layout">
+          <property name="leftMargin">
+           <number>3</number>
+          </property>
+          <property name="topMargin">
+           <number>3</number>
+          </property>
+          <property name="rightMargin">
+           <number>3</number>
+          </property>
+          <property name="bottomMargin">
+           <number>3</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="moduleInfo_drop_app_pushButton">
+            <property name="text">
+             <string>Drop app</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="moduleInfo_recreate_app_pushButton">
+            <property name="text">
+             <string>(Re)create app</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="maintain_app_spacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="2" column="0" colspan="4">
+        <widget class="QGroupBox" name="maintain_roles_groupBox">
+         <property name="title">
+          <string>Roles</string>
+         </property>
+         <property name="flat">
+          <bool>true</bool>
+         </property>
+         <layout class="QHBoxLayout" name="maintain_roles_layout">
+          <property name="leftMargin">
+           <number>3</number>
+          </property>
+          <property name="topMargin">
+           <number>3</number>
+          </property>
+          <property name="rightMargin">
+           <number>3</number>
+          </property>
+          <property name="bottomMargin">
+           <number>3</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="moduleInfo_roles_pushButton">
+            <property name="text">
+             <string>Create and grant roles</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="maintain_roles_spacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="3" column="0" colspan="4">
+        <widget class="QGroupBox" name="maintain_maintain_groupBox">
+         <property name="title">
+          <string>Maintenance</string>
+         </property>
+         <property name="flat">
+          <bool>true</bool>
+         </property>
+         <layout class="QHBoxLayout" name="maintain_maintain_layout">
+          <property name="leftMargin">
+           <number>3</number>
+          </property>
+          <property name="topMargin">
+           <number>3</number>
+          </property>
+          <property name="rightMargin">
+           <number>3</number>
+          </property>
+          <property name="bottomMargin">
+           <number>3</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="uninstall_button_maintain">
+            <property name="text">
+             <string>Uninstall</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="maintain_maintain_spacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
        </item>
        <item row="0" column="0" colspan="4">
         <widget class="QLabel" name="moduleInfo_installation_label_maintain">
@@ -361,7 +455,7 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
+       <item row="4" column="0">
         <spacer name="verticalSpacer_5">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
