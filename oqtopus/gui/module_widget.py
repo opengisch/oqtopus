@@ -8,11 +8,11 @@ from qgis.PyQt.QtWidgets import QMessageBox, QTextBrowser, QWidget
 
 from ..core.module import Module
 from ..core.module_operation_task import ModuleOperationTask
-from ..core.module_package import ModulePackage
 from ..libs.pum.pum_config import PumConfig
 from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
+from .install_dialog import InstallDialog
 from .recreate_app_dialog import RecreateAppDialog
 from .upgrade_dialog import UpgradeDialog
 
@@ -36,10 +36,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
             "moduleInfo_installation_label_maintain",
         ):
             self.__replace_label_with_text_browser(label_name)
-
-        self.db_demoData_checkBox.clicked.connect(
-            lambda checked: self.db_demoData_comboBox.setEnabled(checked)
-        )
 
         self.moduleInfo_install_pushButton.clicked.connect(self.__installModuleClicked)
         self.moduleInfo_upgrade_pushButton.clicked.connect(self.__upgradeModuleClicked)
@@ -229,8 +225,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
             all_params = self.__pum_config.parameters()
             standard_params = [p for p in all_params if not p.app_only]
             app_only_params = [p for p in all_params if p.app_only]
-            self.parameters_groupbox.setParameters(standard_params)
-            self.parameters_app_only_groupbox.setParameters(app_only_params)
+            self.__standard_params = standard_params
+            self.__app_only_params = app_only_params
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"),
@@ -239,10 +235,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 self,
             ).exec()
             return
-
-        self.db_demoData_comboBox.clear()
-        for demo_data_name, demo_data_file in self.__pum_config.demo_data().items():
-            self.db_demoData_comboBox.addItem(demo_data_name, demo_data_file)
 
     def __installModuleClicked(self):
 
@@ -279,41 +271,30 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.__get_all_parameters()
+            target_version = self.__pum_config.last_version()
+            demo_data = self.__pum_config.demo_data()
 
-            beta_testing = self.beta_testing_checkbox_pageInstall.isChecked()
-            if beta_testing:
-                logger.warning("Installing module with beta_testing enabled")
+            dialog = InstallDialog(
+                self.__current_module_package,
+                self.__standard_params,
+                self.__app_only_params,
+                target_version,
+                demo_data if demo_data else None,
+                self,
+            )
+            if dialog.exec() != InstallDialog.DialogCode.Accepted:
+                return
 
-                # Warn user before installing in beta testing mode
-                reply = QMessageBox.warning(
-                    self,
-                    self.tr("Beta Testing Installation"),
-                    self.tr(
-                        "You are about to install this module in BETA TESTING mode.\n\n"
-                        "This means the module will not be allowed to receive future updates "
-                        "through normal upgrade process.\n"
-                        "We strongly discourage using this for production databases.\n\n"
-                        "Are you sure you want to continue?"
-                    ),
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
-                )
-                if reply != QMessageBox.StandardButton.Yes:
-                    return
+            parameters = dialog.parameters()
 
             # Start background install operation
             options = {
-                "roles": self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
-                "grant": self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
-                "beta_testing": beta_testing,
+                "roles": dialog.roles(),
+                "grant": dialog.roles(),
+                "beta_testing": dialog.beta_testing(),
                 "allow_multiple_modules": PluginUtils.get_allow_multiple_modules(),
-                "install_demo_data": self.db_demoData_checkBox.isChecked(),
-                "demo_data_name": (
-                    self.db_demoData_comboBox.currentText()
-                    if self.db_demoData_checkBox.isChecked()
-                    else None
-                ),
+                "install_demo_data": dialog.install_demo_data(),
+                "demo_data_name": dialog.demo_data_name(),
             }
 
             self.__startOperation("install", parameters, options)
@@ -500,7 +481,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.__get_all_parameters()
+            parameters = self.__get_installed_parameters()
 
             # Start background uninstall operation
             self.__startOperation("uninstall", parameters, {})
@@ -532,7 +513,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.__get_all_parameters()
+            parameters = self.__get_installed_parameters()
 
             # Start background roles operation
             self.__startOperation("roles", parameters, {})
@@ -578,7 +559,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.__get_all_parameters()
+            parameters = self.__get_installed_parameters()
 
             # Start background drop app operation
             self.__startOperation("drop_app", parameters, {})
@@ -635,12 +616,14 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
-    def __get_all_parameters(self) -> dict:
-        """Collect parameter values from both standard and app_only groupboxes on the install page."""
-        values = {}
-        values.update(self.parameters_groupbox.parameters_values())
-        values.update(self.parameters_app_only_groupbox.parameters_values())
-        return values
+    def __get_installed_parameters(self) -> dict:
+        """Get parameter values from the installed module in the database."""
+        sm = SchemaMigrations(self.__pum_config)
+        with self.__database_connection.transaction():
+            if sm.exists(self.__database_connection):
+                migration_summary = sm.migration_summary(self.__database_connection)
+                return migration_summary.get("parameters") or {}
+        return {}
 
     def __show_error_state(self, message: str, on_label=None):
         """Display an error state and hide the widget content."""
@@ -671,13 +654,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
         )
         self.__style_info_label(self.moduleInfo_installation_label_install)
         self.moduleInfo_install_pushButton.setText(self.tr(f"Install {version}"))
-
-        # Configure beta testing checkbox based on package source
-        self.__configure_beta_testing_checkbox(self.beta_testing_checkbox_pageInstall)
-
-        # On install, both standard and app_only parameters are editable
-        self.parameters_groupbox.setEnabled(True)
-        self.parameters_app_only_groupbox.setEnabled(True)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
         # Ensure the stacked widget is visible when showing a valid page
@@ -773,37 +749,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
         """Set the installation label text and style on the given label widget."""
         label.setHtml(install_text)
         self.__style_info_label(label)
-
-    def __configure_beta_testing_checkbox(self, checkbox):
-        """Configure a beta testing checkbox based on the current module package source.
-
-        - Release: disabled and unchecked
-        - Dev branch or PR: disabled and checked
-        - Zip file: enabled and checked by default
-        """
-        tooltip = self.tr(
-            "If checked, the module is installed in beta testing mode.\n"
-            "This means that the module will not be allowed to receive\n"
-            "any future updates. We strongly discourage using this\n"
-            "for production."
-        )
-        checkbox.setToolTip(tooltip)
-
-        pkg = self.__current_module_package
-        if pkg.type == ModulePackage.Type.FROM_ZIP:
-            checkbox.setEnabled(True)
-            checkbox.setChecked(True)
-        elif (
-            pkg.type == ModulePackage.Type.BRANCH
-            or pkg.type == ModulePackage.Type.PULL_REQUEST
-            or pkg.prerelease
-        ):
-            checkbox.setEnabled(False)
-            checkbox.setChecked(True)
-        else:
-            # Release
-            checkbox.setEnabled(False)
-            checkbox.setChecked(False)
 
     def __show_upgrade_page(
         self,

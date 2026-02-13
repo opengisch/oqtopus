@@ -58,83 +58,6 @@
         </widget>
        </item>
        <item row="1" column="0">
-        <widget class="QCheckBox" name="beta_testing_checkbox_pageInstall">
-         <property name="text">
-          <string>Beta testing</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QCheckBox" name="db_parameters_CreateAndGrantRoles_install_checkBox">
-         <property name="text">
-          <string>Create and grant roles</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QCheckBox" name="db_demoData_checkBox">
-           <property name="text">
-            <string>Install demo data</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="db_demoData_comboBox">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="4" column="0">
-        <widget class="ParametersGroupBox" name="parameters_groupbox">
-         <property name="title">
-          <string>Parameters</string>
-         </property>
-         <layout class="QVBoxLayout" name="parameters_layout">
-          <property name="leftMargin">
-           <number>3</number>
-          </property>
-          <property name="topMargin">
-           <number>3</number>
-          </property>
-          <property name="rightMargin">
-           <number>3</number>
-          </property>
-          <property name="bottomMargin">
-           <number>3</number>
-          </property>
-         </layout>
-        </widget>
-       </item>
-       <item row="5" column="0">
-        <widget class="ParametersGroupBox" name="parameters_app_only_groupbox">
-         <property name="title">
-          <string>Application parameters</string>
-         </property>
-         <layout class="QVBoxLayout" name="parameters_app_only_layout">
-          <property name="leftMargin">
-           <number>3</number>
-          </property>
-          <property name="topMargin">
-           <number>3</number>
-          </property>
-          <property name="rightMargin">
-           <number>3</number>
-          </property>
-          <property name="bottomMargin">
-           <number>3</number>
-          </property>
-         </layout>
-        </widget>
-       </item>
-       <item row="6" column="0">
         <spacer name="verticalSpacer_3">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -147,7 +70,7 @@
          </property>
         </spacer>
        </item>
-       <item row="7" column="0">
+       <item row="2" column="0">
         <widget class="QPushButton" name="moduleInfo_install_pushButton">
          <property name="text">
           <string>Install</string>
@@ -428,14 +351,6 @@
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>ParametersGroupBox</class>
-   <extends>QGroupBox</extends>
-   <header>oqtopus.gui.parameters_groupbox</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>
