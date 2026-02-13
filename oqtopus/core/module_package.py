@@ -13,6 +13,7 @@ class ModulePackage:
         BRANCH = "branch"
         PULL_REQUEST = "pull_request"
         FROM_ZIP = "from_zip"
+        FROM_DIRECTORY = "from_directory"
 
     def __init__(
         self,
@@ -49,6 +50,8 @@ class ModulePackage:
         elif self.type == ModulePackage.Type.PULL_REQUEST:
             self.__parse_pull_request(json_payload)
         elif self.type == ModulePackage.Type.FROM_ZIP:
+            return
+        elif self.type == ModulePackage.Type.FROM_DIRECTORY:
             return
         else:
             raise ValueError(f"Unknown type '{type}'")

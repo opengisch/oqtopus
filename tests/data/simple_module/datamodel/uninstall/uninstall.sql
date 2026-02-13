@@ -1,0 +1,2 @@
+DROP SCHEMA IF EXISTS oqtopus_test_app CASCADE;
+DROP SCHEMA IF EXISTS oqtopus_test CASCADE;

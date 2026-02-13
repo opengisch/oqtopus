@@ -1,0 +1,13 @@
+pum:
+  module: oqtopus_test_module
+
+changelogs_directory: changelogs
+
+application:
+  create:
+    - file: create_app/create_views.sql
+  drop:
+    - file: drop_app/drop_views.sql
+
+uninstall:
+  - file: uninstall/uninstall.sql

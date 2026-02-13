@@ -52,11 +52,13 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_seeChangeLog_pushButton.setEnabled(False)
 
         self.module_zipPackage_groupBox.setVisible(False)
+        self.module_directoryPackage_groupBox.setVisible(False)
 
         self.module_module_comboBox.currentIndexChanged.connect(self.__moduleChanged)
         self.module_package_comboBox.currentIndexChanged.connect(self.__moduleVersionChanged)
         self.module_seeChangeLog_pushButton.clicked.connect(self.__seeChangeLogClicked)
         self.module_browseZip_toolButton.clicked.connect(self.__moduleBrowseZipClicked)
+        self.module_browseDirectory_toolButton.clicked.connect(self.__moduleBrowseDirectoryClicked)
 
         self.__packagePrepareTask = PackagePrepareTask(self)
         self.__packagePrepareTask.finished.connect(self.__packagePrepareTaskFinished)
@@ -213,9 +215,17 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         if self.__current_module_package.type == self.__current_module_package.Type.FROM_ZIP:
             self.module_zipPackage_groupBox.setVisible(True)
+            self.module_directoryPackage_groupBox.setVisible(False)
+            return
+        elif (
+            self.__current_module_package.type == self.__current_module_package.Type.FROM_DIRECTORY
+        ):
+            self.module_zipPackage_groupBox.setVisible(False)
+            self.module_directoryPackage_groupBox.setVisible(True)
             return
         else:
             self.module_zipPackage_groupBox.setVisible(False)
+            self.module_directoryPackage_groupBox.setVisible(False)
 
         loading_text = self.tr("Loading package...")
         self.module_information_label.setText(loading_text)
@@ -277,6 +287,35 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         self.signal_loadingStarted.emit()
         self.module_progressBar.setMaximum(100)
+        self.module_progressBar.setValue(0)
+
+    def __moduleBrowseDirectoryClicked(self):
+        directory = QFileDialog.getExistingDirectory(self, self.tr("Open from directory"), None)
+
+        if directory == "":
+            return
+
+        self.module_fromDirectory_lineEdit.setText(directory)
+
+        try:
+            with OverrideCursor(Qt.CursorShape.WaitCursor):
+                self.__loadModuleFromDirectory(directory)
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Can't load module from directory:"), exception, self
+            ).exec()
+            return
+
+    def __loadModuleFromDirectory(self, directory):
+
+        if self.__packagePrepareTask.isRunning():
+            self.__packagePrepareTask.cancel()
+            self.__packagePrepareTask.wait()
+
+        self.__packagePrepareTask.startFromDirectory(self.__current_module_package, directory)
+
+        self.signal_loadingStarted.emit()
+        self.module_progressBar.setMaximum(0)
         self.module_progressBar.setValue(0)
         self.module_progressBar.setVisible(True)
 
@@ -361,11 +400,14 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             )
             return
 
-        if self.__current_module_package.type == ModulePackage.Type.FROM_ZIP:
+        if self.__current_module_package.type in (
+            ModulePackage.Type.FROM_ZIP,
+            ModulePackage.Type.FROM_DIRECTORY,
+        ):
             QMessageBox.warning(
                 self,
                 self.tr("Can't open changelog"),
-                self.tr("Changelog is not available for Zip packages."),
+                self.tr("Changelog is not available for local packages."),
             )
             return
 
@@ -438,6 +480,17 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                 name="from_zip",
             ),
         )
+        self.module_package_comboBox.addItem(
+            self.tr("Load from directory"),
+            ModulePackage(
+                module=self.__current_module,
+                organisation=self.__current_module.organisation,
+                repository=self.__current_module.repository,
+                json_payload=None,
+                type=ModulePackage.Type.FROM_DIRECTORY,
+                name="from_directory",
+            ),
+        )
 
         self.module_package_comboBox.insertSeparator(self.module_package_comboBox.count())
 
@@ -462,8 +515,9 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         QApplication.restoreOverrideCursor()
         self.module_progressBar.setVisible(False)
 
-        # Hide zip widget when loading development versions
+        # Hide zip/directory widgets when loading development versions
         self.module_zipPackage_groupBox.setVisible(False)
+        self.module_directoryPackage_groupBox.setVisible(False)
 
         # Clear current module package - user needs to select a specific version
         self.__current_module_package = None

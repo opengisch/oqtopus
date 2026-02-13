@@ -1,0 +1,19 @@
+pum:
+  module: oqtopus_test_roles
+
+changelogs_directory: changelogs
+
+roles:
+  - name: oqtopus_test_viewer
+    permissions:
+      - type: read
+        schemas:
+          - oqtopus_test_roles
+    description: Viewer role with read permissions.
+
+  - name: oqtopus_test_editor
+    permissions:
+      - type: write
+        schemas:
+          - oqtopus_test_roles
+    description: Editor role with write permissions.
