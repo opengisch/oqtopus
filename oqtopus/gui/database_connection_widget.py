@@ -84,8 +84,8 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
 
     def __loadDatabaseInformations(self):
         pg_service_conf_path = pgserviceparser_conf_path()
-        self.db_servicesConfigFilePath_label.setText(
-            f"<a href='file://{pg_service_conf_path.resolve()}'>{pg_service_conf_path.as_posix()}</a>"
+        QtUtils.setPathLinkWithEllipsis(
+            self.db_servicesConfigFilePath_label, str(pg_service_conf_path.resolve())
         )
 
         self.db_services_comboBox.clear()
