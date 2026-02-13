@@ -4,16 +4,17 @@ from pathlib import Path
 import psycopg
 import yaml
 from qgis.PyQt.QtCore import QTimer, pyqtSignal
-from qgis.PyQt.QtWidgets import QMessageBox, QWidget
+from qgis.PyQt.QtWidgets import QMessageBox, QTextBrowser, QWidget
 
 from ..core.module import Module
 from ..core.module_operation_task import ModuleOperationTask
-from ..core.module_package import ModulePackage
 from ..libs.pum.pum_config import PumConfig
 from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
+from .install_dialog import InstallDialog
 from .recreate_app_dialog import RecreateAppDialog
+from .upgrade_dialog import UpgradeDialog
 
 DIALOG_UI = PluginUtils.get_ui_class("module_widget.ui")
 
@@ -28,9 +29,13 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
 
-        self.db_demoData_checkBox.clicked.connect(
-            lambda checked: self.db_demoData_comboBox.setEnabled(checked)
-        )
+        # Replace installation info QLabels with QTextBrowser for scrollable content
+        for label_name in (
+            "moduleInfo_installation_label_install",
+            "moduleInfo_installation_label_upgrade",
+            "moduleInfo_installation_label_maintain",
+        ):
+            self.__replace_label_with_text_browser(label_name)
 
         self.moduleInfo_install_pushButton.clicked.connect(self.__installModuleClicked)
         self.moduleInfo_upgrade_pushButton.clicked.connect(self.__upgradeModuleClicked)
@@ -141,7 +146,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
         """
         # Main operation buttons - disable during operation
         self.moduleInfo_install_pushButton.setEnabled(not in_progress)
-        self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.setEnabled(not in_progress)
         self.moduleInfo_upgrade_pushButton.setEnabled(not in_progress)
         self.moduleInfo_roles_pushButton.setEnabled(not in_progress)
         self.uninstall_button.setEnabled(not in_progress)
@@ -221,10 +225,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
             all_params = self.__pum_config.parameters()
             standard_params = [p for p in all_params if not p.app_only]
             app_only_params = [p for p in all_params if p.app_only]
-            self.parameters_groupbox.setParameters(standard_params)
-            self.parameters_app_only_groupbox.setParameters(app_only_params)
-            self.parameters_groupbox_upgrade.setParameters(standard_params)
-            self.parameters_app_only_groupbox_upgrade.setParameters(app_only_params)
+            self.__standard_params = standard_params
+            self.__app_only_params = app_only_params
         except Exception as exception:
             CriticalMessageBox(
                 self.tr("Error"),
@@ -233,10 +235,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 self,
             ).exec()
             return
-
-        self.db_demoData_comboBox.clear()
-        for demo_data_name, demo_data_file in self.__pum_config.demo_data().items():
-            self.db_demoData_comboBox.addItem(demo_data_name, demo_data_file)
 
     def __installModuleClicked(self):
 
@@ -273,41 +271,30 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.__get_all_parameters()
+            target_version = self.__pum_config.last_version()
+            demo_data = self.__pum_config.demo_data()
 
-            beta_testing = self.beta_testing_checkbox_pageInstall.isChecked()
-            if beta_testing:
-                logger.warning("Installing module with beta_testing enabled")
+            dialog = InstallDialog(
+                self.__current_module_package,
+                self.__standard_params,
+                self.__app_only_params,
+                target_version,
+                demo_data if demo_data else None,
+                self,
+            )
+            if dialog.exec() != InstallDialog.DialogCode.Accepted:
+                return
 
-                # Warn user before installing in beta testing mode
-                reply = QMessageBox.warning(
-                    self,
-                    self.tr("Beta Testing Installation"),
-                    self.tr(
-                        "You are about to install this module in BETA TESTING mode.\n\n"
-                        "This means the module will not be allowed to receive future updates "
-                        "through normal upgrade process.\n"
-                        "We strongly discourage using this for production databases.\n\n"
-                        "Are you sure you want to continue?"
-                    ),
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
-                )
-                if reply != QMessageBox.StandardButton.Yes:
-                    return
+            parameters = dialog.parameters()
 
             # Start background install operation
             options = {
-                "roles": self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
-                "grant": self.db_parameters_CreateAndGrantRoles_install_checkBox.isChecked(),
-                "beta_testing": beta_testing,
+                "roles": dialog.roles(),
+                "grant": dialog.roles(),
+                "beta_testing": dialog.beta_testing(),
                 "allow_multiple_modules": PluginUtils.get_allow_multiple_modules(),
-                "install_demo_data": self.db_demoData_checkBox.isChecked(),
-                "demo_data_name": (
-                    self.db_demoData_comboBox.currentText()
-                    if self.db_demoData_checkBox.isChecked()
-                    else None
-                ),
+                "install_demo_data": dialog.install_demo_data(),
+                "demo_data_name": dialog.demo_data_name(),
             }
 
             self.__startOperation("install", parameters, options)
@@ -390,35 +377,37 @@ class ModuleWidget(QWidget, DIALOG_UI):
                         return
 
             try:
-                parameters = self.__get_all_parameters()
+                all_params = self.__pum_config.parameters()
+                standard_params = [p for p in all_params if not p.app_only]
+                app_only_params = [p for p in all_params if p.app_only]
+                target_version = self.__pum_config.last_version()
 
-                beta_testing = self.beta_testing_checkbox_pageUpgrade.isChecked()
-                if beta_testing:
-                    logger.warning("Upgrading module with beta_testing enabled")
+                # Get installed parameter values to preset in the dialog
+                installed_parameters = None
+                migration_summary = sm.migration_summary(self.__database_connection)
+                if migration_summary.get("parameters"):
+                    installed_parameters = migration_summary["parameters"]
 
-                    # Warn user before upgrading in beta testing mode
-                    reply = QMessageBox.warning(
-                        self,
-                        self.tr("Beta Testing Upgrade"),
-                        self.tr(
-                            "You are about to upgrade this module in BETA TESTING mode.\n\n"
-                            "This means the module will not be allowed to receive future updates "
-                            "through normal upgrade process.\n"
-                            "We strongly discourage using this for production databases.\n\n"
-                            "Are you sure you want to continue?"
-                        ),
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                        QMessageBox.StandardButton.No,
-                    )
-                    if reply != QMessageBox.StandardButton.Yes:
-                        return
+                dialog = UpgradeDialog(
+                    self.__current_module_package,
+                    standard_params,
+                    app_only_params,
+                    target_version,
+                    installed_parameters,
+                    self,
+                )
+                if dialog.exec() != UpgradeDialog.DialogCode.Accepted:
+                    return
+
+                parameters = dialog.parameters()
+                beta_testing = dialog.beta_testing()
 
                 # Start background upgrade operation
                 options = {
                     "beta_testing": beta_testing,
                     "force": installed_beta_testing,
-                    "roles": self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
-                    "grant": self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.isChecked(),
+                    "roles": dialog.roles(),
+                    "grant": dialog.roles(),
                 }
 
                 self.__startOperation("upgrade", parameters, options)
@@ -492,7 +481,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.__get_all_parameters()
+            parameters = self.__get_installed_parameters()
 
             # Start background uninstall operation
             self.__startOperation("uninstall", parameters, {})
@@ -524,7 +513,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.__get_all_parameters()
+            parameters = self.__get_installed_parameters()
 
             # Start background roles operation
             self.__startOperation("roles", parameters, {})
@@ -570,7 +559,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.__get_all_parameters()
+            parameters = self.__get_installed_parameters()
 
             # Start background drop app operation
             self.__startOperation("drop_app", parameters, {})
@@ -627,28 +616,19 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
-    def __get_all_parameters(self) -> dict:
-        """Collect parameter values from both standard and app_only groupboxes.
-
-        Uses the upgrade-specific groupboxes when on the upgrade page,
-        otherwise uses the install page groupboxes.
-        """
-        values = {}
-        if (
-            self.moduleInfo_stackedWidget.currentWidget()
-            == self.moduleInfo_stackedWidget_pageUpgrade
-        ):
-            values.update(self.parameters_groupbox_upgrade.parameters_values())
-            values.update(self.parameters_app_only_groupbox_upgrade.parameters_values())
-        else:
-            values.update(self.parameters_groupbox.parameters_values())
-            values.update(self.parameters_app_only_groupbox.parameters_values())
-        return values
+    def __get_installed_parameters(self) -> dict:
+        """Get parameter values from the installed module in the database."""
+        sm = SchemaMigrations(self.__pum_config)
+        with self.__database_connection.transaction():
+            if sm.exists(self.__database_connection):
+                migration_summary = sm.migration_summary(self.__database_connection)
+                return migration_summary.get("parameters") or {}
+        return {}
 
     def __show_error_state(self, message: str, on_label=None):
         """Display an error state and hide the widget content."""
-        label = on_label or self.moduleInfo_selected_label
-        label.setText(self.tr(message))
+        label = on_label or self.moduleInfo_installation_label_upgrade
+        label.setHtml(self.tr(message))
         QtUtils.setForegroundColor(label, PluginUtils.COLOR_WARNING)
         # Hide the stacked widget entirely when in error state
         self.moduleInfo_stackedWidget.setVisible(False)
@@ -669,71 +649,106 @@ class ModuleWidget(QWidget, DIALOG_UI):
         """Switch to install page and configure it."""
         module_name = self.__current_module_package.module.name
         module_id = self.__current_module_package.module.id
-        self.moduleInfo_installation_label_install.setText(
+        self.moduleInfo_installation_label_install.setHtml(
             self.tr(f"No module <b>{module_name} ({module_id})</b> installed")
         )
-        QtUtils.resetForegroundColor(self.moduleInfo_installation_label_install)
+        self.__style_info_label(self.moduleInfo_installation_label_install)
         self.moduleInfo_install_pushButton.setText(self.tr(f"Install {version}"))
-
-        # Configure beta testing checkbox based on package source
-        self.__configure_beta_testing_checkbox(self.beta_testing_checkbox_pageInstall)
-
-        # On install, both standard and app_only parameters are editable
-        self.parameters_groupbox.setEnabled(True)
-        self.parameters_app_only_groupbox.setEnabled(True)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
         # Ensure the stacked widget is visible when showing a valid page
         self.moduleInfo_stackedWidget.setVisible(True)
+
+    def __replace_label_with_text_browser(self, label_name: str):
+        """Replace a QLabel with a QTextBrowser for scrollable installation info."""
+        from qgis.PyQt.QtWidgets import QGridLayout
+
+        old_label = getattr(self, label_name)
+        parent_layout = old_label.parentWidget().layout()
+
+        browser = QTextBrowser(old_label.parentWidget())
+        browser.setObjectName(label_name)
+        browser.setReadOnly(True)
+        browser.setOpenExternalLinks(False)
+        browser.setMaximumHeight(120)
+        browser.setFrameShape(QTextBrowser.Shape.NoFrame)
+
+        # Find position in layout and replace
+        idx = parent_layout.indexOf(old_label)
+        if idx >= 0 and isinstance(parent_layout, QGridLayout):
+            row, col, rowspan, colspan = parent_layout.getItemPosition(idx)
+            parent_layout.removeWidget(old_label)
+            old_label.deleteLater()
+            parent_layout.addWidget(browser, row, col, rowspan, colspan)
+        else:
+            parent_layout.removeWidget(old_label)
+            old_label.deleteLater()
+            parent_layout.addWidget(browser)
+
+        setattr(self, label_name, browser)
 
     def __build_installation_text(
         self,
         module_name: str,
         baseline_version: str,
         beta_testing: bool = False,
+        schema: str = "",
+        installed_date=None,
+        upgrade_date=None,
+        parameters: dict | None = None,
     ) -> str:
-        """Build the installation info text shown above the action pages."""
-        beta_text = " (BETA TESTING)" if beta_testing else ""
-        return f"Installed: module {module_name} at version {baseline_version}{beta_text}."
+        """Build rich HTML installation info text shown above the action pages."""
+        lines = []
+        lines.append(f"<b>Module:</b> {module_name}")
+        if schema:
+            lines.append(f"<b>Schema:</b> {schema}")
+        lines.append(f"<b>Version:</b> {baseline_version}")
+        if beta_testing:
+            lines.append("\u26a0\ufe0f <b>Beta testing</b>")
+        if installed_date:
+            try:
+                lines.append(f"<b>Installed:</b> {installed_date.strftime('%Y-%m-%d %H:%M')}")
+            except AttributeError:
+                lines.append(f"<b>Installed:</b> {installed_date}")
+        if upgrade_date:
+            try:
+                lines.append(f"<b>Last upgrade:</b> {upgrade_date.strftime('%Y-%m-%d %H:%M')}")
+            except AttributeError:
+                lines.append(f"<b>Last upgrade:</b> {upgrade_date}")
+        if parameters and isinstance(parameters, dict):
+            lines.append("<br><b>Parameters:</b>")
+            for param_name, param_value in parameters.items():
+                lines.append(f"&nbsp;&nbsp;{param_name} = {param_value}")
+        return "<br>".join(lines)
+
+    @staticmethod
+    def __style_info_label(label, warning: bool = False):
+        """Apply a framed style to an installation info label."""
+        if warning:
+            label.setStyleSheet(
+                "QTextBrowser { "
+                "  background-color: #fff3cd; "
+                "  border: 1px solid #e0c76a; "
+                "  border-radius: 4px; "
+                "  padding: 6px; "
+                "  color: #664d03; "
+                "}"
+            )
+        else:
+            label.setStyleSheet(
+                "QTextBrowser { "
+                "  background-color: #f5f5f5; "
+                "  border: 1px solid #d0d0d0; "
+                "  border-radius: 4px; "
+                "  padding: 6px; "
+                "  color: #333333; "
+                "}"
+            )
 
     def __set_installation_label(self, label, install_text: str, beta_testing: bool = False):
-        """Set the installation label text and color on the given label widget."""
-        label.setText(install_text)
-        if beta_testing:
-            QtUtils.setForegroundColor(label, PluginUtils.COLOR_WARNING)
-        else:
-            QtUtils.resetForegroundColor(label)
-
-    def __configure_beta_testing_checkbox(self, checkbox):
-        """Configure a beta testing checkbox based on the current module package source.
-
-        - Release: disabled and unchecked
-        - Dev branch or PR: disabled and checked
-        - Zip file: enabled and checked by default
-        """
-        tooltip = self.tr(
-            "If checked, the module is installed in beta testing mode.\n"
-            "This means that the module will not be allowed to receive\n"
-            "any future updates. We strongly discourage using this\n"
-            "for production."
-        )
-        checkbox.setToolTip(tooltip)
-
-        pkg = self.__current_module_package
-        if pkg.type == ModulePackage.Type.FROM_ZIP:
-            checkbox.setEnabled(True)
-            checkbox.setChecked(True)
-        elif (
-            pkg.type == ModulePackage.Type.BRANCH
-            or pkg.type == ModulePackage.Type.PULL_REQUEST
-            or pkg.prerelease
-        ):
-            checkbox.setEnabled(False)
-            checkbox.setChecked(True)
-        else:
-            # Release
-            checkbox.setEnabled(False)
-            checkbox.setChecked(False)
+        """Set the installation label text and style on the given label widget."""
+        label.setHtml(install_text)
+        self.__style_info_label(label)
 
     def __show_upgrade_page(
         self,
@@ -747,25 +762,13 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.__set_installation_label(
             self.moduleInfo_installation_label_upgrade, install_text, beta_testing
         )
-        self.moduleInfo_selected_label.setText(
-            self.tr(f"Module selected: {module_name} - {target_version}")
-        )
-        QtUtils.resetForegroundColor(self.moduleInfo_selected_label)
         self.moduleInfo_upgrade_pushButton.setText(self.tr(f"Upgrade to {target_version}"))
-
-        # Configure beta testing checkbox based on package source
-        self.__configure_beta_testing_checkbox(self.beta_testing_checkbox_pageUpgrade)
-
-        # On upgrade, standard parameters cannot be changed but remain scrollable
-        self.parameters_groupbox_upgrade.setParametersEnabled(False)
-        self.parameters_app_only_groupbox_upgrade.setParametersEnabled(True)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageUpgrade)
         self.moduleInfo_stackedWidget.setVisible(True)
 
-        # Enable upgrade controls
+        # Enable upgrade button
         self.moduleInfo_upgrade_pushButton.setEnabled(True)
-        self.db_parameters_CreateAndGrantRoles_upgrade_checkBox.setEnabled(True)
 
     def __show_maintain_page(
         self,
@@ -779,11 +782,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.__set_installation_label(
             self.moduleInfo_installation_label_maintain, install_text, beta_testing
         )
-
-        self.moduleInfo_selected_label_maintain.setText(
-            self.tr(f"Module selected: {module_name} - {target_version}")
-        )
-        QtUtils.resetForegroundColor(self.moduleInfo_selected_label_maintain)
 
         # Enable all maintenance buttons
         self.moduleInfo_drop_app_pushButton.setEnabled(True)
@@ -807,21 +805,17 @@ class ModuleWidget(QWidget, DIALOG_UI):
         beta_testing: bool = False,
     ):
         """Switch to maintain page with limited operations when selected version is older than installed."""
-        self.__set_installation_label(
-            self.moduleInfo_installation_label_maintain, install_text, beta_testing
-        )
-
-        self.moduleInfo_selected_label_maintain.setText(
-            self.tr(
-                f"Module selected: {module_name} - {target_version}<br>"
-                f"<b>The selected version is older than the installed version ({baseline_version}).</b><br>"
+        warning_text = (
+            install_text
+            + "<br><br>"
+            + self.tr(
+                f"<b>The selected version ({target_version}) is older than the installed version ({baseline_version}).</b><br>"
                 f"Maintenance operations are not available. "
                 f"Please select the matching version ({baseline_version}) to perform maintenance."
             )
         )
-        QtUtils.setForegroundColor(
-            self.moduleInfo_selected_label_maintain, PluginUtils.COLOR_WARNING
-        )
+        self.moduleInfo_installation_label_maintain.setHtml(warning_text)
+        self.__style_info_label(self.moduleInfo_installation_label_maintain, warning=True)
 
         # Disable all maintenance buttons
         self.moduleInfo_drop_app_pushButton.setEnabled(False)
@@ -844,8 +838,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
             and self.__pum_config.config.uninstall
             and len(self.__pum_config.config.uninstall) > 0
         )
-        self.uninstall_button.setEnabled(has_uninstall)
-        self.uninstall_button_maintain.setEnabled(has_uninstall)
+        tooltip = "" if has_uninstall else self.tr("Uninstall is not available for this module.")
+        for btn in (self.uninstall_button, self.uninstall_button_maintain):
+            btn.setEnabled(has_uninstall)
+            btn.setToolTip(tooltip)
 
     def __updateModuleInfo(self):
         if self.__current_module_package is None:
@@ -872,11 +868,17 @@ class ModuleWidget(QWidget, DIALOG_UI):
             if sm.exists(self.__database_connection):
                 # Module is installed - determine which page to show
                 baseline_version = sm.baseline(self.__database_connection)
-                migration_details = sm.migration_details(self.__database_connection)
-                installed_beta_testing = migration_details.get("beta_testing", False)
+                migration_summary = sm.migration_summary(self.__database_connection)
+                installed_beta_testing = migration_summary.get("beta_testing", False)
 
                 install_text = self.__build_installation_text(
-                    module_name, baseline_version, installed_beta_testing
+                    module_name,
+                    baseline_version,
+                    installed_beta_testing,
+                    schema=migration_summary.get("schema", ""),
+                    installed_date=migration_summary.get("installed_date"),
+                    upgrade_date=migration_summary.get("upgrade_date"),
+                    parameters=migration_summary.get("parameters"),
                 )
 
                 logger.info(
@@ -911,7 +913,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
                         installed_beta_testing,
                     )
 
-                logger.info(f"Migration table details: {migration_details}")
+                logger.info(f"Migration table details: {migration_summary}")
             else:
                 # Module not installed - show install page
                 self.__show_install_page(target_version)
