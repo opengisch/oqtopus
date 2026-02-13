@@ -3,8 +3,8 @@ from pathlib import Path
 
 import psycopg
 import yaml
-from qgis.PyQt.QtCore import QTimer, pyqtSignal
-from qgis.PyQt.QtWidgets import QMessageBox, QTextBrowser, QWidget
+from qgis.PyQt.QtCore import QSize, QTimer, pyqtSignal
+from qgis.PyQt.QtWidgets import QMessageBox, QSizePolicy, QTextBrowser, QWidget
 
 from ..core.module import Module
 from ..core.module_operation_task import ModuleOperationTask
@@ -17,6 +17,33 @@ from .recreate_app_dialog import RecreateAppDialog
 from .upgrade_dialog import UpgradeDialog
 
 DIALOG_UI = PluginUtils.get_ui_class("module_widget.ui")
+
+
+class _AutoHeightTextBrowser(QTextBrowser):
+    """A QTextBrowser that sizes itself to fit its content height.
+
+    Uses Preferred vertical policy so the layout gives it exactly the space
+    its content needs — no more, no less — letting spacers take the rest.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.document().documentLayout().documentSizeChanged.connect(self._on_content_changed)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+
+    def _content_height(self) -> int:
+        margins = self.contentsMargins()
+        doc_height = int(self.document().size().height())
+        return doc_height + margins.top() + margins.bottom()
+
+    def _on_content_changed(self):
+        self.updateGeometry()
+
+    def sizeHint(self) -> QSize:
+        return QSize(super().sizeHint().width(), self._content_height())
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(super().minimumSizeHint().width(), self._content_height())
 
 
 class ModuleWidget(QWidget, DIALOG_UI):
@@ -655,6 +682,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.tr(f"No module <b>{module_name} ({module_id})</b> installed")
         )
         self.__style_info_label(self.moduleInfo_installation_label_install)
+        self.__adjust_text_browser_height(self.moduleInfo_installation_label_install)
         self.moduleInfo_install_pushButton.setText(self.tr(f"Install {version}"))
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageInstall)
@@ -668,11 +696,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
         old_label = getattr(self, label_name)
         parent_layout = old_label.parentWidget().layout()
 
-        browser = QTextBrowser(old_label.parentWidget())
+        browser = _AutoHeightTextBrowser(old_label.parentWidget())
         browser.setObjectName(label_name)
         browser.setReadOnly(True)
         browser.setOpenExternalLinks(False)
-        browser.setMaximumHeight(120)
         browser.setFrameShape(QTextBrowser.Shape.NoFrame)
 
         # Find position in layout and replace
@@ -747,10 +774,16 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 "}"
             )
 
+    @staticmethod
+    def __adjust_text_browser_height(browser):
+        """Request the browser to recalculate its height from content."""
+        browser.updateGeometry()
+
     def __set_installation_label(self, label, install_text: str, beta_testing: bool = False):
         """Set the installation label text and style on the given label widget."""
         label.setHtml(install_text)
         self.__style_info_label(label)
+        self.__adjust_text_browser_height(label)
 
     def __show_upgrade_page(
         self,
@@ -818,6 +851,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         )
         self.moduleInfo_installation_label_maintain.setHtml(warning_text)
         self.__style_info_label(self.moduleInfo_installation_label_maintain, warning=True)
+        self.__adjust_text_browser_height(self.moduleInfo_installation_label_maintain)
 
         # Disable all maintenance buttons
         self.moduleInfo_drop_app_pushButton.setEnabled(False)
