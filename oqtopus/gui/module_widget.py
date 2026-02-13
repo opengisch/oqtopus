@@ -897,7 +897,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
         sm = SchemaMigrations(self.__pum_config)
 
         self.moduleInfo_stackedWidget.setEnabled(True)
-        self.__configure_uninstall_button()
 
         # Wrap read-only queries in transaction to prevent idle connections
         with self.__database_connection.transaction():
@@ -953,6 +952,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
             else:
                 # Module not installed - show install page
                 self.__show_install_page(target_version)
+
+        # Configure uninstall button after determining which page to show
+        self.__configure_uninstall_button()
 
     def __startOperation(self, operation: str, parameters: dict, options: dict):
         """Start a background module operation."""

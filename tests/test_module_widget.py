@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import psycopg
 import pytest
+import yaml
 
 # ---------------------------------------------------------------------------
 # Bootstrap the qgis.PyQt shim (same approach as oqtopus.py) so that
@@ -62,6 +63,8 @@ from qgis.PyQt.QtWidgets import QMessageBox  # noqa: E402
 
 from oqtopus.core.module_package import ModulePackage  # noqa: E402
 from oqtopus.gui.module_widget import ModuleWidget  # noqa: E402
+from oqtopus.libs.pum.pum_config import PumConfig  # noqa: E402
+from oqtopus.libs.pum.schema_migrations import SchemaMigrations  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -210,6 +213,7 @@ class TestModuleWidgetInstall:
         simple_module_package,
         db_connection,
         clean_db,
+        test_data_dir,
     ):
         """Clicking install should create the module schema in the database."""
         # Configure mock dialog to auto-accept
@@ -235,26 +239,24 @@ class TestModuleWidgetInstall:
         # Wait for the background operation to finish
         _wait_for_operation(module_widget)
 
-        # Verify the schema was created
-        with psycopg.connect(f"service={PG_SERVICE}") as conn:
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT EXISTS ("
-                "  SELECT 1 FROM information_schema.schemata "
-                "  WHERE schema_name = 'oqtopus_test'"
-                ");"
-            )
-            assert cur.fetchone()[0], "Schema 'oqtopus_test' should exist after install"
+        # Verify the module was installed using pum API
+        pum_config_path = test_data_dir / "simple_module" / "datamodel" / ".pum.yaml"
+        with open(pum_config_path) as f:
+            config_data = yaml.safe_load(f)
+        pum_config = PumConfig(
+            base_path=pum_config_path.parent, install_dependencies=False, **config_data
+        )
+        sm = SchemaMigrations(pum_config)
 
-            # Verify the migration table exists
-            cur.execute(
-                "SELECT EXISTS ("
-                "  SELECT 1 FROM information_schema.tables "
-                "  WHERE table_schema = 'public' "
-                "  AND table_name = 'pum_migrations'"
-                ");"
-            )
-            assert cur.fetchone()[0], "pum_migrations table should exist after install"
+        # Verify the module is installed (migration table exists and has entries)
+        assert sm.exists(
+            db_connection
+        ), "Module should be installed (pum_migrations table should exist)"
+
+        # Verify the baseline version is set
+        baseline = sm.baseline(db_connection)
+        assert baseline is not None, "Baseline version should be set after install"
+        assert str(baseline) == "1.1.0", f"Expected baseline 1.1.0, got {baseline}"
 
     @patch("oqtopus.gui.module_widget.InstallDialog")
     @patch("oqtopus.gui.module_widget.QMessageBox.information")
@@ -520,3 +522,42 @@ class TestModuleWidgetRoles:
                 ");"
             )
             assert cur.fetchone()[0], "Viewer should have SELECT on items"
+
+
+class TestModuleWidgetUninstallDisabled:
+    """Test uninstall button behavior for modules without uninstall functionality."""
+
+    @patch("oqtopus.gui.module_widget.InstallDialog")
+    def test_uninstall_disabled_for_module_without_uninstall(
+        self, mock_install_dialog_cls, clean_db, module_widget, db_connection, roles_module_package
+    ):
+        """Uninstall button should be disabled for modules without uninstall config."""
+        # Mock InstallDialog
+        mock_dialog = MagicMock()
+        mock_dialog.exec.return_value = 1
+        mock_dialog.parameters.return_value = {}
+        mock_dialog.roles.return_value = False
+        mock_dialog.beta_testing.return_value = False
+        mock_dialog.install_demo_data.return_value = False
+        mock_dialog.demo_data_name.return_value = None
+        mock_install_dialog_cls.return_value = mock_dialog
+        mock_install_dialog_cls.DialogCode = MagicMock()
+        mock_install_dialog_cls.DialogCode.Accepted = 1
+
+        module_widget.setModulePackage(roles_module_package)
+        module_widget.setDatabaseConnection(db_connection)
+
+        # Install the module
+        module_widget.moduleInfo_install_pushButton.click()
+        _wait_for_operation(module_widget)
+
+        # After install, the widget should be on the maintain page
+        current_page = module_widget.moduleInfo_stackedWidget.currentWidget()
+        assert current_page == module_widget.moduleInfo_stackedWidget_pageMaintain
+
+        # Check that the uninstall button on maintain page is disabled
+        assert not module_widget.uninstall_button_maintain.isEnabled()
+
+        # Verify tooltip indicates uninstall is not available
+        tooltip = module_widget.uninstall_button_maintain.toolTip()
+        assert "not available" in tooltip.lower()
