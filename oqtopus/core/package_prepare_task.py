@@ -50,6 +50,7 @@ class PackagePrepareTask(QThread):
 
         self.module_package = None
         self.from_zip_file = None
+        self.from_directory = None
 
         self.__destination_directory = None
 
@@ -64,6 +65,15 @@ class PackagePrepareTask(QThread):
     def startFromZip(self, module_package, zip_file: str):
         self.module_package = module_package
         self.from_zip_file = zip_file
+        self.from_directory = None
+
+        self.__canceled = False
+        self.start()
+
+    def startFromDirectory(self, module_package, directory: str):
+        self.module_package = module_package
+        self.from_zip_file = None
+        self.from_directory = directory
 
         self.__canceled = False
         self.start()
@@ -71,6 +81,7 @@ class PackagePrepareTask(QThread):
     def startFromModulePackage(self, module_package):
         self.module_package = module_package
         self.from_zip_file = None
+        self.from_directory = None
 
         self.__canceled = False
         self.start()
@@ -86,6 +97,16 @@ class PackagePrepareTask(QThread):
         try:
             if self.module_package is None:
                 raise Exception(self.tr("No module version provided."))
+
+            # For directory loading, just point source_package_dir directly
+            if self.from_directory:
+                if not os.path.isdir(self.from_directory):
+                    raise Exception(
+                        self.tr(f"The directory '{self.from_directory}' does not exist.")
+                    )
+                self.module_package.source_package_dir = self.from_directory
+                self.lastError = None
+                return
 
             self.__destination_directory = self.__prepare_destination_directory()
             logger.info(f"Destination directory: {self.__destination_directory}")

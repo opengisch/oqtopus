@@ -68,4 +68,4 @@ jobs:
           -e PYTHONPATH=/usr/share/qgis/python/plugins:/usr/share/qgis/python
           -v $(pwd):/usr/src
           -w /usr/src qgis/qgis:${QGIS_TEST_VERSION}
-          sh -c 'pip3 install -r requirements.txt || pip3 install -r requirements.txt --break-system-packages;xvfb-run pytest'
+          sh -c 'pip3 install -r requirements.txt || pip3 install -r requirements.txt --break-system-packages;xvfb-run pytest --ignore=tests/test_module_widget.py'

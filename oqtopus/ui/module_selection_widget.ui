@@ -186,6 +186,28 @@
      </layout>
     </widget>
    </item>
+   <item row="2" column="0" colspan="3">
+    <widget class="QGroupBox" name="module_directoryPackage_groupBox">
+     <property name="title">
+      <string>Directory</string>
+     </property>
+     <property name="flat">
+      <bool>true</bool>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_10">
+      <item row="0" column="0">
+       <widget class="QLineEdit" name="module_fromDirectory_lineEdit"/>
+      </item>
+      <item row="0" column="1">
+       <widget class="QToolButton" name="module_browseDirectory_toolButton">
+        <property name="text">
+         <string>...</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
    <item row="4" column="0" colspan="3">
     <widget class="QProgressBar" name="module_progressBar">
      <property name="maximum">
