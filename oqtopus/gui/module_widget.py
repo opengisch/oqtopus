@@ -893,8 +893,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
             and self.__pum_config.config.uninstall
             and len(self.__pum_config.config.uninstall) > 0
         )
-        self.uninstall_button.setEnabled(has_uninstall)
-        self.uninstall_button_maintain.setEnabled(has_uninstall)
+        tooltip = "" if has_uninstall else self.tr("Uninstall is not available for this module.")
+        for btn in (self.uninstall_button, self.uninstall_button_maintain):
+            btn.setEnabled(has_uninstall)
+            btn.setToolTip(tooltip)
 
     def __updateModuleInfo(self):
         if self.__current_module_package is None:
