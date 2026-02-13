@@ -127,6 +127,30 @@ def _configure_mock_dialog(cls_mock, *, roles: bool = False):
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def _no_blocking_dialogs():
+    """Prevent modal dialogs from blocking tests.
+
+    CriticalMessageBox.exec() and QMessageBox.information() will raise
+    immediately instead of opening a window that waits for user input.
+    """
+
+    def _raise_on_critical_exec(self):
+        raise AssertionError(f"Unexpected CriticalMessageBox: {self.text()}")
+
+    with (
+        patch(
+            "oqtopus.utils.qt_utils.CriticalMessageBox.exec",
+            _raise_on_critical_exec,
+        ),
+        patch(
+            "oqtopus.gui.module_widget.QMessageBox.information",
+            return_value=None,
+        ),
+    ):
+        yield
+
+
 @pytest.fixture()
 def db_connection(clean_db, pg_service):
     """Provide a psycopg connection to the test database.
