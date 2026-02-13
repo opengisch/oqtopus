@@ -84,6 +84,7 @@ jobs:
       - name: Run integration tests
         env:
           QT_QPA_PLATFORM: offscreen
+          PYTHONPATH: oqtopus/libs
         run: >-
           pytest
           tests/
