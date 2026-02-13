@@ -1,5 +1,6 @@
 import logging
 
+from qgis.gui import QgsFileWidget
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -52,7 +53,7 @@ class ParameterWidget(QWidget):
             self.layout.addWidget(self.widget)
             self.layout.addStretch()
             self.value = lambda: self.widget.isChecked()
-        elif param_type_value in ("decimal", "integer", "text", "path"):
+        elif param_type_value in ("decimal", "integer", "text"):
             if parameter_definition.values:
                 self.widget = QComboBox(self)
                 self.widget.setToolTip(tooltip)
@@ -82,6 +83,14 @@ class ParameterWidget(QWidget):
                     self.value = lambda: float(self.widget.text() or self.widget.placeholderText())
                 else:
                     self.value = lambda: self.widget.text() or self.widget.placeholderText()
+        elif param_type_value == "path":
+            self.widget = QgsFileWidget(self)
+            self.widget.setToolTip(tooltip)
+            self.widget.setStorageMode(QgsFileWidget.StorageMode.GetFile)
+            if parameter_definition.default is not None:
+                self.widget.setFilePath(str(parameter_definition.default))
+            self.layout.addWidget(self.widget)
+            self.value = lambda: self.widget.filePath()
         else:
             raise ValueError(
                 f"Unknown parameter type '{parameter_definition.type}' "
