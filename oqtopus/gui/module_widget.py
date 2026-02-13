@@ -672,7 +672,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_installation_label_install.setText(
             self.tr(f"No module <b>{module_name} ({module_id})</b> installed")
         )
-        QtUtils.resetForegroundColor(self.moduleInfo_installation_label_install)
+        self.__style_info_label(self.moduleInfo_installation_label_install)
         self.moduleInfo_install_pushButton.setText(self.tr(f"Install {version}"))
 
         # Configure beta testing checkbox based on package source
@@ -691,18 +691,63 @@ class ModuleWidget(QWidget, DIALOG_UI):
         module_name: str,
         baseline_version: str,
         beta_testing: bool = False,
+        schema: str = "",
+        installed_date=None,
+        upgrade_date=None,
+        parameters: dict | None = None,
     ) -> str:
-        """Build the installation info text shown above the action pages."""
-        beta_text = " (BETA TESTING)" if beta_testing else ""
-        return f"Installed: module {module_name} at version {baseline_version}{beta_text}."
+        """Build rich HTML installation info text shown above the action pages."""
+        lines = []
+        lines.append(f"<b>Module:</b> {module_name}")
+        if schema:
+            lines.append(f"<b>Schema:</b> {schema}")
+        lines.append(f"<b>Version:</b> {baseline_version}")
+        if beta_testing:
+            lines.append("\u26a0\ufe0f <b>Beta testing</b>")
+        if installed_date:
+            try:
+                lines.append(f"<b>Installed:</b> {installed_date.strftime('%Y-%m-%d %H:%M')}")
+            except AttributeError:
+                lines.append(f"<b>Installed:</b> {installed_date}")
+        if upgrade_date:
+            try:
+                lines.append(f"<b>Last upgrade:</b> {upgrade_date.strftime('%Y-%m-%d %H:%M')}")
+            except AttributeError:
+                lines.append(f"<b>Last upgrade:</b> {upgrade_date}")
+        if parameters and isinstance(parameters, dict):
+            lines.append("<br><b>Parameters:</b>")
+            for param_name, param_value in parameters.items():
+                lines.append(f"&nbsp;&nbsp;{param_name} = {param_value}")
+        return "<br>".join(lines)
+
+    @staticmethod
+    def __style_info_label(label, warning: bool = False):
+        """Apply a framed style to an installation info label."""
+        if warning:
+            label.setStyleSheet(
+                "QLabel { "
+                "  background-color: #fff3cd; "
+                "  border: 1px solid #e0c76a; "
+                "  border-radius: 4px; "
+                "  padding: 6px; "
+                "  color: #664d03; "
+                "}"
+            )
+        else:
+            label.setStyleSheet(
+                "QLabel { "
+                "  background-color: #f5f5f5; "
+                "  border: 1px solid #d0d0d0; "
+                "  border-radius: 4px; "
+                "  padding: 6px; "
+                "  color: #333333; "
+                "}"
+            )
 
     def __set_installation_label(self, label, install_text: str, beta_testing: bool = False):
-        """Set the installation label text and color on the given label widget."""
+        """Set the installation label text and style on the given label widget."""
         label.setText(install_text)
-        if beta_testing:
-            QtUtils.setForegroundColor(label, PluginUtils.COLOR_WARNING)
-        else:
-            QtUtils.resetForegroundColor(label)
+        self.__style_info_label(label)
 
     def __configure_beta_testing_checkbox(self, checkbox):
         """Configure a beta testing checkbox based on the current module package source.
@@ -780,11 +825,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.moduleInfo_installation_label_maintain, install_text, beta_testing
         )
 
-        self.moduleInfo_selected_label_maintain.setText(
-            self.tr(f"Module selected: {module_name} - {target_version}")
-        )
-        QtUtils.resetForegroundColor(self.moduleInfo_selected_label_maintain)
-
         # Enable all maintenance buttons
         self.moduleInfo_drop_app_pushButton.setEnabled(True)
         self.moduleInfo_recreate_app_pushButton.setEnabled(True)
@@ -807,21 +847,17 @@ class ModuleWidget(QWidget, DIALOG_UI):
         beta_testing: bool = False,
     ):
         """Switch to maintain page with limited operations when selected version is older than installed."""
-        self.__set_installation_label(
-            self.moduleInfo_installation_label_maintain, install_text, beta_testing
-        )
-
-        self.moduleInfo_selected_label_maintain.setText(
-            self.tr(
-                f"Module selected: {module_name} - {target_version}<br>"
-                f"<b>The selected version is older than the installed version ({baseline_version}).</b><br>"
+        warning_text = (
+            install_text
+            + "<br><br>"
+            + self.tr(
+                f"<b>The selected version ({target_version}) is older than the installed version ({baseline_version}).</b><br>"
                 f"Maintenance operations are not available. "
                 f"Please select the matching version ({baseline_version}) to perform maintenance."
             )
         )
-        QtUtils.setForegroundColor(
-            self.moduleInfo_selected_label_maintain, PluginUtils.COLOR_WARNING
-        )
+        self.moduleInfo_installation_label_maintain.setText(warning_text)
+        self.__style_info_label(self.moduleInfo_installation_label_maintain, warning=True)
 
         # Disable all maintenance buttons
         self.moduleInfo_drop_app_pushButton.setEnabled(False)
@@ -872,11 +908,17 @@ class ModuleWidget(QWidget, DIALOG_UI):
             if sm.exists(self.__database_connection):
                 # Module is installed - determine which page to show
                 baseline_version = sm.baseline(self.__database_connection)
-                migration_details = sm.migration_details(self.__database_connection)
-                installed_beta_testing = migration_details.get("beta_testing", False)
+                migration_summary = sm.migration_summary(self.__database_connection)
+                installed_beta_testing = migration_summary.get("beta_testing", False)
 
                 install_text = self.__build_installation_text(
-                    module_name, baseline_version, installed_beta_testing
+                    module_name,
+                    baseline_version,
+                    installed_beta_testing,
+                    schema=migration_summary.get("schema", ""),
+                    installed_date=migration_summary.get("installed_date"),
+                    upgrade_date=migration_summary.get("upgrade_date"),
+                    parameters=migration_summary.get("parameters"),
                 )
 
                 logger.info(
@@ -911,7 +953,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
                         installed_beta_testing,
                     )
 
-                logger.info(f"Migration table details: {migration_details}")
+                logger.info(f"Migration table details: {migration_summary}")
             else:
                 # Module not installed - show install page
                 self.__show_install_page(target_version)
