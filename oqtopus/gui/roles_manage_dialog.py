@@ -11,6 +11,7 @@ from qgis.PyQt.QtWidgets import (
     QHeaderView,
     QInputDialog,
     QLabel,
+    QLineEdit,
     QMenu,
     QMessageBox,
     QPushButton,
@@ -307,7 +308,7 @@ class RolesManageDialog(QDialog):
             )
 
     def _on_create_login_role(self):
-        """Prompt for a name and create a LOGIN role."""
+        """Prompt for a name and password, then create a LOGIN role."""
         if not self._connection:
             return
 
@@ -319,9 +320,19 @@ class RolesManageDialog(QDialog):
         if not ok or not name.strip():
             return
 
+        password, ok = QInputDialog.getText(
+            self,
+            self.tr("Create login role"),
+            self.tr("Password (leave empty for no password):"),
+            QLineEdit.EchoMode.Password,
+        )
+        if not ok:
+            return
+
         name = name.strip()
+        password = password.strip() or None
         try:
-            RoleManager.create_login_role(self._connection, name, commit=True)
+            RoleManager.create_login_role(self._connection, name, password=password, commit=True)
             QMessageBox.information(
                 self,
                 self.tr("Create login role"),
