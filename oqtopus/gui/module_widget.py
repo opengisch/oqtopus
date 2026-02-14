@@ -14,6 +14,7 @@ from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
 from .install_dialog import InstallDialog
 from .recreate_app_dialog import RecreateAppDialog
+from .roles_dialog import RolesDialog
 from .upgrade_dialog import UpgradeDialog
 
 DIALOG_UI = PluginUtils.get_ui_class("module_widget.ui")
@@ -318,8 +319,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
             # Start background install operation
             options = {
-                "roles": dialog.roles(),
-                "grant": dialog.roles(),
+                **dialog.roles_options(),
                 "beta_testing": dialog.beta_testing(),
                 "allow_multiple_modules": PluginUtils.get_allow_multiple_modules(),
                 "install_demo_data": dialog.install_demo_data(),
@@ -435,8 +435,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 options = {
                     "beta_testing": beta_testing,
                     "force": installed_beta_testing,
-                    "roles": dialog.roles(),
-                    "grant": dialog.roles(),
+                    **dialog.roles_options(),
                 }
 
                 self.__startOperation("upgrade", parameters, options)
@@ -544,8 +543,12 @@ class ModuleWidget(QWidget, DIALOG_UI):
         try:
             parameters = self.__get_installed_parameters()
 
+            dialog = RolesDialog(self)
+            if dialog.exec() != RolesDialog.DialogCode.Accepted:
+                return
+
             # Start background roles operation
-            self.__startOperation("roles", parameters, {})
+            self.__startOperation("roles", parameters, dialog.roles_options())
 
         except Exception as exception:
             CriticalMessageBox(

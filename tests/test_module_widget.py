@@ -107,12 +107,21 @@ def _wait_for_operation(widget: ModuleWidget, timeout_ms: int = 10000):
     loop.exec()
 
 
-def _configure_mock_dialog(cls_mock, *, roles: bool = False):
+def _configure_mock_dialog(cls_mock, *, roles: bool = False, suffix: str | None = None):
     """Wire up a mock InstallDialog / UpgradeDialog so it auto-accepts."""
     dialog = MagicMock()
     dialog.exec.return_value = 1  # QDialog.Accepted
     dialog.parameters.return_value = {}
     dialog.roles.return_value = roles
+    dialog.roles_options.return_value = {
+        "roles": roles,
+        "grant": roles,
+        **(
+            {"suffix": suffix, "create_generic": True, "grant_to_specific": False}
+            if suffix
+            else {}
+        ),
+    }
     dialog.beta_testing.return_value = False
     dialog.install_demo_data.return_value = False
     dialog.demo_data_name.return_value = None
@@ -399,10 +408,12 @@ class TestModuleWidgetRoles:
             assert "oqtopus_test_editor" in roles
             assert "oqtopus_test_viewer" in roles
 
+    @patch("oqtopus.gui.module_widget.RolesDialog")
     @patch("oqtopus.gui.module_widget.InstallDialog")
     def test_roles_button_grants_permissions(
         self,
         mock_install_dialog_cls,
+        mock_roles_dialog_cls,
         module_widget,
         roles_module_package,
         db_connection,
@@ -411,6 +422,17 @@ class TestModuleWidgetRoles:
         """Clicking the Roles button should create and grant roles."""
         # Install without roles first
         _configure_mock_dialog(mock_install_dialog_cls)
+
+        # Configure the RolesDialog mock
+        mock_roles_dialog = MagicMock()
+        mock_roles_dialog.exec.return_value = 1
+        mock_roles_dialog.roles_options.return_value = {
+            "roles": True,
+            "grant": True,
+        }
+        mock_roles_dialog_cls.return_value = mock_roles_dialog
+        mock_roles_dialog_cls.DialogCode = MagicMock()
+        mock_roles_dialog_cls.DialogCode.Accepted = 1
 
         module_widget.setModulePackage(roles_module_package)
         module_widget.setDatabaseConnection(db_connection)
