@@ -56,6 +56,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
 
         self.__database_connection = None
         self.__installed_module_ids = []
+        self.__installed_module_versions: dict[str, str] = {}
 
         try:
             self.__serviceChanged()
@@ -191,6 +192,10 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         """Return the list of module IDs currently installed in the database."""
         return self.__installed_module_ids
 
+    def getInstalledModuleVersion(self, module_id: str) -> str | None:
+        """Return the installed version for *module_id*, or None."""
+        return self.__installed_module_versions.get(module_id)
+
     def refreshInstalledModules(self):
         """Refresh the installed modules list in the groupbox."""
         # Clear existing labels
@@ -201,16 +206,16 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
                 item.widget().deleteLater()
 
         self.__installed_module_ids = []
+        self.__installed_module_versions = {}
 
         if self.__database_connection is None:
             self.installed_modules_groupbox.setVisible(False)
             return
 
         try:
-            with self.__database_connection.transaction():
-                migration_details = SchemaMigrations.schemas_with_migration_details(
-                    self.__database_connection
-                )
+            migration_details = SchemaMigrations.schemas_with_migration_details(
+                self.__database_connection
+            )
         except Exception:
             self.installed_modules_groupbox.setVisible(False)
             return
@@ -224,6 +229,11 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         self.__installed_module_ids = [
             info["module"] for info in migration_details if info["module"]
         ]
+        self.__installed_module_versions = {
+            info["module"]: info["version"]
+            for info in migration_details
+            if info["module"] and info["version"]
+        }
 
         for info in migration_details:
             module_label = info["module"] or info["schema"]

@@ -256,9 +256,9 @@
            <number>3</number>
           </property>
           <item>
-           <widget class="QPushButton" name="moduleInfo_roles_pushButton">
+           <widget class="QPushButton" name="moduleInfo_check_roles_pushButton">
             <property name="text">
-             <string>Create and grant roles</string>
+             <string>Manage roles</string>
             </property>
            </widget>
           </item>

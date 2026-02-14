@@ -302,4 +302,8 @@ class MainDialog(QDialog, DIALOG_UI):
         # Auto-select the first installed module matching an entry in the module combobox
         for module_id in self.__databaseConnectionWidget.getInstalledModuleIds():
             if self.__moduleSelectionWidget.selectModuleById(module_id):
+                installed_version = self.__databaseConnectionWidget.getInstalledModuleVersion(
+                    module_id
+                )
+                self.__moduleSelectionWidget.setInstalledVersion(installed_version)
                 break

@@ -14,6 +14,7 @@ from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
 from .install_dialog import InstallDialog
 from .recreate_app_dialog import RecreateAppDialog
+from .roles_manage_dialog import RolesManageDialog
 from .upgrade_dialog import UpgradeDialog
 
 DIALOG_UI = PluginUtils.get_ui_class("module_widget.ui")
@@ -66,7 +67,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.moduleInfo_install_pushButton.clicked.connect(self.__installModuleClicked)
         self.moduleInfo_upgrade_pushButton.clicked.connect(self.__upgradeModuleClicked)
-        self.moduleInfo_roles_pushButton.clicked.connect(self.__rolesClicked)
+        self.moduleInfo_check_roles_pushButton.clicked.connect(self.__checkRolesClicked)
         self.moduleInfo_drop_app_pushButton.clicked.connect(self.__dropAppClicked)
         self.moduleInfo_recreate_app_pushButton.clicked.connect(self.__recreateAppClicked)
         self.uninstall_button.clicked.connect(self.__uninstallModuleClicked)
@@ -174,7 +175,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Main operation buttons - disable during operation
         self.moduleInfo_install_pushButton.setEnabled(not in_progress)
         self.moduleInfo_upgrade_pushButton.setEnabled(not in_progress)
-        self.moduleInfo_roles_pushButton.setEnabled(not in_progress)
+        self.moduleInfo_check_roles_pushButton.setEnabled(not in_progress)
         self.uninstall_button.setEnabled(not in_progress)
 
         # Stacked widget contains all the form controls
@@ -318,8 +319,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
             # Start background install operation
             options = {
-                "roles": dialog.roles(),
-                "grant": dialog.roles(),
+                **dialog.roles_options(),
                 "beta_testing": dialog.beta_testing(),
                 "allow_multiple_modules": PluginUtils.get_allow_multiple_modules(),
                 "install_demo_data": dialog.install_demo_data(),
@@ -370,81 +370,79 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Check that the module ID matches the installed module in the database
         sm = SchemaMigrations(self.__pum_config)
         installed_beta_testing = False
-        with self.__database_connection.transaction():
-            if sm.exists(self.__database_connection):
-                migration_details = sm.migration_details(self.__database_connection)
-                installed_module_id = migration_details.get("module")
-                installed_beta_testing = migration_details.get("beta_testing", False)
+        if sm.exists(self.__database_connection):
+            migration_details = sm.migration_details(self.__database_connection)
+            installed_module_id = migration_details.get("module")
+            installed_beta_testing = migration_details.get("beta_testing", False)
 
-                if installed_module_id and installed_module_id != pum_module_id:
-                    CriticalMessageBox(
-                        self.tr("Error"),
-                        self.tr(
-                            f"Module ID mismatch: The database contains module '{installed_module_id}' but you are trying to upgrade with '{pum_module_id}'."
-                        ),
-                        None,
-                        self,
-                    ).exec()
-                    return
-
-                # Confirm upgrade if installed module is in beta testing
-                if installed_beta_testing:
-                    reply = QMessageBox.question(
-                        self,
-                        self.tr("Confirm Upgrade"),
-                        self.tr(
-                            "The installed module is in BETA TESTING mode.\n\n"
-                            "Are you sure you want to upgrade? \n"
-                            "This is not a recommended action: \n"
-                            "if the installed version has missing or different changelogs, \n"
-                            "the upgrade may fail or cause further issues."
-                        ),
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                        QMessageBox.StandardButton.No,
-                    )
-                    if reply != QMessageBox.StandardButton.Yes:
-                        return
-
-            try:
-                all_params = self.__pum_config.parameters()
-                standard_params = [p for p in all_params if not p.app_only]
-                app_only_params = [p for p in all_params if p.app_only]
-                target_version = self.__pum_config.last_version()
-
-                # Get installed parameter values to preset in the dialog
-                installed_parameters = None
-                migration_summary = sm.migration_summary(self.__database_connection)
-                if migration_summary.get("parameters"):
-                    installed_parameters = migration_summary["parameters"]
-
-                dialog = UpgradeDialog(
-                    self.__current_module_package,
-                    standard_params,
-                    app_only_params,
-                    target_version,
-                    installed_parameters,
-                    self,
-                )
-                if dialog.exec() != UpgradeDialog.DialogCode.Accepted:
-                    return
-
-                parameters = dialog.parameters()
-                beta_testing = dialog.beta_testing()
-
-                # Start background upgrade operation
-                options = {
-                    "beta_testing": beta_testing,
-                    "force": installed_beta_testing,
-                    "roles": dialog.roles(),
-                    "grant": dialog.roles(),
-                }
-
-                self.__startOperation("upgrade", parameters, options)
-
-            except Exception as exception:
+            if installed_module_id and installed_module_id != pum_module_id:
                 CriticalMessageBox(
-                    self.tr("Error"), self.tr("Can't upgrade the module:"), exception, self
+                    self.tr("Error"),
+                    self.tr(
+                        f"Module ID mismatch: The database contains module '{installed_module_id}' but you are trying to upgrade with '{pum_module_id}'."
+                    ),
+                    None,
+                    self,
                 ).exec()
+                return
+
+            # Confirm upgrade if installed module is in beta testing
+            if installed_beta_testing:
+                reply = QMessageBox.question(
+                    self,
+                    self.tr("Confirm Upgrade"),
+                    self.tr(
+                        "The installed module is in BETA TESTING mode.\n\n"
+                        "Are you sure you want to upgrade? \n"
+                        "This is not a recommended action: \n"
+                        "if the installed version has missing or different changelogs, \n"
+                        "the upgrade may fail or cause further issues."
+                    ),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
+
+        try:
+            all_params = self.__pum_config.parameters()
+            standard_params = [p for p in all_params if not p.app_only]
+            app_only_params = [p for p in all_params if p.app_only]
+            target_version = self.__pum_config.last_version()
+
+            # Get installed parameter values to preset in the dialog
+            installed_parameters = None
+            migration_summary = sm.migration_summary(self.__database_connection)
+            if migration_summary.get("parameters"):
+                installed_parameters = migration_summary["parameters"]
+
+            dialog = UpgradeDialog(
+                self.__current_module_package,
+                standard_params,
+                app_only_params,
+                target_version,
+                installed_parameters,
+                self,
+            )
+            if dialog.exec() != UpgradeDialog.DialogCode.Accepted:
+                return
+
+            parameters = dialog.parameters()
+            beta_testing = dialog.beta_testing()
+
+            # Start background upgrade operation
+            options = {
+                "beta_testing": beta_testing,
+                "force": installed_beta_testing,
+                **dialog.roles_options(),
+            }
+
+            self.__startOperation("upgrade", parameters, options)
+
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Can't upgrade the module:"), exception, self
+            ).exec()
 
     def __uninstallModuleClicked(self):
         if self.__current_module_package is None:
@@ -480,9 +478,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Check if the installed version matches the selected version
         sm = SchemaMigrations(self.__pum_config)
         version_warning = ""
-        with self.__database_connection.transaction():
-            if not sm.exists(self.__database_connection):
-                raise Exception("Module is not installed in the database. This should not happen.")
+        if not sm.exists(self.__database_connection):
+            raise Exception("Module is not installed in the database. This should not happen.")
         installed_version = sm.baseline(self.__database_connection)
         selected_version = self.__pum_config.last_version()
         if installed_version != selected_version:
@@ -521,8 +518,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
-    def __rolesClicked(self):
-        """Create and grant roles for the current module."""
+    def __checkRolesClicked(self):
+        """Check the database roles against the module configuration."""
         if self.__current_module_package is None:
             CriticalMessageBox(
                 self.tr("Error"), self.tr("Please select a module package first."), None, self
@@ -542,14 +539,29 @@ class ModuleWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            parameters = self.__get_installed_parameters()
+            role_manager = self.__pum_config.role_manager()
+            if not role_manager.roles:
+                QMessageBox.information(
+                    self,
+                    self.tr("Manage roles"),
+                    self.tr("No roles defined in the module configuration."),
+                )
+                return
 
-            # Start background roles operation
-            self.__startOperation("roles", parameters, {})
+            result = role_manager.roles_inventory(
+                connection=self.__database_connection, include_superusers=True
+            )
+            dialog = RolesManageDialog(
+                result,
+                connection=self.__database_connection,
+                role_manager=role_manager,
+                parent=self,
+            )
+            dialog.exec()
 
         except Exception as exception:
             CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't create and grant roles:"), exception, self
+                self.tr("Error"), self.tr("Can't list roles:"), exception, self
             ).exec()
             return
 
@@ -648,10 +660,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
     def __get_installed_parameters(self) -> dict:
         """Get parameter values from the installed module in the database."""
         sm = SchemaMigrations(self.__pum_config)
-        with self.__database_connection.transaction():
-            if sm.exists(self.__database_connection):
-                migration_summary = sm.migration_summary(self.__database_connection)
-                return migration_summary.get("parameters") or {}
+        if sm.exists(self.__database_connection):
+            migration_summary = sm.migration_summary(self.__database_connection)
+            return migration_summary.get("parameters") or {}
         return {}
 
     def __show_error_state(self, message: str, on_label=None):
@@ -821,7 +832,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Enable all maintenance buttons
         self.moduleInfo_drop_app_pushButton.setEnabled(True)
         self.moduleInfo_recreate_app_pushButton.setEnabled(True)
-        self.moduleInfo_roles_pushButton.setEnabled(True)
+        self.moduleInfo_check_roles_pushButton.setEnabled(True)
         self.uninstall_button_maintain.setEnabled(True)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageMaintain)
@@ -856,7 +867,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Disable all maintenance buttons
         self.moduleInfo_drop_app_pushButton.setEnabled(False)
         self.moduleInfo_recreate_app_pushButton.setEnabled(False)
-        self.moduleInfo_roles_pushButton.setEnabled(False)
+        self.moduleInfo_check_roles_pushButton.setEnabled(False)
         self.uninstall_button_maintain.setEnabled(False)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageMaintain)
@@ -898,60 +909,58 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.moduleInfo_stackedWidget.setEnabled(True)
 
-        # Wrap read-only queries in transaction to prevent idle connections
-        with self.__database_connection.transaction():
-            if sm.exists(self.__database_connection):
-                # Module is installed - determine which page to show
-                baseline_version = sm.baseline(self.__database_connection)
-                migration_summary = sm.migration_summary(self.__database_connection)
-                installed_beta_testing = migration_summary.get("beta_testing", False)
+        if sm.exists(self.__database_connection):
+            # Module is installed - determine which page to show
+            baseline_version = sm.baseline(self.__database_connection)
+            migration_summary = sm.migration_summary(self.__database_connection)
+            installed_beta_testing = migration_summary.get("beta_testing", False)
 
-                install_text = self.__build_installation_text(
+            install_text = self.__build_installation_text(
+                module_name,
+                baseline_version,
+                installed_beta_testing,
+                schema=migration_summary.get("schema", ""),
+                installed_date=migration_summary.get("installed_date"),
+                upgrade_date=migration_summary.get("upgrade_date"),
+                parameters=migration_summary.get("parameters"),
+            )
+
+            logger.info(
+                f"Version comparison: target={target_version} (type={type(target_version).__name__}), "
+                f"baseline={baseline_version} (type={type(baseline_version).__name__}), "
+                f"target > baseline: {target_version > baseline_version}, "
+                f"target == baseline: {target_version == baseline_version}"
+            )
+
+            if target_version > baseline_version:
+                self.__show_upgrade_page(
                     module_name,
                     baseline_version,
+                    target_version,
+                    install_text,
                     installed_beta_testing,
-                    schema=migration_summary.get("schema", ""),
-                    installed_date=migration_summary.get("installed_date"),
-                    upgrade_date=migration_summary.get("upgrade_date"),
-                    parameters=migration_summary.get("parameters"),
                 )
-
-                logger.info(
-                    f"Version comparison: target={target_version} (type={type(target_version).__name__}), "
-                    f"baseline={baseline_version} (type={type(baseline_version).__name__}), "
-                    f"target > baseline: {target_version > baseline_version}, "
-                    f"target == baseline: {target_version == baseline_version}"
+            elif target_version == baseline_version:
+                self.__show_maintain_page(
+                    module_name,
+                    baseline_version,
+                    target_version,
+                    install_text,
+                    installed_beta_testing,
                 )
-
-                if target_version > baseline_version:
-                    self.__show_upgrade_page(
-                        module_name,
-                        baseline_version,
-                        target_version,
-                        install_text,
-                        installed_beta_testing,
-                    )
-                elif target_version == baseline_version:
-                    self.__show_maintain_page(
-                        module_name,
-                        baseline_version,
-                        target_version,
-                        install_text,
-                        installed_beta_testing,
-                    )
-                else:
-                    self.__show_version_mismatch_page(
-                        module_name,
-                        baseline_version,
-                        target_version,
-                        install_text,
-                        installed_beta_testing,
-                    )
-
-                logger.info(f"Migration table details: {migration_summary}")
             else:
-                # Module not installed - show install page
-                self.__show_install_page(target_version)
+                self.__show_version_mismatch_page(
+                    module_name,
+                    baseline_version,
+                    target_version,
+                    install_text,
+                    installed_beta_testing,
+                )
+
+            logger.info(f"Migration table details: {migration_summary}")
+        else:
+            # Module not installed - show install page
+            self.__show_install_page(target_version)
 
         # Configure uninstall button after determining which page to show
         self.__configure_uninstall_button()

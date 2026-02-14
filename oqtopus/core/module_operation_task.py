@@ -169,6 +169,13 @@ class ModuleOperationTask(QThread):
         # Extract options that should not be passed to install()
         install_demo_data = self.__options.pop("install_demo_data", False)
         demo_data_name = self.__options.pop("demo_data_name", None)
+        suffix = self.__options.pop("suffix", None)
+
+        if suffix:
+            # Specific-role flow: let the upgrader skip role creation,
+            # then create roles ourselves with the suffix.
+            self.__options["roles"] = False
+            self.__options["grant"] = False
 
         upgrader.install(
             connection=self.__connection,
@@ -177,6 +184,9 @@ class ModuleOperationTask(QThread):
             commit=False,
             **self.__options,
         )
+
+        if suffix:
+            self._create_roles_with_options(suffix=suffix)
 
         # Install demo data if requested
         if install_demo_data and demo_data_name:
@@ -188,12 +198,21 @@ class ModuleOperationTask(QThread):
 
     def _run_upgrade(self, upgrader: Upgrader):
         """Run upgrade operation."""
+        suffix = self.__options.pop("suffix", None)
+
+        if suffix:
+            self.__options["roles"] = False
+            self.__options["grant"] = False
+
         upgrader.upgrade(
             connection=self.__connection,
             parameters=self.__parameters,
             feedback=self.__feedback,
             **self.__options,
         )
+
+        if suffix:
+            self._create_roles_with_options(suffix=suffix)
 
     def _run_uninstall(self, upgrader: Upgrader):
         """Run uninstall operation."""
@@ -220,14 +239,34 @@ class ModuleOperationTask(QThread):
             logger.warning("No roles defined in the configuration")
             return
 
-        # Create roles with grant=True to also grant permissions
+        suffix = self.__options.pop("suffix", None)
+
+        if suffix:
+            self._create_roles_with_options(suffix=suffix)
+        else:
+            role_manager.create_roles(
+                connection=self.__connection,
+                grant=True,
+                feedback=self.__feedback,
+            )
+
+        logger.info("Create and grant roles operation completed")
+
+    def _create_roles_with_options(self, *, suffix: str | None = None):
+        """Create roles using role_manager with specific-role options."""
+        role_manager = self.__pum_config.role_manager()
+        if not role_manager.roles:
+            logger.warning("No roles defined in the configuration")
+            return
+
+        logger.info(f"Creating roles (suffix={suffix})")
+
         role_manager.create_roles(
             connection=self.__connection,
+            suffix=suffix,
             grant=True,
             feedback=self.__feedback,
         )
-
-        logger.info("Create and grant roles operation completed")
 
     def _run_drop_app(self, upgrader: Upgrader):
         """Run drop app operation."""

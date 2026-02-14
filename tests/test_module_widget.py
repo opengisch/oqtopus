@@ -107,12 +107,17 @@ def _wait_for_operation(widget: ModuleWidget, timeout_ms: int = 10000):
     loop.exec()
 
 
-def _configure_mock_dialog(cls_mock, *, roles: bool = False):
+def _configure_mock_dialog(cls_mock, *, roles: bool = False, suffix: str | None = None):
     """Wire up a mock InstallDialog / UpgradeDialog so it auto-accepts."""
     dialog = MagicMock()
     dialog.exec.return_value = 1  # QDialog.Accepted
     dialog.parameters.return_value = {}
     dialog.roles.return_value = roles
+    dialog.roles_options.return_value = {
+        "roles": roles,
+        "grant": roles,
+        **({"suffix": suffix} if suffix else {}),
+    }
     dialog.beta_testing.return_value = False
     dialog.install_demo_data.return_value = False
     dialog.demo_data_name.return_value = None
@@ -399,18 +404,33 @@ class TestModuleWidgetRoles:
             assert "oqtopus_test_editor" in roles
             assert "oqtopus_test_viewer" in roles
 
+    @patch("oqtopus.gui.roles_manage_dialog.RolesCreateDialog")
     @patch("oqtopus.gui.module_widget.InstallDialog")
     def test_roles_button_grants_permissions(
         self,
         mock_install_dialog_cls,
+        mock_roles_dialog_cls,
         module_widget,
         roles_module_package,
         db_connection,
         pg_service,
     ):
-        """Clicking the Roles button should create and grant roles."""
+        """Clicking Manage roles → Create and grant roles should create and grant roles."""
+        from oqtopus.gui.roles_manage_dialog import RolesManageDialog
+
         # Install without roles first
         _configure_mock_dialog(mock_install_dialog_cls)
+
+        # Configure the RolesCreateDialog mock (shown inside RolesManageDialog)
+        mock_roles_dialog = MagicMock()
+        mock_roles_dialog.exec.return_value = 1
+        mock_roles_dialog.roles_options.return_value = {
+            "roles": True,
+            "grant": True,
+        }
+        mock_roles_dialog_cls.return_value = mock_roles_dialog
+        mock_roles_dialog_cls.DialogCode = MagicMock()
+        mock_roles_dialog_cls.DialogCode.Accepted = 1
 
         module_widget.setModulePackage(roles_module_package)
         module_widget.setDatabaseConnection(db_connection)
@@ -418,9 +438,16 @@ class TestModuleWidgetRoles:
         module_widget.moduleInfo_install_pushButton.click()
         _wait_for_operation(module_widget)
 
-        # Now click the Roles button
-        module_widget.moduleInfo_roles_pushButton.click()
-        _wait_for_operation(module_widget)
+        # Patch RolesManageDialog.exec to trigger create/grant, then close
+        # Also patch QMessageBox.information to avoid blocking
+        def patched_exec(dialog_self):
+            dialog_self._on_create_grant_roles()
+            return 1
+
+        with patch.object(RolesManageDialog, "exec", patched_exec), patch(
+            "oqtopus.gui.roles_manage_dialog.QMessageBox"
+        ):
+            module_widget.moduleInfo_check_roles_pushButton.click()
 
         # Verify viewer has SELECT permission
         with psycopg.connect(f"service={pg_service}") as conn:

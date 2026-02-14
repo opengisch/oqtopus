@@ -12,6 +12,7 @@ from qgis.PyQt.QtWidgets import (
 from ..core.module_package import ModulePackage
 from ..libs.pum import ParameterDefinition
 from .parameters_groupbox import ParametersGroupBox
+from .roles_groupbox import RolesGroupBox
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +74,9 @@ class UpgradeDialog(QDialog):
         self.__configure_beta_testing_checkbox(module_package)
         layout.addWidget(self.__beta_testing_checkbox)
 
-        # Roles checkbox
-        self.__roles_checkbox = QCheckBox(self.tr("Create and grant roles"), self)
-        self.__roles_checkbox.setChecked(True)
-        layout.addWidget(self.__roles_checkbox)
+        # Roles
+        self.__roles_groupbox = RolesGroupBox(self)
+        layout.addWidget(self.__roles_groupbox)
 
         # Add stretch to push buttons to the bottom
         layout.addStretch()
@@ -150,4 +150,8 @@ class UpgradeDialog(QDialog):
 
     def roles(self) -> bool:
         """Return whether create and grant roles is checked."""
-        return self.__roles_checkbox.isChecked()
+        return self.__roles_groupbox.isChecked()
+
+    def roles_options(self) -> dict:
+        """Return the full roles options dict."""
+        return self.__roles_groupbox.roles_options()
