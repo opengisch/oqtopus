@@ -14,7 +14,7 @@ from .roles_groupbox import RolesWidget
 logger = logging.getLogger(__name__)
 
 
-class RolesDialog(QDialog):
+class RolesCreateDialog(QDialog):
     """Dialog for choosing role creation options (specific / generic)."""
 
     def __init__(self, parent=None):

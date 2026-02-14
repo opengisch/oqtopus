@@ -27,6 +27,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.__current_module = None
         self.__current_module_package = None
         self.__modules_config = None
+        self.__installed_version: str | None = None
 
         try:
             with modules_config_path.open() as f:
@@ -127,6 +128,10 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                 self.module_module_comboBox.setCurrentIndex(i)
                 return True
         return False
+
+    def setInstalledVersion(self, version: str | None):
+        """Store the installed version so it can be auto-selected when versions finish loading."""
+        self.__installed_version = version
 
     def getSelectedModulePackage(self):
         return self.__current_module_package
@@ -508,6 +513,15 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.__enable_package_selection()
         self.module_progressBar.setVisible(False)
         logger.info(f"Versions loaded for module '{self.__current_module.name}'.")
+
+        # Auto-select the version matching the installed one (if the latest matches)
+        if self.__installed_version and self.__current_module.latest_version:
+            if self.__current_module.latest_version.name == self.__installed_version:
+                for i in range(self.module_package_comboBox.count()):
+                    pkg = self.module_package_comboBox.itemData(i)
+                    if isinstance(pkg, ModulePackage) and pkg.name == self.__installed_version:
+                        self.module_package_comboBox.setCurrentIndex(i)
+                        break
 
     def __loadDevelopmentVersionsFinished(self, error):
         logger.info("Loading development versions finished")

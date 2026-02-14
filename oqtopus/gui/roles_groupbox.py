@@ -16,17 +16,15 @@ logger = logging.getLogger(__name__)
 
 
 class RolesWidget(QWidget):
-    """Plain widget with generic / specific role checkboxes.
+    """Plain widget with specific-role checkbox.
 
     Layout::
 
-        [x] Create generic role(s)
         [ ] Create specific role(s) with suffix [________]
-            [ ] Grant specific role(s) to generic role(s)
 
-    The "Grant …" checkbox is only enabled when *both* specific and
-    generic are checked, since it describes the relationship between
-    the two.
+    Generic roles are always created and granted.  When the checkbox is
+    ticked, specific roles are also created (suffixed) and the generic
+    roles receive membership of the specific ones.
     """
 
     selectionChanged = pyqtSignal(bool)  # emitted with has_selection()
@@ -37,15 +35,17 @@ class RolesWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # --- Generic roles ---
-        self._generic_checkbox = QCheckBox(self.tr("Create generic role(s)"), self)
-        self._generic_checkbox.setChecked(True)
-        layout.addWidget(self._generic_checkbox)
-
         # --- Specific roles row ---
         specific_layout = QHBoxLayout()
         self._specific_checkbox = QCheckBox(self.tr("Create specific role(s) with suffix"), self)
         self._specific_checkbox.setChecked(False)
+        self._specific_checkbox.setToolTip(
+            self.tr(
+                "Generic roles are always created and granted.\n"
+                "Check this to also create specific (suffixed) roles\n"
+                "and grant them to the generic roles."
+            )
+        )
         specific_layout.addWidget(self._specific_checkbox)
 
         self._suffix_edit = QLineEdit(self)
@@ -54,19 +54,7 @@ class RolesWidget(QWidget):
         specific_layout.addWidget(self._suffix_edit)
         layout.addLayout(specific_layout)
 
-        # --- Grant specific → generic (relationship between the two) ---
-        grant_layout = QHBoxLayout()
-        grant_layout.setContentsMargins(20, 0, 0, 0)  # indent
-        self._grant_checkbox = QCheckBox(
-            self.tr("Grant specific role(s) to generic role(s)"), self
-        )
-        self._grant_checkbox.setChecked(False)
-        self._grant_checkbox.setEnabled(False)
-        grant_layout.addWidget(self._grant_checkbox)
-        layout.addLayout(grant_layout)
-
         # --- Wiring ---
-        self._generic_checkbox.toggled.connect(self._on_generic_toggled)
         self._specific_checkbox.toggled.connect(self._on_specific_toggled)
         self._suffix_edit.textChanged.connect(self._on_suffix_changed)
 
@@ -74,17 +62,8 @@ class RolesWidget(QWidget):
     # Slots
     # ------------------------------------------------------------------
 
-    def _on_generic_toggled(self, checked: bool):
-        self._grant_checkbox.setEnabled(checked and self._specific_checkbox.isChecked())
-        if not checked:
-            self._grant_checkbox.setChecked(False)
-        self.selectionChanged.emit(self.has_selection())
-
     def _on_specific_toggled(self, checked: bool):
         self._suffix_edit.setEnabled(checked)
-        self._grant_checkbox.setEnabled(checked and self._generic_checkbox.isChecked())
-        if not checked:
-            self._grant_checkbox.setChecked(False)
         self.selectionChanged.emit(self.has_selection())
 
     def _on_suffix_changed(self):
@@ -97,12 +76,12 @@ class RolesWidget(QWidget):
     def has_selection(self) -> bool:
         """Return True when the current selection is valid.
 
-        Requires at least one role type to be selected, and if specific
-        roles are checked, the suffix must be non-empty.
+        Always valid (generic roles are always created).  Only invalid
+        when specific roles are checked but the suffix is empty.
         """
         if self._specific_checkbox.isChecked() and not self._suffix_edit.text().strip():
             return False
-        return self._generic_checkbox.isChecked() or self._specific_checkbox.isChecked()
+        return True
 
     def roles_options(self) -> dict:
         """Return a dict suitable for ``create_roles()`` / upgrader options.
@@ -112,8 +91,6 @@ class RolesWidget(QWidget):
                 are relevant).
             grant (bool): Always True.
             suffix (str | None): Suffix for specific roles, or None.
-            create_generic (bool): Whether to create generic roles.
-            grant_to_specific (bool): Whether to grant generic → specific.
         """
         suffix = self._suffix_edit.text().strip() if self._specific_checkbox.isChecked() else None
         if suffix == "":
@@ -123,8 +100,6 @@ class RolesWidget(QWidget):
             "roles": True,
             "grant": True,
             "suffix": suffix,
-            "create_generic": self._generic_checkbox.isChecked(),
-            "grant_to_specific": self._grant_checkbox.isChecked(),
         }
 
 

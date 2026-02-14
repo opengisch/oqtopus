@@ -12,10 +12,9 @@ from ..libs.pum.pum_config import PumConfig
 from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
-from .check_roles_dialog import CheckRolesDialog
 from .install_dialog import InstallDialog
 from .recreate_app_dialog import RecreateAppDialog
-from .roles_dialog import RolesDialog
+from .roles_manage_dialog import RolesManageDialog
 from .upgrade_dialog import UpgradeDialog
 
 DIALOG_UI = PluginUtils.get_ui_class("module_widget.ui")
@@ -68,7 +67,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
 
         self.moduleInfo_install_pushButton.clicked.connect(self.__installModuleClicked)
         self.moduleInfo_upgrade_pushButton.clicked.connect(self.__upgradeModuleClicked)
-        self.moduleInfo_roles_pushButton.clicked.connect(self.__rolesClicked)
         self.moduleInfo_check_roles_pushButton.clicked.connect(self.__checkRolesClicked)
         self.moduleInfo_drop_app_pushButton.clicked.connect(self.__dropAppClicked)
         self.moduleInfo_recreate_app_pushButton.clicked.connect(self.__recreateAppClicked)
@@ -177,7 +175,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Main operation buttons - disable during operation
         self.moduleInfo_install_pushButton.setEnabled(not in_progress)
         self.moduleInfo_upgrade_pushButton.setEnabled(not in_progress)
-        self.moduleInfo_roles_pushButton.setEnabled(not in_progress)
         self.moduleInfo_check_roles_pushButton.setEnabled(not in_progress)
         self.uninstall_button.setEnabled(not in_progress)
 
@@ -485,7 +482,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         with self.__database_connection.transaction():
             if not sm.exists(self.__database_connection):
                 raise Exception("Module is not installed in the database. This should not happen.")
-        installed_version = sm.baseline(self.__database_connection)
+            installed_version = sm.baseline(self.__database_connection)
         selected_version = self.__pum_config.last_version()
         if installed_version != selected_version:
             version_warning = (
@@ -523,42 +520,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
-    def __rolesClicked(self):
-        """Create and grant roles for the current module."""
-        if self.__current_module_package is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please select a module package first."), None, self
-            ).exec()
-            return
-
-        if self.__database_connection is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please connect to a database first."), None, self
-            ).exec()
-            return
-
-        if self.__pum_config is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Module configuration not loaded."), None, self
-            ).exec()
-            return
-
-        try:
-            parameters = self.__get_installed_parameters()
-
-            dialog = RolesDialog(self)
-            if dialog.exec() != RolesDialog.DialogCode.Accepted:
-                return
-
-            # Start background roles operation
-            self.__startOperation("roles", parameters, dialog.roles_options())
-
-        except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't create and grant roles:"), exception, self
-            ).exec()
-            return
-
     def __checkRolesClicked(self):
         """Check the database roles against the module configuration."""
         if self.__current_module_package is None:
@@ -584,18 +545,26 @@ class ModuleWidget(QWidget, DIALOG_UI):
             if not role_manager.roles:
                 QMessageBox.information(
                     self,
-                    self.tr("Check roles"),
+                    self.tr("Manage roles"),
                     self.tr("No roles defined in the module configuration."),
                 )
                 return
 
-            result = role_manager.check_roles(connection=self.__database_connection)
-            dialog = CheckRolesDialog(result, self)
+            with self.__database_connection.transaction():
+                result = role_manager.roles_inventory(
+                    connection=self.__database_connection, include_superusers=True
+                )
+            dialog = RolesManageDialog(
+                result,
+                connection=self.__database_connection,
+                role_manager=role_manager,
+                parent=self,
+            )
             dialog.exec()
 
         except Exception as exception:
             CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't check roles:"), exception, self
+                self.tr("Error"), self.tr("Can't list roles:"), exception, self
             ).exec()
             return
 
@@ -867,7 +836,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Enable all maintenance buttons
         self.moduleInfo_drop_app_pushButton.setEnabled(True)
         self.moduleInfo_recreate_app_pushButton.setEnabled(True)
-        self.moduleInfo_roles_pushButton.setEnabled(True)
         self.moduleInfo_check_roles_pushButton.setEnabled(True)
         self.uninstall_button_maintain.setEnabled(True)
 
@@ -903,7 +871,6 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Disable all maintenance buttons
         self.moduleInfo_drop_app_pushButton.setEnabled(False)
         self.moduleInfo_recreate_app_pushButton.setEnabled(False)
-        self.moduleInfo_roles_pushButton.setEnabled(False)
         self.moduleInfo_check_roles_pushButton.setEnabled(False)
         self.uninstall_button_maintain.setEnabled(False)
 
