@@ -147,7 +147,11 @@ class RolesManageDialog(QDialog):
             else:
                 generic_roles.append(rs)
 
-        missing_generic: list[str] = list(result.missing_roles)
+        # Generic roles whose DB role doesn't exist (even if suffixed variants do)
+        found_generic_names = {rs.role.name for rs in generic_roles}
+        missing_generic = [
+            name for name in result.expected_roles if name not in found_generic_names
+        ]
 
         has_module_roles = bool(generic_roles or missing_generic or specific_by_suffix)
         if has_module_roles:
@@ -206,10 +210,11 @@ class RolesManageDialog(QDialog):
             for rs in result.grantee_roles:
                 member_of = ", ".join(rs.granted_to)
                 login_text = self.tr("yes") if rs.login else self.tr("no")
-                QTreeWidgetItem(
+                item = QTreeWidgetItem(
                     grantee_header,
                     [rs.name, self._OK, login_text, self.tr("member of: %s") % member_of],
                 )
+                item.setData(0, _LOGIN_ROLE_NAME, rs.name)
             grantee_header.setExpanded(True)
 
         # ==============================================================
@@ -341,31 +346,58 @@ class RolesManageDialog(QDialog):
         icon = self._OK if all_ok else self._WARN
         status_text = self.tr("ok") if all_ok else self.tr("permissions mismatch")
         login_text = self.tr("yes") if rs.login else self.tr("no")
-        details = self._build_details(rs)
+        summary, tooltip = self._build_details(rs)
         item = QTreeWidgetItem(
             parent,
-            [rs.name, f"{icon} {status_text}", login_text, details],
+            [rs.name, f"{icon} {status_text}", login_text, summary],
         )
+        if tooltip:
+            item.setToolTip(3, tooltip)
         item.setData(0, _ROLE_STATUS_ROLE, rs)
         return item
 
-    def _build_details(self, rs) -> str:
-        """Build the details string for a configured role."""
-        parts: list[str] = []
-        for sp in rs.schema_permissions:
-            expected = sp.expected.name if sp.expected else "\u2014"
-            actual_bits: list[str] = []
-            if sp.has_read:
-                actual_bits.append("read")
-            if sp.has_write:
-                actual_bits.append("write")
-            actual = ", ".join(actual_bits) if actual_bits else self.tr("none")
-            parts.append(f"  {sp.schema}: {expected} (has: {actual})")
+    def _build_details(self, rs) -> tuple[str, str]:
+        """Build a short summary and an HTML tooltip for a configured role.
 
+        Returns:
+            A tuple of (summary_text, html_tooltip).
+        """
+        # -- Summary (plain text, shown in the column) --
+        schema_names = [sp.schema for sp in rs.schema_permissions]
+        summary_parts: list[str] = []
+        if schema_names:
+            summary_parts.append(", ".join(schema_names))
         if rs.granted_to:
-            parts.append(self.tr("member of: %s") % ", ".join(rs.granted_to))
+            summary_parts.append(self.tr("member of %s") % ", ".join(rs.granted_to))
+        summary = " \u2014 ".join(summary_parts)
 
-        return "\n".join(parts)
+        # -- Tooltip (HTML, shown on hover) --
+        lines: list[str] = []
+        if rs.schema_permissions:
+            lines.append(f"<b>{self.tr('Schemas')}</b>")
+            for sp in rs.schema_permissions:
+                expected = sp.expected.name.upper() if sp.expected else "\u2014"
+                actual_bits: list[str] = []
+                if sp.has_read:
+                    actual_bits.append("READ")
+                if sp.has_write:
+                    actual_bits.append("WRITE")
+                actual = ", ".join(actual_bits) if actual_bits else self.tr("none")
+                if sp.satisfied:
+                    lines.append(f"&nbsp;&nbsp;\u2022 {sp.schema}: {expected}")
+                else:
+                    lines.append(
+                        f"&nbsp;&nbsp;\u2022 {sp.schema}: "
+                        f"<span style='color:orange'>{actual}</span> "
+                        f"(expected {expected})"
+                    )
+        if rs.granted_to:
+            lines.append(f"<b>{self.tr('Member of')}</b>")
+            for g in rs.granted_to:
+                lines.append(f"&nbsp;&nbsp;\u2022 {g}")
+
+        tooltip = "<br>".join(lines) if lines else ""
+        return summary, tooltip
 
     @staticmethod
     def _set_bold(item: QTreeWidgetItem):
@@ -388,6 +420,7 @@ class RolesManageDialog(QDialog):
 
         rs = item.data(0, _ROLE_STATUS_ROLE)
         group_suffix = item.data(0, _GROUP_SUFFIX_ROLE)
+        login_name = item.data(0, _LOGIN_ROLE_NAME)
 
         if rs is not None:
             # Individual role item
@@ -395,6 +428,9 @@ class RolesManageDialog(QDialog):
         elif group_suffix is not None:
             # Group header (generic or specific)
             self._show_group_menu(group_suffix)
+        elif login_name is not None:
+            # Login role item
+            self._show_login_role_menu(login_name)
 
     def _show_role_menu(self, rs):
         """Context menu for a single role."""
@@ -482,6 +518,15 @@ class RolesManageDialog(QDialog):
             self._revoke_roles(roles=None, suffix=suffix, label=kind)
         elif chosen is drop_action:
             self._drop_roles(roles=None, suffix=suffix, label=kind)
+
+    def _show_login_role_menu(self, name: str):
+        """Context menu for a login role item."""
+        menu = QMenu(self)
+        drop_action = menu.addAction(self.tr("Drop role"))
+
+        chosen = menu.exec(QCursor.pos())
+        if chosen is drop_action:
+            self._drop_login_role(name)
 
     # ------------------------------------------------------------------
     # Grant / Revoke membership
@@ -637,4 +682,29 @@ class RolesManageDialog(QDialog):
                 self,
                 self.tr("Error"),
                 self.tr("Failed to drop role: %s") % exc,
+            )
+
+    def _drop_login_role(self, name: str):
+        """Drop a login role."""
+        answer = QMessageBox.question(
+            self,
+            self.tr("Drop login role"),
+            self.tr("Drop login role '%s'?") % name,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            RoleManager.drop_login_role(self._connection, name, commit=True)
+            QMessageBox.information(
+                self,
+                self.tr("Drop login role"),
+                self.tr("Login role '%s' dropped.") % name,
+            )
+            self._refresh()
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                self.tr("Error"),
+                self.tr("Failed to drop login role: %s") % exc,
             )
