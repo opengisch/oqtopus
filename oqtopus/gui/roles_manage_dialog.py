@@ -264,10 +264,9 @@ class RolesManageDialog(QDialog):
         if not self._connection or not self._role_manager:
             return
         try:
-            with self._connection.transaction():
-                result = self._role_manager.roles_inventory(
-                    connection=self._connection, include_superusers=True
-                )
+            result = self._role_manager.roles_inventory(
+                connection=self._connection, include_superusers=True
+            )
             self._populate(result)
         except Exception as exc:
             logger.error(f"Failed to refresh roles: {exc}")

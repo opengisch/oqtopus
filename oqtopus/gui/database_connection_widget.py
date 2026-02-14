@@ -213,10 +213,9 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             return
 
         try:
-            with self.__database_connection.transaction():
-                migration_details = SchemaMigrations.schemas_with_migration_details(
-                    self.__database_connection
-                )
+            migration_details = SchemaMigrations.schemas_with_migration_details(
+                self.__database_connection
+            )
         except Exception:
             self.installed_modules_groupbox.setVisible(False)
             return
