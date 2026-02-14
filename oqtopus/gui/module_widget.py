@@ -12,6 +12,7 @@ from ..libs.pum.pum_config import PumConfig
 from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import CriticalMessageBox, QtUtils
+from .check_roles_dialog import CheckRolesDialog
 from .install_dialog import InstallDialog
 from .recreate_app_dialog import RecreateAppDialog
 from .roles_dialog import RolesDialog
@@ -68,6 +69,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_install_pushButton.clicked.connect(self.__installModuleClicked)
         self.moduleInfo_upgrade_pushButton.clicked.connect(self.__upgradeModuleClicked)
         self.moduleInfo_roles_pushButton.clicked.connect(self.__rolesClicked)
+        self.moduleInfo_check_roles_pushButton.clicked.connect(self.__checkRolesClicked)
         self.moduleInfo_drop_app_pushButton.clicked.connect(self.__dropAppClicked)
         self.moduleInfo_recreate_app_pushButton.clicked.connect(self.__recreateAppClicked)
         self.uninstall_button.clicked.connect(self.__uninstallModuleClicked)
@@ -176,6 +178,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_install_pushButton.setEnabled(not in_progress)
         self.moduleInfo_upgrade_pushButton.setEnabled(not in_progress)
         self.moduleInfo_roles_pushButton.setEnabled(not in_progress)
+        self.moduleInfo_check_roles_pushButton.setEnabled(not in_progress)
         self.uninstall_button.setEnabled(not in_progress)
 
         # Stacked widget contains all the form controls
@@ -556,6 +559,46 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
+    def __checkRolesClicked(self):
+        """Check the database roles against the module configuration."""
+        if self.__current_module_package is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please select a module package first."), None, self
+            ).exec()
+            return
+
+        if self.__database_connection is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Please connect to a database first."), None, self
+            ).exec()
+            return
+
+        if self.__pum_config is None:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Module configuration not loaded."), None, self
+            ).exec()
+            return
+
+        try:
+            role_manager = self.__pum_config.role_manager()
+            if not role_manager.roles:
+                QMessageBox.information(
+                    self,
+                    self.tr("Check roles"),
+                    self.tr("No roles defined in the module configuration."),
+                )
+                return
+
+            result = role_manager.check_roles(connection=self.__database_connection)
+            dialog = CheckRolesDialog(result, self)
+            dialog.exec()
+
+        except Exception as exception:
+            CriticalMessageBox(
+                self.tr("Error"), self.tr("Can't check roles:"), exception, self
+            ).exec()
+            return
+
     def __dropAppClicked(self):
         """Execute drop app handlers for the current module."""
         if self.__current_module_package is None:
@@ -825,6 +868,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_drop_app_pushButton.setEnabled(True)
         self.moduleInfo_recreate_app_pushButton.setEnabled(True)
         self.moduleInfo_roles_pushButton.setEnabled(True)
+        self.moduleInfo_check_roles_pushButton.setEnabled(True)
         self.uninstall_button_maintain.setEnabled(True)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageMaintain)
@@ -860,6 +904,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
         self.moduleInfo_drop_app_pushButton.setEnabled(False)
         self.moduleInfo_recreate_app_pushButton.setEnabled(False)
         self.moduleInfo_roles_pushButton.setEnabled(False)
+        self.moduleInfo_check_roles_pushButton.setEnabled(False)
         self.uninstall_button_maintain.setEnabled(False)
 
         self.moduleInfo_stackedWidget.setCurrentWidget(self.moduleInfo_stackedWidget_pageMaintain)

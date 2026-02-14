@@ -68,6 +68,7 @@ class RolesWidget(QWidget):
         # --- Wiring ---
         self._generic_checkbox.toggled.connect(self._on_generic_toggled)
         self._specific_checkbox.toggled.connect(self._on_specific_toggled)
+        self._suffix_edit.textChanged.connect(self._on_suffix_changed)
 
     # ------------------------------------------------------------------
     # Slots
@@ -86,12 +87,21 @@ class RolesWidget(QWidget):
             self._grant_checkbox.setChecked(False)
         self.selectionChanged.emit(self.has_selection())
 
+    def _on_suffix_changed(self):
+        self.selectionChanged.emit(self.has_selection())
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
     def has_selection(self) -> bool:
-        """Return True when at least one role type is selected."""
+        """Return True when the current selection is valid.
+
+        Requires at least one role type to be selected, and if specific
+        roles are checked, the suffix must be non-empty.
+        """
+        if self._specific_checkbox.isChecked() and not self._suffix_edit.text().strip():
+            return False
         return self._generic_checkbox.isChecked() or self._specific_checkbox.isChecked()
 
     def roles_options(self) -> dict:

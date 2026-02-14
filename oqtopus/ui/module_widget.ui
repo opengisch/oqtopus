@@ -263,6 +263,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="moduleInfo_check_roles_pushButton">
+            <property name="text">
+             <string>Check roles</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="maintain_roles_spacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
