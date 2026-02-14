@@ -5,11 +5,12 @@ import logging
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QCursor
 from qgis.PyQt.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
+    QFormLayout,
     QHBoxLayout,
     QHeaderView,
-    QInputDialog,
     QLabel,
     QLineEdit,
     QMenu,
@@ -308,29 +309,47 @@ class RolesManageDialog(QDialog):
             )
 
     def _on_create_login_role(self):
-        """Prompt for a name and password, then create a LOGIN role."""
+        """Prompt for a name and optional password, then create a LOGIN role."""
         if not self._connection:
             return
 
-        name, ok = QInputDialog.getText(
-            self,
-            self.tr("Create login role"),
-            self.tr("Role name:"),
+        dlg = QDialog(self)
+        dlg.setWindowTitle(self.tr("Create login role"))
+        layout = QVBoxLayout(dlg)
+
+        form = QFormLayout()
+        name_edit = QLineEdit(dlg)
+        form.addRow(self.tr("Role name:"), name_edit)
+
+        password_check = QCheckBox(self.tr("Set password"), dlg)
+        password_edit = QLineEdit(dlg)
+        password_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        password_edit.setEnabled(False)
+        password_check.toggled.connect(password_edit.setEnabled)
+
+        pw_layout = QHBoxLayout()
+        pw_layout.addWidget(password_check)
+        pw_layout.addWidget(password_edit)
+        form.addRow("", pw_layout)
+
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, dlg
         )
-        if not ok or not name.strip():
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addWidget(buttons)
+
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             return
 
-        password, ok = QInputDialog.getText(
-            self,
-            self.tr("Create login role"),
-            self.tr("Password (leave empty for no password):"),
-            QLineEdit.EchoMode.Password,
-        )
-        if not ok:
+        name = name_edit.text().strip()
+        if not name:
             return
 
-        name = name.strip()
-        password = password.strip() or None
+        password = password_edit.text().strip() if password_check.isChecked() else None
+        password = password or None
         try:
             RoleManager.create_login_role(self._connection, name, password=password, commit=True)
             QMessageBox.information(
