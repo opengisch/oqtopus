@@ -13,7 +13,6 @@ theme:
   features:
     - navigation.tabs
     - navigation.expand
-    - navigation.top
     - navigation.tracking
   palette:
     # Palette toggle for automatic mode

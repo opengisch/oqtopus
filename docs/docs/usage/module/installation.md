@@ -41,7 +41,7 @@ oQtopus downloads and prepares the release package automatically.
 
 Click the **Install** button in the **Module** tab. The installation dialog opens:
 
-![Install dialog](../../assets/images/screenshots/04_install_dialog.png)
+![Install dialog](../../assets/images/screenshots/04_install_dialog.png){: style="max-width:500px"}
 
 Here you can configure:
 

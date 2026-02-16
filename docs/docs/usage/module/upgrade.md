@@ -20,7 +20,7 @@ When the selected version is newer than the installed version, the **Module** ta
 
 Click the **Upgrade** button. The upgrade dialog opens, pre-filled with the currently installed parameters:
 
-![Upgrade dialog](../../assets/images/screenshots/08_upgrade_dialog.png)
+![Upgrade dialog](../../assets/images/screenshots/08_upgrade_dialog.png){: style="max-width:500px"}
 
 You can configure:
 
