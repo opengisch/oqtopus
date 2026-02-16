@@ -10,20 +10,10 @@ theme:
   name: "material"
   logo: assets/images/oqtopus.png
   favicon: assets/images/favicon.ico
-  # features:
-  #   - navigation.tabs
-  #   - navigation.tabs.sticky
-  #   - navigation.expand
-  #   - navigation.indexes
-  #   - navigation.top
-  #   - navigation.tracking
-  #   - pymdownx.highlight:
-  #       anchor_linenums: true
-  #       line_spans: __span
-  #       pygments_lang_class: true
-  #   - pymdownx.inlinehilite
-  #   - pymdownx.snippets
-  #   - pymdownx.superfences
+  features:
+    - navigation.expand
+    - navigation.top
+    - navigation.tracking
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
@@ -69,7 +59,14 @@ markdown_extensions:
 
 nav:
   - About: index.md
-  - Getting Started: getting_started.md
+  - Installation: installation.md
+  - Usage:
+      - Module:
+          - Installation: usage/module/installation.md
+          - Upgrade: usage/module/upgrade.md
+          - Role Management: usage/module/role_management.md
+      - Project: usage/project.md
+      - Plugin: usage/plugin.md
   - Adding Modules: adding_modules.md
 
 extra:
