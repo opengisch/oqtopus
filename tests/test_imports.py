@@ -13,10 +13,12 @@ def test_no_direct_bundled_lib_imports():
     forbidden_imports = ["pum", "pgserviceparser"]
     violations = []
 
+    libs_dir = oqtopus_dir / "libs"
+
     # Scan all Python files in the oqtopus directory
     for py_file in oqtopus_dir.rglob("*.py"):
-        # Skip __init__.py in libs directory (it's allowed to import directly)
-        if py_file.parent.name == "libs" and py_file.name == "__init__.py":
+        # Skip files inside the bundled lib directories (third-party code)
+        if py_file.is_relative_to(libs_dir):
             continue
 
         try:
