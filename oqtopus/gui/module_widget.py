@@ -11,8 +11,9 @@ from ..core.module_operation_task import ModuleOperationTask
 from ..libs.pum.pum_config import PumConfig
 from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
-from ..utils.qt_utils import CriticalMessageBox, QtUtils
+from ..utils.qt_utils import QtUtils
 from .install_dialog import InstallDialog
+from .message_bar import MessageBar
 from .recreate_app_dialog import RecreateAppDialog
 from .roles_manage_dialog import RolesManageDialog
 from .upgrade_dialog import UpgradeDialog
@@ -205,27 +206,23 @@ class ModuleWidget(QWidget, DIALOG_UI):
         package_dir = self.__current_module_package.source_package_dir
 
         if package_dir is None:
-            CriticalMessageBox(
-                self.tr("Error"),
+            MessageBar.pushErrorToBar(
+                self,
                 self.tr(
                     f"The selected file '{self.__current_module_package.source_package_zip}' doesn't contain a valid package directory."
                 ),
-                None,
-                self,
-            ).exec()
+            )
             return
 
         self.__data_model_dir = os.path.join(package_dir, "datamodel")
         pumConfigFilename = os.path.join(self.__data_model_dir, ".pum.yaml")
         if not os.path.exists(pumConfigFilename):
-            CriticalMessageBox(
-                self.tr("Error"),
+            MessageBar.pushErrorToBar(
+                self,
                 self.tr(
                     f"The selected file '{self.__current_module_package.source_package_zip}' doesn't contain a valid .pum.yaml file."
                 ),
-                None,
-                self,
-            ).exec()
+            )
             return
 
         try:
@@ -241,12 +238,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 base_path=base_path, install_dependencies=True, **config_data
             )
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"),
-                self.tr(f"Can't load PUM config from '{pumConfigFilename}':"),
-                exception,
-                self,
-            ).exec()
+            MessageBar.pushErrorToBar(
+                self, self.tr(f"Can't load PUM config from '{pumConfigFilename}':"), exception
+            )
             return
 
         logger.info(f"PUM config loaded from '{pumConfigFilename}'")
@@ -258,46 +252,37 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.__standard_params = standard_params
             self.__app_only_params = app_only_params
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"),
+            MessageBar.pushErrorToBar(
+                self,
                 self.tr(f"Can't load parameters from PUM config '{pumConfigFilename}':"),
                 exception,
-                self,
-            ).exec()
+            )
             return
 
     def __installModuleClicked(self):
 
         if self.__current_module_package is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please select a module package first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please select a module package first."))
             return
 
         if self.__database_connection is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please select a database service first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please select a database service first."))
             return
 
         if self.__pum_config is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("No valid module available."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("No valid module available."))
             return
 
         # Check that the module ID in the PUM config matches the selected module
         pum_module_id = self.__pum_config.config.pum.module
         selected_module_id = self.__current_module_package.module.id
         if pum_module_id != selected_module_id:
-            CriticalMessageBox(
-                self.tr("Error"),
+            MessageBar.pushErrorToBar(
+                self,
                 self.tr(
                     f"Module ID mismatch: The selected module is '{selected_module_id}' but the PUM configuration specifies '{pum_module_id}'."
                 ),
-                None,
-                self,
-            ).exec()
+            )
             return
 
         try:
@@ -329,42 +314,32 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.__startOperation("install", parameters, options)
 
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't install the module:"), exception, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Can't install the module:"), exception)
             return
 
     def __upgradeModuleClicked(self):
         if self.__current_module_package is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please select a module package first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please select a module package first."))
             return
 
         if self.__database_connection is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please select a database service first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please select a database service first."))
             return
 
         if self.__pum_config is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("No valid module available."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("No valid module available."))
             return
 
         # Check that the module ID in the PUM config matches the selected module
         pum_module_id = self.__pum_config.config.pum.module
         selected_module_id = self.__current_module_package.module.id
         if pum_module_id != selected_module_id:
-            CriticalMessageBox(
-                self.tr("Error"),
+            MessageBar.pushErrorToBar(
+                self,
                 self.tr(
                     f"Module ID mismatch: The selected module is '{selected_module_id}' but the PUM configuration specifies '{pum_module_id}'."
                 ),
-                None,
-                self,
-            ).exec()
+            )
             return
 
         # Check that the module ID matches the installed module in the database
@@ -376,14 +351,12 @@ class ModuleWidget(QWidget, DIALOG_UI):
             installed_beta_testing = migration_details.get("beta_testing", False)
 
             if installed_module_id and installed_module_id != pum_module_id:
-                CriticalMessageBox(
-                    self.tr("Error"),
+                MessageBar.pushErrorToBar(
+                    self,
                     self.tr(
                         f"Module ID mismatch: The database contains module '{installed_module_id}' but you are trying to upgrade with '{pum_module_id}'."
                     ),
-                    None,
-                    self,
-                ).exec()
+                )
                 return
 
             # Confirm upgrade if installed module is in beta testing
@@ -440,39 +413,29 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.__startOperation("upgrade", parameters, options)
 
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't upgrade the module:"), exception, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Can't upgrade the module:"), exception)
 
     def __uninstallModuleClicked(self):
         if self.__current_module_package is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please select a module package first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please select a module package first."))
             return
 
         if self.__database_connection is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please select a database service first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please select a database service first."))
             return
 
         if self.__pum_config is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("No valid module available."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("No valid module available."))
             return
 
         # Check if uninstall hooks are defined
         if not self.__pum_config.config.uninstall:
-            CriticalMessageBox(
-                self.tr("Error"),
+            MessageBar.pushErrorToBar(
+                self,
                 self.tr(
                     "No uninstall configuration found. The module does not provide uninstall functionality."
                 ),
-                None,
-                self,
-            ).exec()
+            )
             return
 
         # Check if the installed version matches the selected version
@@ -513,38 +476,28 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.__startOperation("uninstall", parameters, {})
 
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't uninstall the module:"), exception, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Can't uninstall the module:"), exception)
             return
 
     def __checkRolesClicked(self):
         """Check the database roles against the module configuration."""
         if self.__current_module_package is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please select a module package first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please select a module package first."))
             return
 
         if self.__database_connection is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please connect to a database first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please connect to a database first."))
             return
 
         if self.__pum_config is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Module configuration not loaded."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Module configuration not loaded."))
             return
 
         try:
             role_manager = self.__pum_config.role_manager()
             if not role_manager.roles:
-                QMessageBox.information(
-                    self,
-                    self.tr("Manage roles and users"),
-                    self.tr("No roles defined in the module configuration."),
+                MessageBar.pushSuccessToBar(
+                    self, self.tr("No roles defined in the module configuration.")
                 )
                 return
 
@@ -560,29 +513,21 @@ class ModuleWidget(QWidget, DIALOG_UI):
             dialog.exec()
 
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't list roles:"), exception, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Can't list roles:"), exception)
             return
 
     def __dropAppClicked(self):
         """Execute drop app handlers for the current module."""
         if self.__current_module_package is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please select a module package first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please select a module package first."))
             return
 
         if self.__database_connection is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please connect to a database first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please connect to a database first."))
             return
 
         if self.__pum_config is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Module configuration not loaded."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Module configuration not loaded."))
             return
 
         reply = QMessageBox.question(
@@ -606,29 +551,21 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.__startOperation("drop_app", parameters, {})
 
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't drop app:"), exception, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Can't drop app:"), exception)
             return
 
     def __recreateAppClicked(self):
         """Execute recreate app (drop + create) handlers for the current module."""
         if self.__current_module_package is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please select a module package first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please select a module package first."))
             return
 
         if self.__database_connection is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Please connect to a database first."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Please connect to a database first."))
             return
 
         if self.__pum_config is None:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Module configuration not loaded."), None, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Module configuration not loaded."))
             return
 
         try:
@@ -636,9 +573,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             standard_params = [p for p in all_params if not p.app_only]
             app_only_params = [p for p in all_params if p.app_only]
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't load parameters:"), exception, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Can't load parameters:"), exception)
             return
 
         # Get installed parameter values to preset in the dialog
@@ -655,9 +590,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             self.__startOperation("recreate_app", parameters, {})
 
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't recreate app:"), exception, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Can't recreate app:"), exception)
             return
 
     def __get_installed_parameters(self) -> dict:
@@ -1018,9 +951,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
             # Force UI reset
             self.__resetOperationUI()
             # Show warning
-            QMessageBox.warning(
+            MessageBar.pushWarningToBar(
                 self,
-                self.tr("Operation Terminated"),
                 self.tr(
                     "The operation did not respond to the cancel request and was forcefully terminated. "
                     "The database may be in an inconsistent state. Please verify manually."
@@ -1057,39 +989,35 @@ class ModuleWidget(QWidget, DIALOG_UI):
             module_name = self.__current_module_package.module.name
             operation = self.__operation_task._ModuleOperationTask__operation
             if operation == "install":
-                title = self.tr("Module installed")
+                self.tr("Module installed")
                 target_version = self.__pum_config.last_version()
                 message = self.tr(
                     f"Module '{module_name}' has been installed ({target_version}) successfully."
                 )
             elif operation == "upgrade":
-                title = self.tr("Module upgraded")
+                self.tr("Module upgraded")
                 target_version = self.__pum_config.last_version()
                 message = self.tr(
                     f"Module '{module_name}' has been upgraded to {target_version} successfully."
                 )
             elif operation == "uninstall":
-                title = self.tr("Module uninstalled")
+                self.tr("Module uninstalled")
                 message = self.tr(f"Module '{module_name}' has been uninstalled successfully.")
             elif operation == "roles":
-                title = self.tr("Roles created")
+                self.tr("Roles created")
                 message = self.tr(
                     f"Roles for module '{module_name}' have been created and granted successfully."
                 )
             elif operation == "recreate_app":
-                title = self.tr("Application recreated")
+                self.tr("Application recreated")
                 message = self.tr(
                     f"Application schema of module '{module_name}' has been recreated successfully."
                 )
             else:
-                title = self.tr("Task completed")
+                self.tr("Task completed")
                 message = self.tr(f"Task on module '{module_name}' completed successfully.")
 
-            QMessageBox.information(
-                self,
-                title,
-                message,
-            )
+            MessageBar.pushSuccessToBar(self, message)
             logger.info(message)
 
             # Refresh module info
@@ -1100,9 +1028,4 @@ class ModuleWidget(QWidget, DIALOG_UI):
         else:
             # Show error message only if there's an actual error (not just cancellation)
             if error_message:
-                CriticalMessageBox(
-                    self.tr("Error"),
-                    self.tr(f"Operation failed: {error_message}"),
-                    None,
-                    self,
-                ).exec()
+                MessageBar.pushErrorToBar(self, self.tr(f"Operation failed: {error_message}"))

@@ -33,6 +33,7 @@ from qgis.PyQt.QtWidgets import (
     QDialog,
     QMenuBar,
     QMessageBox,
+    QVBoxLayout,
 )
 
 from ..core.module_package import ModulePackage
@@ -46,6 +47,7 @@ if libs_path not in sys.path:
 
 from .database_connection_widget import DatabaseConnectionWidget  # noqa: E402
 from .logs_widget import LogsWidget  # noqa: E402
+from .message_bar import MessageBar  # noqa: E402
 from .module_selection_widget import ModuleSelectionWidget  # noqa: E402
 from .module_widget import ModuleWidget  # noqa: E402
 from .plugin_widget import PluginWidget  # noqa: E402
@@ -60,6 +62,13 @@ class MainDialog(QDialog, DIALOG_UI):
         self.setupUi(self)
 
         self.__about_dialog_cls = about_dialog_cls or AboutDialog
+
+        # Message bar above the database groupbox
+        self.__message_bar = MessageBar(self)
+        placeholder = self.messageBar_placeholder
+        placeholder_layout = QVBoxLayout(placeholder)
+        placeholder_layout.setContentsMargins(0, 0, 0, 0)
+        placeholder_layout.addWidget(self.__message_bar)
 
         # Init GUI Modules
         self.__moduleSelectionWidget = ModuleSelectionWidget(modules_config_path, self)
@@ -152,13 +161,15 @@ class MainDialog(QDialog, DIALOG_UI):
 
         logger.info("Ready.")
 
+    def messageBar(self) -> MessageBar:
+        """Return the dialog's message bar for pushing messages."""
+        return self.__message_bar
+
     def closeEvent(self, event):
         """Handle window close event (X button) to properly cleanup threads."""
         if self.__moduleWidget.isOperationRunning():
-            QMessageBox.warning(
-                self,
-                self.tr("Operation in progress"),
-                self.tr("Cannot close the dialog while an operation is running."),
+            self.__message_bar.pushWarning(
+                self.tr("Cannot close the dialog while an operation is running.")
             )
             event.ignore()
             return
@@ -170,10 +181,8 @@ class MainDialog(QDialog, DIALOG_UI):
 
     def __closeDialog(self):
         if self.__moduleWidget.isOperationRunning():
-            QMessageBox.warning(
-                self,
-                self.tr("Operation in progress"),
-                self.tr("Cannot close the dialog while an operation is running."),
+            self.__message_bar.pushWarning(
+                self.tr("Cannot close the dialog while an operation is running.")
             )
             return
         self.__databaseConnectionWidget.close()
@@ -205,10 +214,8 @@ class MainDialog(QDialog, DIALOG_UI):
         cache_paths = PluginUtils.get_all_cache_paths()
 
         if not cache_paths:
-            QMessageBox.information(
-                self,
-                self.tr("Cache Cleanup"),
-                self.tr("No cache directories found. Nothing to clean up."),
+            self.__message_bar.pushSuccess(
+                self.tr("No cache directories found. Nothing to clean up.")
             )
             return
 
@@ -239,17 +246,11 @@ class MainDialog(QDialog, DIALOG_UI):
                 errors.append(f"{cache_dir}: {e}")
 
         if errors:
-            QMessageBox.warning(
-                self,
-                self.tr("Cache Cleanup Warning"),
-                self.tr("Some cache directories could not be deleted:\n") + "\n".join(errors),
+            self.__message_bar.pushWarning(
+                self.tr("Some cache directories could not be deleted:\n") + "\n".join(errors)
             )
         else:
-            QMessageBox.information(
-                self,
-                self.tr("Cache Cleanup"),
-                self.tr("Cache has been successfully cleaned up."),
-            )
+            self.__message_bar.pushSuccess(self.tr("Cache has been successfully cleaned up."))
 
     def __show_about_dialog(self):
         dialog = self.__about_dialog_cls(self)

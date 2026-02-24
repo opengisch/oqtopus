@@ -4,11 +4,12 @@ import shutil
 
 from qgis.PyQt.QtCore import QUrl
 from qgis.PyQt.QtGui import QDesktopServices
-from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox, QWidget
+from qgis.PyQt.QtWidgets import QFileDialog, QWidget
 
 from ..core.module_package import ModulePackage
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import QtUtils
+from .message_bar import MessageBar
 
 DIALOG_UI = PluginUtils.get_ui_class("project_widget.ui")
 
@@ -98,19 +99,13 @@ class ProjectWidget(QWidget, DIALOG_UI):
     def __projectInstallClicked(self):
 
         if self.__current_module_package is None:
-            QMessageBox.warning(
-                self,
-                self.tr("Error"),
-                self.tr("Please select a module and version first."),
-            )
+            MessageBar.pushWarningToBar(self, self.tr("Please select a module and version first."))
             return
 
         asset_project = self.__current_module_package.asset_project
         if asset_project is None:
-            QMessageBox.warning(
-                self,
-                self.tr("Error"),
-                self.tr("No project asset available for this module version."),
+            MessageBar.pushWarningToBar(
+                self, self.tr("No project asset available for this module version.")
             )
             return
 
@@ -154,40 +149,27 @@ class ProjectWidget(QWidget, DIALOG_UI):
                 else:
                     shutil.copy2(source_path, destination_path)
 
-            QMessageBox.information(
-                self,
-                self.tr("Project installed"),
-                self.tr(f"Project files have been copied to '{install_destination}'."),
+            MessageBar.pushSuccessToBar(
+                self, self.tr(f"Project files have been copied to '{install_destination}'.")
             )
         except Exception as e:
-            QMessageBox.critical(
-                self,
-                self.tr("Error"),
-                self.tr(f"Failed to copy project file: {e}"),
-            )
+            MessageBar.pushErrorToBar(self, self.tr(f"Failed to copy project file: {e}"))
             return
 
     def __projectSeeChangelogClicked(self):
         if self.__current_module_package is None:
-            QMessageBox.warning(
-                self,
-                self.tr("Can't open changelog"),
-                self.tr("Please select a module and version first."),
-            )
+            MessageBar.pushWarningToBar(self, self.tr("Please select a module and version first."))
             return
 
         if self.__current_module_package.type == ModulePackage.Type.FROM_ZIP:
-            QMessageBox.warning(
-                self,
-                self.tr("Can't open changelog"),
-                self.tr("Changelog is not available for Zip packages."),
+            MessageBar.pushWarningToBar(
+                self, self.tr("Changelog is not available for Zip packages.")
             )
             return
 
         if self.__current_module_package.html_url is None:
-            QMessageBox.warning(
+            MessageBar.pushWarningToBar(
                 self,
-                self.tr("Can't open changelog"),
                 self.tr(
                     f"Changelog not available for version '{self.__current_module_package.display_name()}'."
                 ),

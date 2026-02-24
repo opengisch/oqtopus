@@ -4,11 +4,12 @@ from zipfile import ZipFile
 
 from qgis.PyQt.QtCore import QUrl
 from qgis.PyQt.QtGui import QDesktopServices
-from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox, QWidget
+from qgis.PyQt.QtWidgets import QFileDialog, QWidget
 
 from ..core.module_package import ModulePackage
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import QtUtils
+from .message_bar import MessageBar
 
 DIALOG_UI = PluginUtils.get_ui_class("plugin_widget.ui")
 
@@ -89,20 +90,14 @@ class PluginWidget(QWidget, DIALOG_UI):
 
     def __installClicked(self):
         if self.__current_module_package is None:
-            QMessageBox.warning(
-                self,
-                self.tr("Error"),
-                self.tr("Please select a module and version first."),
-            )
+            MessageBar.pushWarningToBar(self, self.tr("Please select a module and version first."))
             return
 
         # Check if the package exists
         asset_plugin = self.__current_module_package.asset_plugin
         if not os.path.exists(asset_plugin.package_zip):
-            QMessageBox.critical(
-                self,
-                self.tr("Error"),
-                self.tr(f"Plugin zip file '{asset_plugin.package_zip}' does not exist."),
+            MessageBar.pushErrorToBar(
+                self, self.tr(f"Plugin zip file '{asset_plugin.package_zip}' does not exist.")
             )
             return
 
@@ -110,9 +105,8 @@ class PluginWidget(QWidget, DIALOG_UI):
             from pyplugin_installer import instance as plugin_installer_instance
             from qgis.core import Qgis
         except ImportError:
-            QMessageBox.critical(
+            MessageBar.pushErrorToBar(
                 self,
-                self.tr("Error"),
                 self.tr("Plugin installation is not possible when oQtopus is running standalone."),
             )
             return
@@ -124,58 +118,43 @@ class PluginWidget(QWidget, DIALOG_UI):
             # installFromZipFile return success from QGIS 3.44.08
             if Qgis.QGIS_VERSION_INT < 34408:
                 version = self.__getInstalledPluginVersion(self.__plugin_name)
-                QMessageBox.information(
-                    self,
-                    self.tr("Installation finished"),
-                    self.tr(f"Current '{self.__plugin_name}' plugin version is {version}"),
+                MessageBar.pushSuccessToBar(
+                    self, self.tr(f"Current '{self.__plugin_name}' plugin version is {version}")
                 )
                 self.__packagePrepareGetPluginFilename()
                 return
 
             if not success:
-                QMessageBox.critical(
-                    self,
-                    self.tr("Error"),
-                    self.tr(f"Plugin '{self.__plugin_name}' installation failed."),
+                MessageBar.pushErrorToBar(
+                    self, self.tr(f"Plugin '{self.__plugin_name}' installation failed.")
                 )
                 return
 
-            QMessageBox.information(
-                self,
-                self.tr("Success"),
-                self.tr(f"Plugin '{self.__plugin_name}' installed successfully."),
+            MessageBar.pushSuccessToBar(
+                self, self.tr(f"Plugin '{self.__plugin_name}' installed successfully.")
             )
             self.__packagePrepareGetPluginFilename()
 
         except Exception as e:
-            QMessageBox.critical(
-                self,
-                self.tr("Error"),
-                self.tr("Plugin installation failed with an exception: {0}").format(str(e)),
+            MessageBar.pushErrorToBar(
+                self, self.tr("Plugin installation failed with an exception: {0}").format(str(e))
             )
             return
 
     def __seeChangelogClicked(self):
         if self.__current_module_package is None:
-            QMessageBox.warning(
-                self,
-                self.tr("Can't open changelog"),
-                self.tr("Please select a module and version first."),
-            )
+            MessageBar.pushWarningToBar(self, self.tr("Please select a module and version first."))
             return
 
         if self.__current_module_package.type == ModulePackage.Type.FROM_ZIP:
-            QMessageBox.warning(
-                self,
-                self.tr("Can't open changelog"),
-                self.tr("Changelog is not available for Zip packages."),
+            MessageBar.pushWarningToBar(
+                self, self.tr("Changelog is not available for Zip packages.")
             )
             return
 
         if self.__current_module_package.html_url is None:
-            QMessageBox.warning(
+            MessageBar.pushWarningToBar(
                 self,
-                self.tr("Can't open changelog"),
                 self.tr(
                     f"Changelog not available for version '{self.__current_module_package.display_name()}'."
                 ),
@@ -188,11 +167,7 @@ class PluginWidget(QWidget, DIALOG_UI):
 
     def __copyZipToDirectoryClicked(self):
         if self.__current_module_package is None:
-            QMessageBox.warning(
-                self,
-                self.tr("Error"),
-                self.tr("Please select a module and version first."),
-            )
+            MessageBar.pushWarningToBar(self, self.tr("Please select a module and version first."))
             return
 
         # Check if the package exists
@@ -224,17 +199,11 @@ class PluginWidget(QWidget, DIALOG_UI):
         try:
             shutil.copy2(asset_plugin.package_zip, install_filename)
 
-            QMessageBox.information(
-                self,
-                self.tr("Plugin copied"),
-                self.tr(f"Plugin package has been copied to '{install_filename}'."),
+            MessageBar.pushSuccessToBar(
+                self, self.tr(f"Plugin package has been copied to '{install_filename}'.")
             )
         except Exception as e:
-            QMessageBox.critical(
-                self,
-                self.tr("Error"),
-                self.tr(f"Failed to copy plugin package: {e}"),
-            )
+            MessageBar.pushErrorToBar(self, self.tr(f"Failed to copy plugin package: {e}"))
             return
 
     def __extractPluginName(self, package_zip: str) -> str:

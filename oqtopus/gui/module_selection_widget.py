@@ -1,14 +1,15 @@
 import yaml
 from qgis.PyQt.QtCore import Qt, QUrl, pyqtSignal
 from qgis.PyQt.QtGui import QDesktopServices
-from qgis.PyQt.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
+from qgis.PyQt.QtWidgets import QApplication, QFileDialog, QWidget
 
 from ..core.module import Module
 from ..core.module_package import ModulePackage
 from ..core.modules_config import ModulesConfig
 from ..core.package_prepare_task import PackagePrepareTask, PackagePrepareTaskCanceled
 from ..utils.plugin_utils import PluginUtils, logger
-from ..utils.qt_utils import CriticalMessageBox, OverrideCursor, QtUtils
+from ..utils.qt_utils import OverrideCursor, QtUtils
+from .message_bar import MessageBar
 
 DIALOG_UI = PluginUtils.get_ui_class("module_selection_widget.ui")
 
@@ -35,9 +36,8 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                 self.__modules_config = ModulesConfig(**data)
         except Exception as e:
             logger.error(f"Error loading modules config from {modules_config_path}: {e}")
-            QMessageBox.critical(
+            MessageBar.pushErrorToBar(
                 self,
-                self.tr("Error"),
                 self.tr(f"Can't load modules configuration from '{modules_config_path}': {e}"),
             )
             self.__modules_config = None
@@ -277,9 +277,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             with OverrideCursor(Qt.CursorShape.WaitCursor):
                 self.__loadModuleFromZip(filename)
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't load module from zip file:"), exception, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, self.tr("Can't load module from zip file:"), exception)
             return
 
     def __loadModuleFromZip(self, filename):
@@ -306,9 +304,9 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
             with OverrideCursor(Qt.CursorShape.WaitCursor):
                 self.__loadModuleFromDirectory(directory)
         except Exception as exception:
-            CriticalMessageBox(
-                self.tr("Error"), self.tr("Can't load module from directory:"), exception, self
-            ).exec()
+            MessageBar.pushErrorToBar(
+                self, self.tr("Can't load module from directory:"), exception
+            )
             return
 
     def __loadModuleFromDirectory(self, directory):
@@ -344,9 +342,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         if self.__packagePrepareTask.lastError is not None:
             error_text = self.tr("Can't load module package:")
-            CriticalMessageBox(
-                self.tr("Error"), error_text, self.__packagePrepareTask.lastError, self
-            ).exec()
+            MessageBar.pushErrorToBar(self, error_text, self.__packagePrepareTask.lastError)
             self.module_information_label.setText(error_text)
             QtUtils.setForegroundColor(self.module_information_label, PluginUtils.COLOR_WARNING)
             self.signal_loadingFinished.emit()
@@ -398,28 +394,21 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
     def __seeChangeLogClicked(self):
         if self.__current_module_package is None:
-            QMessageBox.warning(
-                self,
-                self.tr("Can't open changelog"),
-                self.tr("Please select a module and version first."),
-            )
+            MessageBar.pushWarningToBar(self, self.tr("Please select a module and version first."))
             return
 
         if self.__current_module_package.type in (
             ModulePackage.Type.FROM_ZIP,
             ModulePackage.Type.FROM_DIRECTORY,
         ):
-            QMessageBox.warning(
-                self,
-                self.tr("Can't open changelog"),
-                self.tr("Changelog is not available for local packages."),
+            MessageBar.pushWarningToBar(
+                self, self.tr("Changelog is not available for local packages.")
             )
             return
 
         if self.__current_module_package.html_url is None:
-            QMessageBox.warning(
+            MessageBar.pushWarningToBar(
                 self,
-                self.tr("Can't open changelog"),
                 self.tr(
                     f"Changelog not available for version '{self.__current_module_package.display_name()}'."
                 ),
@@ -439,25 +428,18 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         if error:
             if "rate limit exceeded for url" in error.lower():
-                QMessageBox.critical(
+                MessageBar.pushErrorToBar(
                     self,
-                    self.tr("GitHub API Rate Limit Exceeded"),
                     self.tr(
-                        "oQtopus needs to download release data from GitHub to work properly.<br><br>"
-                        "GitHub limits the number of requests that can be made without authentication. "
-                        "You have reached the maximum number of requests allowed for unauthenticated users.<br><br>"
-                        "To continue using this feature, please create a free GitHub personal access token and enter it in the Settings dialog.<br><br>"
-                        "This will increase your request limit.<br><br>"
-                        "<b>How to get a token:</b><br>"
-                        "1. Go to <a href='https://github.com/settings/tokens'>GitHub Personal Access Tokens</a>.<br>"
-                        "2. Click <b>Generate new token</b> and select the <code>repo</code> scope.<br>"
-                        "3. Copy the generated token and paste it in the Settings dialog of this application."
+                        "GitHub API Rate Limit Exceeded. "
+                        "Please create a free GitHub personal access token and enter it in the Settings dialog "
+                        "to increase your request limit."
                     ),
                 )
                 return
 
             error_text = self.tr(f"Can't load module versions: {error}")
-            QMessageBox.critical(self, self.tr("Error"), error_text)
+            MessageBar.pushErrorToBar(self, error_text)
             self.module_information_label.setText(error_text)
             QtUtils.setForegroundColor(self.module_information_label, PluginUtils.COLOR_WARNING)
             return
@@ -538,34 +520,25 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
 
         if error:
             if "rate limit exceeded for url" in error.lower():
-                QMessageBox.critical(
+                MessageBar.pushErrorToBar(
                     self,
-                    self.tr("GitHub API Rate Limit Exceeded"),
                     self.tr(
-                        "oQtopus needs to download release data from GitHub to work properly.<br><br>"
-                        "GitHub limits the number of requests that can be made without authentication. "
-                        "You have reached the maximum number of requests allowed for unauthenticated users.<br><br>"
-                        "To continue using this feature, please create a free GitHub personal access token and enter it in the Settings dialog.<br><br>"
-                        "This will increase your request limit.<br><br>"
-                        "<b>How to get a token:</b><br>"
-                        "1. Go to <a href='https://github.com/settings/tokens'>GitHub Personal Access Tokens</a>.<br>"
-                        "2. Click <b>Generate new token</b> and select the <code>repo</code> scope.<br>"
-                        "3. Copy the generated token and paste it in the Settings dialog of this application."
+                        "GitHub API Rate Limit Exceeded. "
+                        "Please create a free GitHub personal access token and enter it in the Settings dialog "
+                        "to increase your request limit."
                     ),
                 )
                 return
 
             error_text = self.tr(f"Can't load module versions: {error}")
-            QMessageBox.critical(self, self.tr("Error"), error_text)
+            MessageBar.pushErrorToBar(self, error_text)
             self.module_information_label.setText(error_text)
             QtUtils.setForegroundColor(self.module_information_label, PluginUtils.COLOR_WARNING)
             return
 
         if self.__current_module.development_versions == list():
-            QMessageBox.warning(
-                self,
-                self.tr("No development versions found"),
-                self.tr("No development versions found for this module."),
+            MessageBar.pushWarningToBar(
+                self, self.tr("No development versions found for this module.")
             )
             return
 
