@@ -641,7 +641,10 @@ class ModuleWidget(QWidget, DIALOG_UI):
             ).exec()
             return
 
-        dialog = RecreateAppDialog(standard_params, app_only_params, self)
+        # Get installed parameter values to preset in the dialog
+        installed_parameters = self.__get_installed_parameters() or None
+
+        dialog = RecreateAppDialog(standard_params, app_only_params, installed_parameters, self)
         if dialog.exec() != RecreateAppDialog.DialogCode.Accepted:
             return
 
