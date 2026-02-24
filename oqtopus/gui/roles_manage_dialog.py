@@ -551,15 +551,91 @@ class RolesManageDialog(QDialog):
     def _show_user_menu(self, name: str):
         """Context menu for a user item."""
         menu = QMenu(self)
-        drop_action = menu.addAction(self.tr("Drop role"))
+
+        # Collect existing module roles and check membership
+        module_roles = self._collect_module_roles()
+        user_memberships = self._fetch_role_memberships(name)
+
+        # -- Grant role submenu (module roles the user is NOT yet a member of) --
+        grantable = [
+            (rs, db_name) for rs, db_name in module_roles if db_name not in user_memberships
+        ]
+        if grantable:
+            grant_menu = menu.addMenu(self.tr("Grant role"))
+            for rs, db_name in grantable:
+                config_roles = [rs.role.name] if rs.role else None
+                suffix = rs.suffix if rs.is_suffixed else None
+                action = grant_menu.addAction(db_name)
+                action.setData(("grant_to", name, config_roles, suffix, db_name))
+
+        # -- Revoke role submenu (module roles the user IS a member of) --
+        revocable = [(rs, db_name) for rs, db_name in module_roles if db_name in user_memberships]
+        if revocable:
+            revoke_menu = menu.addMenu(self.tr("Revoke role"))
+            for rs, db_name in revocable:
+                config_roles = [rs.role.name] if rs.role else None
+                suffix = rs.suffix if rs.is_suffixed else None
+                action = revoke_menu.addAction(db_name)
+                action.setData(("revoke_from", name, config_roles, suffix, db_name))
+
+        menu.addSeparator()
+        drop_action = menu.addAction(self.tr("Drop user"))
 
         chosen = menu.exec(QCursor.pos())
-        if chosen is drop_action:
+        if chosen is None:
+            return
+
+        data = chosen.data()
+        if isinstance(data, tuple):
+            action_type, user, roles, sfx, label = data
+            if action_type == "grant_to":
+                self._grant_to(to=user, roles=roles, suffix=sfx, label=label)
+            elif action_type == "revoke_from":
+                self._revoke_from(from_role=user, roles=roles, suffix=sfx, label=label)
+        elif chosen is drop_action:
             self._drop_user(name)
 
     # ------------------------------------------------------------------
     # Grant / Revoke membership
     # ------------------------------------------------------------------
+
+    def _collect_module_roles(self) -> list[tuple]:
+        """Return a list of (rs, db_role_name) for all existing module roles in the tree."""
+        result = []
+        tree = self._tree
+        for i in range(tree.topLevelItemCount()):
+            top = tree.topLevelItem(i)
+            self._collect_roles_recursive(top, result)
+        return result
+
+    def _collect_roles_recursive(self, item: QTreeWidgetItem, result: list):
+        """Recursively collect items that have _ROLE_STATUS_ROLE data."""
+        rs = item.data(0, _ROLE_STATUS_ROLE)
+        if rs is not None:
+            result.append((rs, rs.name))
+        for i in range(item.childCount()):
+            self._collect_roles_recursive(item.child(i), result)
+
+    def _fetch_role_memberships(self, user_name: str) -> set[str]:
+        """Return the set of role names that *user_name* is a member of."""
+        if not self._connection:
+            return set()
+        try:
+            with self._connection.transaction():
+                cursor = self._connection.cursor()
+                cursor.execute(
+                    "SELECT r.rolname "
+                    "FROM pg_auth_members am "
+                    "JOIN pg_roles r ON r.oid = am.roleid "
+                    "JOIN pg_roles m ON m.oid = am.member "
+                    "WHERE m.rolname = %s "
+                    "ORDER BY r.rolname",
+                    (user_name,),
+                )
+                return {row[0] for row in cursor.fetchall()}
+        except Exception as exc:
+            logger.error(f"Failed to fetch memberships of {user_name}: {exc}")
+            return set()
 
     def _fetch_users(self) -> list[str]:
         """Return user names (roles with LOGIN privilege) excluding module roles and superusers."""
