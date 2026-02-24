@@ -4,7 +4,7 @@ import sys
 import psycopg
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtGui import QAction
-from qgis.PyQt.QtWidgets import QDialog, QLabel, QMenu, QWidget
+from qgis.PyQt.QtWidgets import QDialog, QLabel, QMenu, QVBoxLayout, QWidget
 
 from ..libs.pgserviceparser import conf_path as pgserviceparser_conf_path
 from ..libs.pgserviceparser import service_config as pgserviceparser_service_config
@@ -40,16 +40,21 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
 
         db_operations_menu = QMenu(self.db_operations_toolButton)
 
+        actionManagePgServices = QAction(self.tr("Manage PG services"), db_operations_menu)
         actionCreateDb = QAction(self.tr("Create database"), db_operations_menu)
         self.__actionDuplicateDb = QAction(self.tr("Duplicate database"), db_operations_menu)
         actionReloadPgServices = QAction(self.tr("Reload PG Service config"), db_operations_menu)
 
+        actionManagePgServices.triggered.connect(self.__managePgServicesClicked)
         actionCreateDb.triggered.connect(self.__createDatabaseClicked)
         self.__actionDuplicateDb.triggered.connect(self.__duplicateDatabaseClicked)
         actionReloadPgServices.triggered.connect(self.__loadDatabaseInformations)
 
+        db_operations_menu.addAction(actionManagePgServices)
+        db_operations_menu.addSeparator()
         db_operations_menu.addAction(actionCreateDb)
         db_operations_menu.addAction(self.__actionDuplicateDb)
+        db_operations_menu.addSeparator()
         db_operations_menu.addAction(actionReloadPgServices)
 
         self.db_operations_toolButton.setMenu(db_operations_menu)
@@ -157,6 +162,19 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         QtUtils.resetForegroundColor(self.db_moduleInfo_label)
 
         self.refreshInstalledModules()
+
+    def __managePgServicesClicked(self):
+        from ..libs.pgserviceparser.gui.service_widget import ServiceWidget
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(self.tr("Manage PG services"))
+        dialog.setMinimumSize(600, 400)
+        layout = QVBoxLayout(dialog)
+        service_widget = ServiceWidget(parent=dialog)
+        layout.addWidget(service_widget)
+        dialog.exec()
+
+        self.__loadDatabaseInformations()
 
     def __createDatabaseClicked(self):
         databaseCreateDialog = DatabaseCreateDialog(
