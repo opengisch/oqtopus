@@ -621,18 +621,7 @@ class RolesManageDialog(QDialog):
         if not self._connection:
             return set()
         try:
-            with self._connection.transaction():
-                cursor = self._connection.cursor()
-                cursor.execute(
-                    "SELECT r.rolname "
-                    "FROM pg_auth_members am "
-                    "JOIN pg_roles r ON r.oid = am.roleid "
-                    "JOIN pg_roles m ON m.oid = am.member "
-                    "WHERE m.rolname = %s "
-                    "ORDER BY r.rolname",
-                    (user_name,),
-                )
-                return {row[0] for row in cursor.fetchall()}
+            return set(RoleManager.memberships_of(self._connection, user_name))
         except Exception as exc:
             logger.error(f"Failed to fetch memberships of {user_name}: {exc}")
             return set()
