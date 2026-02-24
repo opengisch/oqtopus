@@ -543,7 +543,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             if not role_manager.roles:
                 QMessageBox.information(
                     self,
-                    self.tr("Manage roles"),
+                    self.tr("Manage roles and users"),
                     self.tr("No roles defined in the module configuration."),
                 )
                 return

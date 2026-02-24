@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 _ROLE_STATUS_ROLE = Qt.ItemDataRole.UserRole
 _GROUP_SUFFIX_ROLE = Qt.ItemDataRole.UserRole + 1  # suffix str stored on group headers
-_LOGIN_ROLE_NAME = Qt.ItemDataRole.UserRole + 2  # str stored on login role items
+_USER_NAME = Qt.ItemDataRole.UserRole + 2  # str stored on user items
 
 
 class RolesManageDialog(QDialog):
@@ -50,7 +50,7 @@ class RolesManageDialog(QDialog):
         super().__init__(parent)
         self._connection = connection
         self._role_manager = role_manager
-        self.setWindowTitle(self.tr("Manage roles"))
+        self.setWindowTitle(self.tr("Manage roles and users"))
         self.setMinimumSize(700, 400)
         self.resize(850, 500)
 
@@ -84,7 +84,7 @@ class RolesManageDialog(QDialog):
         create_and_grant_roles_button.clicked.connect(self._on_create_grant_roles)
         action_layout.addWidget(create_and_grant_roles_button)
 
-        create_login_role_button = QPushButton(self.tr("Create login role"), self)
+        create_login_role_button = QPushButton(self.tr("Create user"), self)
         create_login_role_button.clicked.connect(self._on_create_login_role)
         action_layout.addWidget(create_login_role_button)
 
@@ -128,7 +128,7 @@ class RolesManageDialog(QDialog):
                 summary = (
                     self.tr("%n module role(s)", "", n_configured)
                     + self.tr(", %n unknown role(s)", "", n_unknown)
-                    + self.tr(", %n login role(s)", "", n_login)
+                    + self.tr(", %n user(s)", "", n_login)
                 )
             else:
                 summary = self.tr("No roles found.")
@@ -202,7 +202,7 @@ class RolesManageDialog(QDialog):
             module_header.setExpanded(True)
 
         # ==============================================================
-        # 2) GRANTEE ROLES (login users granted membership in module roles)
+        # 2) GRANTEE ROLES (users granted membership in module roles)
         # ==============================================================
         if result.grantee_roles:
             grantee_header = QTreeWidgetItem(tree, [self.tr("Grantee roles")])
@@ -216,11 +216,27 @@ class RolesManageDialog(QDialog):
                     grantee_header,
                     [rs.name, self._OK, login_text, self.tr("member of: %s") % member_of],
                 )
-                item.setData(0, _LOGIN_ROLE_NAME, rs.name)
+                item.setData(0, _USER_NAME, rs.name)
             grantee_header.setExpanded(True)
 
         # ==============================================================
-        # 3) UNKNOWN ROLES (schema access but not configured or grantees)
+        # 3) USERS (candidates — no schema access)
+        # ==============================================================
+        if result.other_login_roles:
+            users_header = QTreeWidgetItem(tree, [self.tr("Users")])
+            users_header.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self._set_bold(users_header)
+
+            for name in result.other_login_roles:
+                item = QTreeWidgetItem(
+                    users_header,
+                    [name, "", self.tr("yes"), self.tr("no module role granted")],
+                )
+                item.setData(0, _USER_NAME, name)
+            users_header.setExpanded(True)
+
+        # ==============================================================
+        # 4) UNKNOWN ROLES (schema access but not configured or grantees)
         # ==============================================================
         if result.unknown_roles:
             unknown_header = QTreeWidgetItem(tree, [self.tr("Unknown roles")])
@@ -238,22 +254,6 @@ class RolesManageDialog(QDialog):
                     [rs.name, self._WARN, login_text, detail],
                 )
             unknown_header.setExpanded(True)
-
-        # ==============================================================
-        # 4) LOGIN ROLES (candidates — no schema access)
-        # ==============================================================
-        if result.other_login_roles:
-            login_header = QTreeWidgetItem(tree, [self.tr("Login roles")])
-            login_header.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self._set_bold(login_header)
-
-            for name in result.other_login_roles:
-                item = QTreeWidgetItem(
-                    login_header,
-                    [name, "", self.tr("yes"), ""],
-                )
-                item.setData(0, _LOGIN_ROLE_NAME, name)
-            login_header.setExpanded(True)
 
         # Resize columns
         for col in range(tree.columnCount()):
@@ -308,12 +308,12 @@ class RolesManageDialog(QDialog):
             )
 
     def _on_create_login_role(self):
-        """Prompt for a name and optional password, then create a LOGIN role."""
+        """Prompt for a name and optional password, then create a user (LOGIN role)."""
         if not self._connection:
             return
 
         dlg = QDialog(self)
-        dlg.setWindowTitle(self.tr("Create login role"))
+        dlg.setWindowTitle(self.tr("Create user"))
         layout = QVBoxLayout(dlg)
 
         form = QFormLayout()
@@ -353,8 +353,8 @@ class RolesManageDialog(QDialog):
             RoleManager.create_login_role(self._connection, name, password=password, commit=True)
             QMessageBox.information(
                 self,
-                self.tr("Create login role"),
-                self.tr("Login role '%s' created.") % name,
+                self.tr("Create user"),
+                self.tr("User '%s' created.") % name,
             )
             self._refresh()
         except Exception as exc:
@@ -362,7 +362,7 @@ class RolesManageDialog(QDialog):
             QMessageBox.critical(
                 self,
                 self.tr("Error"),
-                self.tr("Failed to create login role: %s") % exc,
+                self.tr("Failed to create user: %s") % exc,
             )
 
     # ------------------------------------------------------------------
@@ -449,7 +449,7 @@ class RolesManageDialog(QDialog):
 
         rs = item.data(0, _ROLE_STATUS_ROLE)
         group_suffix = item.data(0, _GROUP_SUFFIX_ROLE)
-        login_name = item.data(0, _LOGIN_ROLE_NAME)
+        user_name = item.data(0, _USER_NAME)
 
         if rs is not None:
             # Individual role item
@@ -457,9 +457,9 @@ class RolesManageDialog(QDialog):
         elif group_suffix is not None:
             # Group header (generic or specific)
             self._show_group_menu(group_suffix)
-        elif login_name is not None:
-            # Login role item
-            self._show_login_role_menu(login_name)
+        elif user_name is not None:
+            # User item
+            self._show_user_menu(user_name)
 
     def _show_role_menu(self, rs):
         """Context menu for a single role."""
@@ -470,10 +470,10 @@ class RolesManageDialog(QDialog):
         menu = QMenu(self)
 
         # -- Grant to submenu --
-        login_roles = self._fetch_login_roles()
-        if login_roles:
+        users = self._fetch_users()
+        if users:
             grant_menu = menu.addMenu(self.tr("Grant to"))
-            for user in login_roles:
+            for user in users:
                 action = grant_menu.addAction(user)
                 action.setData(("grant_to", user, config_roles, suffix, db_role_name))
 
@@ -523,10 +523,10 @@ class RolesManageDialog(QDialog):
         menu = QMenu(self)
 
         # -- Grant all to submenu --
-        login_roles = self._fetch_login_roles()
-        if login_roles:
+        users = self._fetch_users()
+        if users:
             grant_menu = menu.addMenu(self.tr("Grant all to"))
-            for user in login_roles:
+            for user in users:
                 action = grant_menu.addAction(user)
                 action.setData(("grant_to", user, None, suffix, kind))
 
@@ -548,21 +548,21 @@ class RolesManageDialog(QDialog):
         elif chosen is drop_action:
             self._drop_roles(roles=None, suffix=suffix, label=kind)
 
-    def _show_login_role_menu(self, name: str):
-        """Context menu for a login role item."""
+    def _show_user_menu(self, name: str):
+        """Context menu for a user item."""
         menu = QMenu(self)
         drop_action = menu.addAction(self.tr("Drop role"))
 
         chosen = menu.exec(QCursor.pos())
         if chosen is drop_action:
-            self._drop_login_role(name)
+            self._drop_user(name)
 
     # ------------------------------------------------------------------
     # Grant / Revoke membership
     # ------------------------------------------------------------------
 
-    def _fetch_login_roles(self) -> list[str]:
-        """Return login role names excluding module roles and superusers."""
+    def _fetch_users(self) -> list[str]:
+        """Return user names (roles with LOGIN privilege) excluding module roles and superusers."""
         if not self._connection or not self._role_manager:
             return []
 
@@ -572,11 +572,11 @@ class RolesManageDialog(QDialog):
                 name for name in RoleManager.login_roles(self._connection) if name not in exclude
             ]
         except Exception as exc:
-            logger.error(f"Failed to fetch login roles: {exc}")
+            logger.error(f"Failed to fetch users: {exc}")
             return []
 
     def _fetch_members_of(self, role_name: str) -> list[str]:
-        """Return login role names that are members of *role_name*."""
+        """Return user names that are members of *role_name*."""
         if not self._connection:
             return []
         try:
@@ -586,7 +586,7 @@ class RolesManageDialog(QDialog):
             return []
 
     def _grant_to(self, *, to: str, roles: list[str] | None, suffix: str | None, label: str):
-        """Grant a role (or all roles) to a login user."""
+        """Grant a role (or all roles) to a user."""
         answer = QMessageBox.question(
             self,
             self.tr("Grant role"),
@@ -619,7 +619,7 @@ class RolesManageDialog(QDialog):
     def _revoke_from(
         self, *, from_role: str, roles: list[str] | None, suffix: str | None, label: str
     ):
-        """Revoke a role (or all roles) from a login user."""
+        """Revoke a role (or all roles) from a user."""
         answer = QMessageBox.question(
             self,
             self.tr("Revoke role"),
@@ -713,12 +713,12 @@ class RolesManageDialog(QDialog):
                 self.tr("Failed to drop role: %s") % exc,
             )
 
-    def _drop_login_role(self, name: str):
-        """Drop a login role."""
+    def _drop_user(self, name: str):
+        """Drop a user (a role with LOGIN privilege)."""
         answer = QMessageBox.question(
             self,
-            self.tr("Drop login role"),
-            self.tr("Drop login role '%s'?") % name,
+            self.tr("Drop user"),
+            self.tr("Drop user '%s'?") % name,
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
@@ -727,13 +727,13 @@ class RolesManageDialog(QDialog):
             RoleManager.drop_login_role(self._connection, name, commit=True)
             QMessageBox.information(
                 self,
-                self.tr("Drop login role"),
-                self.tr("Login role '%s' dropped.") % name,
+                self.tr("Drop user"),
+                self.tr("User '%s' dropped.") % name,
             )
             self._refresh()
         except Exception as exc:
             QMessageBox.critical(
                 self,
                 self.tr("Error"),
-                self.tr("Failed to drop login role: %s") % exc,
+                self.tr("Failed to drop user: %s") % exc,
             )

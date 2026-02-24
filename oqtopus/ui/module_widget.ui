@@ -258,7 +258,7 @@
           <item>
            <widget class="QPushButton" name="moduleInfo_check_roles_pushButton">
             <property name="text">
-             <string>Manage roles</string>
+             <string>Manage roles and users</string>
             </property>
            </widget>
           </item>
