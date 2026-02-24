@@ -164,13 +164,13 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         self.refreshInstalledModules()
 
     def __managePgServicesClicked(self):
-        from ..libs.pgserviceparser.gui.service_widget import ServiceWidget
+        from ..libs.pgserviceparser.gui.service_widget import PGServiceParserWidget
 
         dialog = QDialog(self)
         dialog.setWindowTitle(self.tr("Manage PG services"))
         dialog.setMinimumSize(600, 400)
         layout = QVBoxLayout(dialog)
-        service_widget = ServiceWidget(parent=dialog)
+        service_widget = PGServiceParserWidget(parent=dialog)
         layout.addWidget(service_widget)
         dialog.exec()
 
