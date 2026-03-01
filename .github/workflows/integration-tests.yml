@@ -63,7 +63,7 @@ jobs:
             libxcb-shape0
 
       - name: Download wheel artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: oqtopus-wheel
           path: dist/
