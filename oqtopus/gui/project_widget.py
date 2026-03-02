@@ -4,7 +4,7 @@ import shutil
 
 from qgis.PyQt.QtCore import QUrl
 from qgis.PyQt.QtGui import QDesktopServices
-from qgis.PyQt.QtWidgets import QFileDialog, QWidget
+from qgis.PyQt.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 try:
     from qgis.core import QgsProject
@@ -132,9 +132,29 @@ class ProjectWidget(QWidget, DIALOG_UI):
         if not install_destination:
             return
 
+        # Check for existing files that would be overwritten
+        existing_files = [
+            item
+            for item in os.listdir(asset_project.package_dir)
+            if os.path.exists(os.path.join(install_destination, item))
+        ]
+        if existing_files:
+            reply = QMessageBox.question(
+                self,
+                self.tr("Overwrite existing files?"),
+                self.tr(
+                    "The following files already exist in the destination "
+                    "and will be overwritten:\n\n{files}\n\nDo you want to continue?"
+                ).format(files="\n".join(existing_files)),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
         # Copy the project files to the selected directory
         try:
-            # Copy all files from assset_project to install_destination
+            # Copy all files from asset_project to install_destination
             for item in os.listdir(asset_project.package_dir):
                 source_path = os.path.join(asset_project.package_dir, item)
                 destination_path = os.path.join(install_destination, item)
