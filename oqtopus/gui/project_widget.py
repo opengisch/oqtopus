@@ -6,6 +6,13 @@ from qgis.PyQt.QtCore import QUrl
 from qgis.PyQt.QtGui import QDesktopServices
 from qgis.PyQt.QtWidgets import QFileDialog, QWidget
 
+try:
+    from qgis.core import QgsProject
+
+    HAS_QGIS = True
+except ImportError:
+    HAS_QGIS = False
+
 from ..core.module_package import ModulePackage
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import QtUtils
@@ -22,6 +29,10 @@ class ProjectWidget(QWidget, DIALOG_UI):
 
         self.project_install_pushButton.clicked.connect(self.__projectInstallClicked)
         self.project_seeChangelog_pushButton.clicked.connect(self.__projectSeeChangelogClicked)
+        self.project_openInQgis_pushButton.clicked.connect(self.__openProjectInQgis)
+
+        # "Open in QGIS" is only available when running inside QGIS
+        self.project_openInQgis_pushButton.setVisible(HAS_QGIS)
 
         self.__current_module_package = None
         self.__current_service = None
@@ -29,11 +40,13 @@ class ProjectWidget(QWidget, DIALOG_UI):
     def setModulePackage(self, module_package: ModulePackage):
         self.__current_module_package = module_package
         self.__updateProjectFilename()
+        self.__updateOpenInQgisButton()
 
     def clearModulePackage(self):
         """Clear module package state and reset UI."""
         self.__current_module_package = None
         self.__updateProjectFilename()
+        self.__updateOpenInQgisButton()
 
     def setService(self, service):
         self.__current_service = service
@@ -152,9 +165,79 @@ class ProjectWidget(QWidget, DIALOG_UI):
             MessageBar.pushSuccessToBar(
                 self, self.tr(f"Project files have been copied to '{install_destination}'.")
             )
+
+            # Remember installed project file path for "Open in QGIS"
+            self.__saveInstalledProjectPath(install_destination)
         except Exception as e:
             MessageBar.pushErrorToBar(self, self.tr(f"Failed to copy project file: {e}"))
             return
+
+    def __dynamicKeyParts(self):
+        """Return the dynamic key parts [module_id, version] for the settings entry."""
+        if self.__current_module_package is None:
+            return None
+        module_id = self.__current_module_package.module.id
+        version = self.__current_module_package.name or ""
+        return [module_id, version]
+
+    def __saveInstalledProjectPath(self, install_destination):
+        """Find the .qgz/.qgs file in *install_destination* and persist its path."""
+        if not HAS_QGIS:
+            return
+        key_parts = self.__dynamicKeyParts()
+        if key_parts is None:
+            return
+        # Find the project file that was copied
+        from ..core.settings import Settings
+
+        for item in os.listdir(install_destination):
+            if item.endswith((".qgz", ".qgs")):
+                project_path = os.path.join(install_destination, item)
+                Settings().installed_project_path.setValue(
+                    project_path, dynamicKeyPartList=key_parts
+                )
+                logger.info(f"Saved installed project path: {project_path}")
+                self.__updateOpenInQgisButton()
+                return
+
+    def __getInstalledProjectPath(self):
+        """Return the stored project file path for the current module/version, or None."""
+        if not HAS_QGIS:
+            return None
+        key_parts = self.__dynamicKeyParts()
+        if key_parts is None:
+            return None
+        from ..core.settings import Settings
+
+        path = Settings().installed_project_path.value(dynamicKeyPartList=key_parts)
+        if path and os.path.isfile(path):
+            return path
+        return None
+
+    def __updateOpenInQgisButton(self):
+        """Enable the 'Open in QGIS' button only when a saved project exists."""
+        if not HAS_QGIS:
+            return
+        project_path = self.__getInstalledProjectPath()
+        self.project_openInQgis_pushButton.setEnabled(project_path is not None)
+        if project_path:
+            self.project_openInQgis_pushButton.setToolTip(project_path)
+        else:
+            self.project_openInQgis_pushButton.setToolTip(
+                self.tr("Install the project first to enable this button.")
+            )
+
+    def __openProjectInQgis(self):
+        """Open the remembered project file in QGIS."""
+        project_path = self.__getInstalledProjectPath()
+        if project_path is None:
+            MessageBar.pushWarningToBar(
+                self,
+                self.tr("No installed project found. Please install the project first."),
+            )
+            return
+        logger.info(f"Opening project in QGIS: {project_path}")
+        QgsProject.instance().read(project_path)  # type: ignore[possibly-undefined]
 
     def __projectSeeChangelogClicked(self):
         if self.__current_module_package is None:

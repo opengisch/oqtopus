@@ -223,73 +223,87 @@ class PluginUtils:
 
     @staticmethod
     def get_github_token():
-        settings = QSettings()
-        return settings.value("oqtopus/github_token", type=str)
+        from ..core.settings import Settings
+
+        return Settings().github_token.value()
 
     @staticmethod
     def set_github_token(token: str):
-        settings = QSettings()
-        settings.setValue("oqtopus/github_token", token)
+        from ..core.settings import Settings
+
+        Settings().github_token.setValue(token)
 
     @staticmethod
     def get_allow_multiple_modules():
-        settings = QSettings()
-        return settings.value("oqtopus/allow_multiple_modules", False, type=bool)
+        from ..core.settings import Settings
+
+        return Settings().allow_multiple_modules.value()
 
     @staticmethod
     def set_allow_multiple_modules(allow: bool):
-        settings = QSettings()
-        settings.setValue("oqtopus/allow_multiple_modules", allow)
+        from ..core.settings import Settings
+
+        Settings().allow_multiple_modules.setValue(allow)
 
     @staticmethod
     def get_show_experimental_modules():
-        settings = QSettings()
-        return settings.value("oqtopus/show_experimental_modules", False, type=bool)
+        from ..core.settings import Settings
+
+        return Settings().show_experimental_modules.value()
 
     @staticmethod
     def set_show_experimental_modules(show: bool):
-        settings = QSettings()
-        settings.setValue("oqtopus/show_experimental_modules", show)
+        from ..core.settings import Settings
+
+        Settings().show_experimental_modules.setValue(show)
 
     @staticmethod
     def get_log_show_datetime():
-        settings = QSettings()
-        return settings.value("oqtopus/log_show_datetime", True, type=bool)
+        from ..core.settings import Settings
+
+        return Settings().log_show_datetime.value()
 
     @staticmethod
     def set_log_show_datetime(show: bool):
-        settings = QSettings()
-        settings.setValue("oqtopus/log_show_datetime", show)
+        from ..core.settings import Settings
+
+        Settings().log_show_datetime.setValue(show)
 
     @staticmethod
     def get_log_show_level():
-        settings = QSettings()
-        return settings.value("oqtopus/log_show_level", True, type=bool)
+        from ..core.settings import Settings
+
+        return Settings().log_show_level.value()
 
     @staticmethod
     def set_log_show_level(show: bool):
-        settings = QSettings()
-        settings.setValue("oqtopus/log_show_level", show)
+        from ..core.settings import Settings
+
+        Settings().log_show_level.setValue(show)
 
     @staticmethod
     def get_log_show_module():
-        settings = QSettings()
-        return settings.value("oqtopus/log_show_module", True, type=bool)
+        from ..core.settings import Settings
+
+        return Settings().log_show_module.value()
 
     @staticmethod
     def set_log_show_module(show: bool):
-        settings = QSettings()
-        settings.setValue("oqtopus/log_show_module", show)
+        from ..core.settings import Settings
+
+        Settings().log_show_module.setValue(show)
 
     @staticmethod
     def get_show_logs():
-        settings = QSettings()
-        return settings.value("oqtopus/show_logs", False, type=bool)
+        from ..core.settings import Settings
+
+        return Settings().show_logs.value()
 
     @staticmethod
     def set_show_logs(show: bool):
-        settings = QSettings()
-        settings.setValue("oqtopus/show_logs", show)
+        from ..core.settings import Settings
+
+        Settings().show_logs.setValue(show)
 
     @staticmethod
     def get_github_headers():

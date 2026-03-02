@@ -1,8 +1,10 @@
 from pathlib import Path
 
+from qgis.core import QgsSettingsTree
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QApplication
 
+from .core.settings import PLUGIN_NAME, Settings
 from .gui.about_dialog import AboutDialog
 from .gui.main_dialog import MainDialog
 from .utils.plugin_utils import PluginUtils, logger
@@ -118,6 +120,9 @@ class OqtopusPlugin:
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
+        # Register settings tree node early
+        Settings()
+
         self.add_action(
             icon_path=PluginUtils.get_plugin_icon_path("oqtopus-logo.png"),
             text=self.tr("Show &main dialog"),
@@ -156,6 +161,10 @@ class OqtopusPlugin:
         for action in self.actions:
             self.iface.removePluginMenu(self.main_menu_name, action)
             self.iface.removeToolBarIcon(action)
+
+        # Unregister the plugin settings tree node
+        QgsSettingsTree.unregisterPluginTreeNode(PLUGIN_NAME)
+        Settings.instance = None
 
         # Remove pum modules from sys.modules to allow proper reloading
         # This is necessary because pum is in the libs folder and imported at module level
