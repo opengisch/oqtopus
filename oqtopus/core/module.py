@@ -12,6 +12,7 @@ from qgis.PyQt.QtCore import (
 )
 from qgis.PyQt.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 
+from ..core.settings import Settings
 from ..utils.plugin_utils import PluginUtils, logger
 from .module_package import ModulePackage
 
@@ -110,7 +111,7 @@ class Module(QObject):
         url = f"https://api.github.com/repos/{self.organisation}/{self.repository}/releases"
         logger.info(f"Loading versions from '{url}'...")
         request = QNetworkRequest(QUrl(url))
-        headers = PluginUtils.get_github_headers()
+        headers = Settings.get_github_headers()
         for key, value in headers.items():
             request.setRawHeader(QByteArray(key.encode()), QByteArray(value.encode()))
         reply = self.network_manager.get(request)
@@ -207,7 +208,7 @@ class Module(QObject):
         logger.info(f"Loading pre-releases and development versions from '{url}'...")
 
         request = QNetworkRequest(QUrl(url))
-        headers = PluginUtils.get_github_headers()
+        headers = Settings.get_github_headers()
         for key, value in headers.items():
             request.setRawHeader(QByteArray(key.encode()), QByteArray(value.encode()))
         reply = self.network_manager.get(request)
@@ -224,7 +225,7 @@ class Module(QObject):
             url = f"https://api.github.com/repos/{self.organisation}/{self.repository}/pulls"
             logger.info(f"Loading pre-releases and development versions from '{url}'...")
             request = QNetworkRequest(QUrl(url))
-            headers = PluginUtils.get_github_headers()
+            headers = Settings.get_github_headers()
             for key, value in headers.items():
                 request.setRawHeader(QByteArray(key.encode()), QByteArray(value.encode()))
             reply = self.network_manager.get(request)

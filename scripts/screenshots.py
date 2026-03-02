@@ -71,6 +71,7 @@ from qgis.PyQt.QtWidgets import QApplication, QMessageBox
 _app = QApplication.instance() or QApplication(sys.argv)
 
 from oqtopus.core.module_package import ModulePackage  # noqa: E402
+from oqtopus.core.settings import Settings  # noqa: E402
 from oqtopus.gui.install_dialog import InstallDialog  # noqa: E402
 from oqtopus.gui.main_dialog import MainDialog  # noqa: E402
 from oqtopus.gui.roles_manage_dialog import RolesManageDialog  # noqa: E402
@@ -320,7 +321,7 @@ def step_04_install_dialog(dialog: MainDialog):
     options = {
         **install_dlg.roles_options(),
         "beta_testing": install_dlg.beta_testing(),
-        "allow_multiple_modules": PluginUtils.get_allow_multiple_modules(),
+        "allow_multiple_modules": Settings().allow_multiple_modules.value(),
         "install_demo_data": install_dlg.install_demo_data(),
         "demo_data_name": install_dlg.demo_data_name(),
     }

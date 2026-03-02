@@ -147,3 +147,12 @@ class Settings:
             cls.installed_project_path = None
 
         return cls.instance
+
+    @staticmethod
+    def get_github_headers():
+        """Return HTTP headers dict with GitHub auth token if configured."""
+        token = Settings().github_token.value()
+        headers = {}
+        if token:
+            headers["Authorization"] = f"token {token}"
+        return headers

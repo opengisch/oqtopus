@@ -1,5 +1,6 @@
 from qgis.PyQt.QtWidgets import QApplication, QDialog, QMessageBox, QStyle
 
+from ..core.settings import Settings
 from ..utils.plugin_utils import PluginUtils
 
 DIALOG_UI = PluginUtils.get_ui_class("settings_dialog.ui")
@@ -10,16 +11,16 @@ class SettingsDialog(QDialog, DIALOG_UI):
         QDialog.__init__(self, parent)
         self.setupUi(self)
 
-        self.githubToken_lineEdit.setText(PluginUtils.get_github_token())
-        self.allow_multiple_modules_checkBox.setChecked(PluginUtils.get_allow_multiple_modules())
+        self.githubToken_lineEdit.setText(Settings().github_token.value())
+        self.allow_multiple_modules_checkBox.setChecked(Settings().allow_multiple_modules.value())
         self.show_experimental_modules_checkBox.setChecked(
-            PluginUtils.get_show_experimental_modules()
+            Settings().show_experimental_modules.value()
         )
 
         # Load log column visibility settings
-        self.log_show_datetime_checkBox.setChecked(PluginUtils.get_log_show_datetime())
-        self.log_show_level_checkBox.setChecked(PluginUtils.get_log_show_level())
-        self.log_show_module_checkBox.setChecked(PluginUtils.get_log_show_module())
+        self.log_show_datetime_checkBox.setChecked(Settings().log_show_datetime.value())
+        self.log_show_level_checkBox.setChecked(Settings().log_show_level.value())
+        self.log_show_module_checkBox.setChecked(Settings().log_show_module.value())
 
         self.helpButton.setIcon(
             QApplication.style().standardIcon(QStyle.StandardPixmap.SP_DialogHelpButton)
@@ -27,14 +28,16 @@ class SettingsDialog(QDialog, DIALOG_UI):
         self.helpButton.clicked.connect(self.__show_github_token_help)
 
     def accept(self):
-        PluginUtils.set_github_token(self.githubToken_lineEdit.text())
-        PluginUtils.set_allow_multiple_modules(self.allow_multiple_modules_checkBox.isChecked())
-        PluginUtils.set_show_experimental_modules(
+        Settings().github_token.setValue(self.githubToken_lineEdit.text())
+        Settings().allow_multiple_modules.setValue(
+            self.allow_multiple_modules_checkBox.isChecked()
+        )
+        Settings().show_experimental_modules.setValue(
             self.show_experimental_modules_checkBox.isChecked()
         )
-        PluginUtils.set_log_show_datetime(self.log_show_datetime_checkBox.isChecked())
-        PluginUtils.set_log_show_level(self.log_show_level_checkBox.isChecked())
-        PluginUtils.set_log_show_module(self.log_show_module_checkBox.isChecked())
+        Settings().log_show_datetime.setValue(self.log_show_datetime_checkBox.isChecked())
+        Settings().log_show_level.setValue(self.log_show_level_checkBox.isChecked())
+        Settings().log_show_module.setValue(self.log_show_module_checkBox.isChecked())
         super().accept()
 
     def __show_github_token_help(self):

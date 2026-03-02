@@ -1,8 +1,8 @@
 import requests
 from qgis.PyQt.QtCore import QDateTime, Qt
 
-from ..utils.plugin_utils import PluginUtils
 from .module_asset import ModuleAsset
+from .settings import Settings
 
 
 class ModulePackage:
@@ -77,7 +77,7 @@ class ModulePackage:
             # For branches: use refs/heads/{branch}
             # For PRs: use refs/heads/{branch} from the head repo
             url = f"https://api.github.com/repos/{self.organisation}/{self.repository}/commits/{self.branch}"
-            r = requests.get(url, headers=PluginUtils.get_github_headers(), timeout=10)
+            r = requests.get(url, headers=Settings.get_github_headers(), timeout=10)
             r.raise_for_status()
             commit_data = r.json()
             self.commit_sha = commit_data["sha"]

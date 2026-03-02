@@ -37,6 +37,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from ..core.module_package import ModulePackage
+from ..core.settings import Settings
 from ..utils.plugin_utils import PluginUtils, logger
 from .about_dialog import AboutDialog
 from .settings_dialog import SettingsDialog
@@ -120,10 +121,10 @@ class MainDialog(QDialog, DIALOG_UI):
         # Toggle logs action
         self.__toggle_logs_action = QAction(self.tr("Show Logs"), self)
         self.__toggle_logs_action.setCheckable(True)
-        self.__toggle_logs_action.setChecked(PluginUtils.get_show_logs())
+        self.__toggle_logs_action.setChecked(Settings().show_logs.value())
         self.__toggle_logs_action.triggered.connect(self.__toggle_logs)
         view_menu.addAction(self.__toggle_logs_action)
-        self.logs_groupBox.setVisible(PluginUtils.get_show_logs())
+        self.logs_groupBox.setVisible(Settings().show_logs.value())
 
         # Help menu
         help_menu = self.menubar.addMenu(self.tr("Help"))
@@ -207,7 +208,7 @@ class MainDialog(QDialog, DIALOG_UI):
     def __toggle_logs(self, checked: bool):
         """Show or hide the logs panel."""
         self.logs_groupBox.setVisible(checked)
-        PluginUtils.set_show_logs(checked)
+        Settings().show_logs.setValue(checked)
 
     def __cleanup_cache(self):
         """Delete all cached data (downloaded packages and GitHub API cache)."""

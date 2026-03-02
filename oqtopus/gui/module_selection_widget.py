@@ -7,6 +7,7 @@ from ..core.module import Module
 from ..core.module_package import ModulePackage
 from ..core.modules_config import ModulesConfig
 from ..core.package_prepare_task import PackagePrepareTask, PackagePrepareTaskCanceled
+from ..core.settings import Settings
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import OverrideCursor, QtUtils
 from .message_bar import MessageBar
@@ -76,7 +77,7 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
         self.module_module_comboBox.blockSignals(True)
         self.module_module_comboBox.clear()
         self.module_module_comboBox.addItem(self.tr("Please select a module"), None)
-        show_experimental = PluginUtils.get_show_experimental_modules()
+        show_experimental = Settings().show_experimental_modules.value()
         if self.__modules_config is not None:
             for config_module in self.__modules_config.modules:
                 if config_module.experimental and not show_experimental:

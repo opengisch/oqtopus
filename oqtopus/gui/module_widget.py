@@ -8,6 +8,7 @@ from qgis.PyQt.QtWidgets import QMessageBox, QSizePolicy, QTextBrowser, QWidget
 
 from ..core.module import Module
 from ..core.module_operation_task import ModuleOperationTask
+from ..core.settings import Settings
 from ..libs.pum.pum_config import PumConfig
 from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
@@ -306,7 +307,7 @@ class ModuleWidget(QWidget, DIALOG_UI):
             options = {
                 **dialog.roles_options(),
                 "beta_testing": dialog.beta_testing(),
-                "allow_multiple_modules": PluginUtils.get_allow_multiple_modules(),
+                "allow_multiple_modules": Settings().allow_multiple_modules.value(),
                 "install_demo_data": dialog.install_demo_data(),
                 "demo_data_name": dialog.demo_data_name(),
             }

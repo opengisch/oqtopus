@@ -11,6 +11,8 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 
+from ..core.settings import Settings
+
 # Import and register SQL logging level from pum
 from ..libs.pum import SQL
 from ..utils.plugin_utils import LoggingBridge, PluginUtils
@@ -161,9 +163,9 @@ class LogsWidget(QWidget, DIALOG_UI):
         # Message column will take remaining space due to setStretchLastSection
 
         # Apply initial column visibility from settings
-        self.logs_treeView.setColumnHidden(0, not PluginUtils.get_log_show_datetime())
-        self.logs_treeView.setColumnHidden(1, not PluginUtils.get_log_show_level())
-        self.logs_treeView.setColumnHidden(2, not PluginUtils.get_log_show_module())
+        self.logs_treeView.setColumnHidden(0, not Settings().log_show_datetime.value())
+        self.logs_treeView.setColumnHidden(1, not Settings().log_show_level.value())
+        self.logs_treeView.setColumnHidden(2, not Settings().log_show_module.value())
 
         # Enable automatic row height adjustment
         self.logs_treeView.setUniformRowHeights(False)
@@ -263,19 +265,19 @@ class LogsWidget(QWidget, DIALOG_UI):
 
         datetime_action = QAction(self.tr("Timestamp"), columns_menu)
         datetime_action.setCheckable(True)
-        datetime_action.setChecked(PluginUtils.get_log_show_datetime())
+        datetime_action.setChecked(Settings().log_show_datetime.value())
         datetime_action.toggled.connect(self.__toggleDatetimeColumn)
         columns_menu.addAction(datetime_action)
 
         level_action = QAction(self.tr("Level"), columns_menu)
         level_action.setCheckable(True)
-        level_action.setChecked(PluginUtils.get_log_show_level())
+        level_action.setChecked(Settings().log_show_level.value())
         level_action.toggled.connect(self.__toggleLevelColumn)
         columns_menu.addAction(level_action)
 
         module_action = QAction(self.tr("Module"), columns_menu)
         module_action.setCheckable(True)
-        module_action.setChecked(PluginUtils.get_log_show_module())
+        module_action.setChecked(Settings().log_show_module.value())
         module_action.toggled.connect(self.__toggleModuleColumn)
         columns_menu.addAction(module_action)
 
@@ -295,9 +297,9 @@ class LogsWidget(QWidget, DIALOG_UI):
 
     def update_column_visibility_from_settings(self):
         """Update column visibility based on current settings."""
-        show_datetime = PluginUtils.get_log_show_datetime()
-        show_level = PluginUtils.get_log_show_level()
-        show_module = PluginUtils.get_log_show_module()
+        show_datetime = Settings().log_show_datetime.value()
+        show_level = Settings().log_show_level.value()
+        show_module = Settings().log_show_module.value()
 
         self.set_datetime_column_visible(show_datetime)
         self.set_level_column_visible(show_level)
@@ -305,17 +307,17 @@ class LogsWidget(QWidget, DIALOG_UI):
 
     def __toggleDatetimeColumn(self, checked: bool):
         """Toggle timestamp column visibility and persist to settings."""
-        PluginUtils.set_log_show_datetime(checked)
+        Settings().log_show_datetime.setValue(checked)
         self.set_datetime_column_visible(checked)
 
     def __toggleLevelColumn(self, checked: bool):
         """Toggle level column visibility and persist to settings."""
-        PluginUtils.set_log_show_level(checked)
+        Settings().log_show_level.setValue(checked)
         self.set_level_column_visible(checked)
 
     def __toggleModuleColumn(self, checked: bool):
         """Toggle module column visibility and persist to settings."""
-        PluginUtils.set_log_show_module(checked)
+        Settings().log_show_module.setValue(checked)
         self.set_module_column_visible(checked)
 
     def __copySelectedRows(self):
