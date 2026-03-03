@@ -20,7 +20,7 @@
    <item row="1" column="0" rowspan="2">
     <widget class="QGroupBox" name="db_groupBox">
      <property name="title">
-      <string>Database connection</string>
+      <string>Database and service</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_5"/>
     </widget>

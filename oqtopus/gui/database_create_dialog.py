@@ -24,13 +24,14 @@
 
 import psycopg
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtWidgets import QDialog, QMessageBox
+from qgis.PyQt.QtWidgets import QDialog, QVBoxLayout
 
 from ..libs.pgserviceparser import service_config as pgserviceparser_service_config
 from ..libs.pgserviceparser import service_names as pgserviceparser_service_names
 from ..libs.pgserviceparser import write_service as pgserviceparser_write_service
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import OverrideCursor
+from .message_bar import MessageBar
 
 DIALOG_UI = PluginUtils.get_ui_class("database_create_dialog.ui")
 
@@ -41,9 +42,17 @@ DEFAULT_PG_HOST = "localhost"
 
 
 class DatabaseCreateDialog(QDialog, DIALOG_UI):
-    def __init__(self, selected_service=None, parent=None):
+    def __init__(self, selected_service=None, fixed_service_name=None, parent=None):
         QDialog.__init__(self, parent)
         self.setupUi(self)
+
+        self.__fixed_service = fixed_service_name is not None
+
+        # Message bar at top of dialog
+        self.__message_bar = MessageBar(self)
+        placeholder_layout = QVBoxLayout(self.messageBar_placeholder)
+        placeholder_layout.setContentsMargins(0, 0, 0, 0)
+        placeholder_layout.addWidget(self.__message_bar)
 
         self.existingService_comboBox.clear()
         for service_name in pgserviceparser_service_names():
@@ -78,6 +87,15 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
         if self.existingService_comboBox.count() > 0:
             self._serviceChanged()
 
+        if fixed_service_name:
+            self.service_lineEdit.setText(fixed_service_name)
+            self.service_lineEdit.setReadOnly(True)
+            # Prefill database name from existing service config
+            svc_cfg = pgserviceparser_service_config(fixed_service_name)
+            dbname = svc_cfg.get("dbname")
+            if dbname:
+                self.database_lineEdit.setText(dbname)
+
     def created_service_name(self):
         return self.service_lineEdit.text()
 
@@ -108,20 +126,38 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
         service_name = self.created_service_name()
 
         if service_name == "":
-            QMessageBox.critical(self, "Error", "Please enter a service name.")
-            return
-
-        # Check if the service name is already in use
-        if service_name in pgserviceparser_service_names():
-            QMessageBox.critical(
-                self, "Error", self.tr(f"Service name '{service_name}' already exists.")
-            )
+            self.__message_bar.pushError(self.tr("Please enter a service name."))
             return
 
         new_database_name = self.database_lineEdit.text()
         if new_database_name == "":
-            QMessageBox.critical(self, "Error", "Please enter a database name.")
+            self.__message_bar.pushError(self.tr("Please enter a database name."))
             return
+
+        # If the service already exists, check that the connection config matches
+        service_already_exists = service_name in pgserviceparser_service_names()
+        if service_already_exists and not self.__fixed_service:
+            existing = pgserviceparser_service_config(service_name)
+            intended = self._get_new_service_settings()
+            # Compare connection-relevant keys (ignore dbname since that's the new one)
+            _COMPARE_KEYS = ("host", "port", "user", "password", "sslmode")
+            mismatches = []
+            for key in _COMPARE_KEYS:
+                existing_val = existing.get(key, "")
+                intended_val = intended.get(key, "")
+                if existing_val != intended_val:
+                    mismatches.append(
+                        f"  {key}: existing='{existing_val}', entered='{intended_val}'"
+                    )
+            if mismatches:
+                self.__message_bar.pushError(
+                    self.tr(
+                        "Service '{service}' already exists with a different configuration:\n"
+                        "{details}\n\n"
+                        "Please use a different service name or adjust the parameters."
+                    ).format(service=service_name, details="\n".join(mismatches))
+                )
+                return
 
         database_connection = None
         try:
@@ -138,14 +174,14 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
         except Exception as e:
             errorText = self.tr(f"Error creating the new database:\n{e}.")
             logger.error(errorText)
-            QMessageBox.critical(self, "Error", errorText)
+            self.__message_bar.pushError(errorText)
             return
 
         finally:
             if database_connection:
                 database_connection.close()
 
-        # Proceed with writing the new service configuration
+        # Write or update the service configuration
         service_settings = self._get_new_service_settings()
 
         try:
@@ -155,9 +191,9 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
                 create_if_not_found=True,
             )
         except Exception as e:
-            errorText = self.tr(f"Error writing the new service configuration:\n{e}.")
+            errorText = self.tr(f"Error writing the service configuration:\n{e}.")
             logger.error(errorText)
-            QMessageBox.critical(self, "Error", errorText)
+            self.__message_bar.pushError(errorText)
             return
 
         super().accept()
@@ -175,6 +211,11 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
             service_name = self.existingService_comboBox.currentText()
             if service_name:
                 settings["service"] = service_name
+
+        # When creating for a fixed service, override dbname so we can connect
+        # even if the target database doesn't exist yet.
+        if self.__fixed_service:
+            settings["dbname"] = "postgres"
 
         return settings
 

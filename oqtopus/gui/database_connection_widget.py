@@ -4,7 +4,14 @@ import sys
 import psycopg
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtGui import QAction
-from qgis.PyQt.QtWidgets import QDialog, QLabel, QMenu, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import (
+    QDialog,
+    QLabel,
+    QMenu,
+    QMessageBox,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ..libs.pgserviceparser import conf_path as pgserviceparser_conf_path
 from ..libs.pgserviceparser import service_config as pgserviceparser_service_config
@@ -42,7 +49,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         db_operations_menu = QMenu(self.db_operations_toolButton)
 
         actionManagePgServices = QAction(self.tr("Manage PG services"), db_operations_menu)
-        actionCreateDb = QAction(self.tr("Create database"), db_operations_menu)
+        actionCreateDb = QAction(self.tr("Create database and service"), db_operations_menu)
         self.__actionDuplicateDb = QAction(self.tr("Duplicate database"), db_operations_menu)
         actionReloadPgServices = QAction(self.tr("Reload PG Service config"), db_operations_menu)
 
@@ -59,6 +66,22 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         db_operations_menu.addAction(actionReloadPgServices)
 
         self.db_operations_toolButton.setMenu(db_operations_menu)
+
+        # Service-specific operations menu (next to service combobox)
+        service_menu = QMenu(self.db_service_toolButton)
+        self.__actionCreateDbForService = QAction(self.tr("Create database"), service_menu)
+        self.__actionDropDb = QAction(self.tr("Drop database"), service_menu)
+
+        self.__actionCreateDbForService.triggered.connect(self.__createDatabaseForServiceClicked)
+        self.__actionDropDb.triggered.connect(self.__dropDatabaseClicked)
+
+        service_menu.addAction(self.__actionCreateDbForService)
+        service_menu.addAction(self.__actionDropDb)
+
+        self.db_service_toolButton.setMenu(service_menu)
+
+        self.__actionCreateDbForService.setDisabled(True)
+        self.__actionDropDb.setDisabled(True)
 
         self.__database_connection = None
         self.__installed_module_ids = []
@@ -119,6 +142,8 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             QtUtils.setFontItalic(self.db_database_label, True)
 
             self.__actionDuplicateDb.setDisabled(True)
+            self.__actionCreateDbForService.setDisabled(True)
+            self.__actionDropDb.setDisabled(True)
 
             self.__set_connection(None)
             return
@@ -134,6 +159,8 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             QtUtils.setFontItalic(self.db_database_label, True)
 
             self.__actionDuplicateDb.setDisabled(True)
+            self.__actionCreateDbForService.setEnabled(True)
+            self.__actionDropDb.setDisabled(True)
             return
 
         self.db_database_label.setText(service_database)
@@ -150,11 +177,17 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         except Exception as exception:
             self.__set_connection(None)
 
+            self.__actionCreateDbForService.setEnabled(True)
+            self.__actionDropDb.setDisabled(True)
+
             self.db_moduleInfo_label.setText("Can't connect to service.")
             QtUtils.setForegroundColor(self.db_moduleInfo_label, PluginUtils.COLOR_WARNING)
             errorText = self.tr(f"Can't connect to service '{service_name}':\n{exception}.")
             logger.error(errorText)
             return
+
+        self.__actionCreateDbForService.setDisabled(True)
+        self.__actionDropDb.setEnabled(True)
 
         self.db_moduleInfo_label.setText("Connected.")
         logger.info(f"Connected to service '{service_name}'.")
@@ -287,6 +320,74 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             layout.addWidget(label)
 
         self.installed_modules_groupbox.setVisible(True)
+
+    def __createDatabaseForServiceClicked(self):
+        service_name = self.db_services_comboBox.currentText()
+        if not service_name or self.db_services_comboBox.currentData() is None:
+            return
+
+        databaseCreateDialog = DatabaseCreateDialog(
+            selected_service=service_name,
+            fixed_service_name=service_name,
+            parent=self,
+        )
+
+        if databaseCreateDialog.exec() == QDialog.DialogCode.Rejected:
+            return
+
+        self.__loadDatabaseInformations()
+        self.db_services_comboBox.setCurrentText(service_name)
+
+    def __dropDatabaseClicked(self):
+        service_name = self.db_services_comboBox.currentText()
+        if not service_name or self.db_services_comboBox.currentData() is None:
+            return
+
+        service_config = pgserviceparser_service_config(service_name)
+        db_name = service_config.get("dbname")
+        if not db_name:
+            MessageBar.pushWarningToBar(
+                self, self.tr("No database name configured for this service.")
+            )
+            return
+
+        reply = QMessageBox.question(
+            self,
+            self.tr("Drop database"),
+            self.tr(
+                f"Are you sure you want to drop the database '{db_name}'?\n\n"
+                "This action cannot be undone!"
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        # Close existing connection (cannot drop while connected)
+        self.__set_connection(None)
+
+        try:
+            conn = psycopg.connect(service=service_name, dbname="postgres")
+            conn.autocommit = True
+            with conn.cursor() as cursor:
+                # Terminate other connections to the database
+                cursor.execute(
+                    "SELECT pg_terminate_backend(pid) "
+                    "FROM pg_stat_activity "
+                    "WHERE datname = %s AND pid <> pg_backend_pid()",
+                    [db_name],
+                )
+                cursor.execute(
+                    psycopg.sql.SQL("DROP DATABASE {}").format(psycopg.sql.Identifier(db_name))
+                )
+            conn.close()
+
+            MessageBar.pushSuccessToBar(self, self.tr(f"Database '{db_name}' has been dropped."))
+        except Exception as e:
+            MessageBar.pushErrorToBar(self, self.tr(f"Failed to drop database: {e}"))
+
+        self.__serviceChanged()
 
     def __set_connection(self, connection):
         """
