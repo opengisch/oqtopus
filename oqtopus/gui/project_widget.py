@@ -14,9 +14,9 @@ except ImportError:
     HAS_QGIS = False
 
 from ..core.module_package import ModulePackage
+from ..libs.pgserviceparser.gui.message_bar import MessageBar
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import QtUtils
-from .message_bar import MessageBar
 
 DIALOG_UI = PluginUtils.get_ui_class("project_widget.ui")
 

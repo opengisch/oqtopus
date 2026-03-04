@@ -28,10 +28,10 @@ from qgis.PyQt.QtWidgets import QDialog, QVBoxLayout
 from ..libs.pgserviceparser import service_config as pgserviceparser_service_config
 from ..libs.pgserviceparser import service_names as pgserviceparser_service_names
 from ..libs.pgserviceparser import write_service as pgserviceparser_write_service
+from ..libs.pgserviceparser.gui.message_bar import MessageBar
 from ..libs.pum.database import create_database
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import OverrideCursor
-from .message_bar import MessageBar
 
 DIALOG_UI = PluginUtils.get_ui_class("database_create_dialog.ui")
 

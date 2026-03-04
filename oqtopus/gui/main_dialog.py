@@ -46,9 +46,9 @@ libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "libs"
 if libs_path not in sys.path:
     sys.path.insert(0, libs_path)
 
+from ..libs.pgserviceparser.gui.message_bar import MessageBar  # noqa: E402
 from .database_connection_widget import DatabaseConnectionWidget  # noqa: E402
 from .logs_widget import LogsWidget  # noqa: E402
-from .message_bar import MessageBar  # noqa: E402
 from .module_selection_widget import ModuleSelectionWidget  # noqa: E402
 from .module_widget import ModuleWidget  # noqa: E402
 from .plugin_widget import PluginWidget  # noqa: E402

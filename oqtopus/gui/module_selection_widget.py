@@ -8,9 +8,9 @@ from ..core.module_package import ModulePackage
 from ..core.modules_config import ModulesConfig
 from ..core.package_prepare_task import PackagePrepareTask, PackagePrepareTaskCanceled
 from ..core.settings import Settings
+from ..libs.pgserviceparser.gui.message_bar import MessageBar
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import OverrideCursor, QtUtils
-from .message_bar import MessageBar
 
 DIALOG_UI = PluginUtils.get_ui_class("module_selection_widget.ui")
 

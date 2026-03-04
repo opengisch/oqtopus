@@ -16,11 +16,11 @@ from qgis.PyQt.QtWidgets import (
 from ..libs.pgserviceparser import conf_path as pgserviceparser_conf_path
 from ..libs.pgserviceparser import service_config as pgserviceparser_service_config
 from ..libs.pgserviceparser import service_names as pgserviceparser_service_names
+from ..libs.pgserviceparser.gui.message_bar import MessageBar
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import QtUtils
 from .database_create_dialog import DatabaseCreateDialog
 from .database_duplicate_dialog import DatabaseDuplicateDialog
-from .message_bar import MessageBar
 
 libs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "libs"))
 if libs_path not in sys.path:

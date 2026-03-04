@@ -7,9 +7,9 @@ from qgis.PyQt.QtGui import QDesktopServices
 from qgis.PyQt.QtWidgets import QFileDialog, QWidget
 
 from ..core.module_package import ModulePackage
+from ..libs.pgserviceparser.gui.message_bar import MessageBar
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import QtUtils
-from .message_bar import MessageBar
 
 DIALOG_UI = PluginUtils.get_ui_class("plugin_widget.ui")
 
