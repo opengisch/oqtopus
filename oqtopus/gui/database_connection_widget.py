@@ -368,20 +368,9 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         self.__set_connection(None)
 
         try:
-            conn = psycopg.connect(service=service_name, dbname="postgres")
-            conn.autocommit = True
-            with conn.cursor() as cursor:
-                # Terminate other connections to the database
-                cursor.execute(
-                    "SELECT pg_terminate_backend(pid) "
-                    "FROM pg_stat_activity "
-                    "WHERE datname = %s AND pid <> pg_backend_pid()",
-                    [db_name],
-                )
-                cursor.execute(
-                    psycopg.sql.SQL("DROP DATABASE {}").format(psycopg.sql.Identifier(db_name))
-                )
-            conn.close()
+            from ..libs.pum.database import drop_database
+
+            drop_database({"service": service_name, "dbname": "postgres"}, db_name)
 
             MessageBar.pushSuccessToBar(self, self.tr(f"Database '{db_name}' has been dropped."))
         except Exception as e:

@@ -22,13 +22,13 @@
 #
 # ---------------------------------------------------------------------
 
-import psycopg
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QDialog, QVBoxLayout
 
 from ..libs.pgserviceparser import service_config as pgserviceparser_service_config
 from ..libs.pgserviceparser import service_names as pgserviceparser_service_names
 from ..libs.pgserviceparser import write_service as pgserviceparser_write_service
+from ..libs.pum.database import create_database
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import OverrideCursor
 from .message_bar import MessageBar
@@ -159,27 +159,15 @@ class DatabaseCreateDialog(QDialog, DIALOG_UI):
                 )
                 return
 
-        database_connection = None
         try:
             with OverrideCursor(Qt.CursorShape.WaitCursor):
-                database_connection = psycopg.connect(**self._get_connection_parameters())
-                database_connection.autocommit = True
-                with database_connection.cursor() as cursor:
-                    cursor.execute(
-                        psycopg.sql.SQL("CREATE DATABASE {}").format(
-                            psycopg.sql.Identifier(new_database_name)
-                        )
-                    )
+                create_database(self._get_connection_parameters(), new_database_name)
 
         except Exception as e:
             errorText = self.tr(f"Error creating the new database:\n{e}.")
             logger.error(errorText)
             self.__message_bar.pushError(errorText)
             return
-
-        finally:
-            if database_connection:
-                database_connection.close()
 
         # Write or update the service configuration
         service_settings = self._get_new_service_settings()
