@@ -9,12 +9,12 @@ from qgis.PyQt.QtWidgets import QMessageBox, QSizePolicy, QTextBrowser, QWidget
 from ..core.module import Module
 from ..core.module_operation_task import ModuleOperationTask
 from ..core.settings import Settings
+from ..libs.pgserviceparser.gui.message_bar import MessageBar
 from ..libs.pum.pum_config import PumConfig
 from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
 from ..utils.qt_utils import QtUtils
 from .install_dialog import InstallDialog
-from .message_bar import MessageBar
 from .recreate_app_dialog import RecreateAppDialog
 from .roles_manage_dialog import RolesManageDialog
 from .upgrade_dialog import UpgradeDialog
