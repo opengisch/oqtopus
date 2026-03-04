@@ -222,6 +222,10 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         created_service_name = databaseCreateDialog.created_service_name()
         self.db_services_comboBox.setCurrentText(created_service_name)
 
+        MessageBar.pushSuccessToBar(
+            self, self.tr(f"Database and service '{created_service_name}' created successfully.")
+        )
+
     def __duplicateDatabaseClicked(self):
         databaseDuplicateDialog = DatabaseDuplicateDialog(
             selected_service=self.db_services_comboBox.currentText(), parent=self
@@ -237,6 +241,13 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             return
 
         self.__loadDatabaseInformations()
+
+        created_service_name = databaseDuplicateDialog.created_service_name()
+        self.db_services_comboBox.setCurrentText(created_service_name)
+
+        MessageBar.pushSuccessToBar(
+            self, self.tr(f"Database duplicated to service '{created_service_name}'.")
+        )
 
     def getInstalledModuleIds(self) -> list[str]:
         """Return the list of module IDs currently installed in the database."""
@@ -337,6 +348,10 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
 
         self.__loadDatabaseInformations()
         self.db_services_comboBox.setCurrentText(service_name)
+
+        MessageBar.pushSuccessToBar(
+            self, self.tr(f"Database created for service '{service_name}'.")
+        )
 
     def __dropDatabaseClicked(self):
         service_name = self.db_services_comboBox.currentText()

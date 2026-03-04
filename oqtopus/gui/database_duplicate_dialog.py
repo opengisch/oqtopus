@@ -48,6 +48,9 @@ class DatabaseDuplicateDialog(QDialog, DIALOG_UI):
 
         self.buttonBox.accepted.connect(self._accept)
 
+    def created_service_name(self):
+        return self.newService_lineEdit.text()
+
     def _accept(self):
 
         if self.newDatabase_lineEdit.text() == "":
