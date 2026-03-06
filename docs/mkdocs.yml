@@ -66,7 +66,9 @@ nav:
           - Role Management: usage/module/role_management.md
       - Project: usage/project.md
       - Plugin: usage/plugin.md
-  - Adding Modules: adding_modules.md
+  - Module Development:
+      - Adding Modules: adding_modules.md
+      - CI/CD Workflows: development/ci_cd_workflows.md
 
 extra:
   # Remove "Made with Material for MkDocs" from footer
