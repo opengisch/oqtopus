@@ -1,59 +1,10 @@
 # CI/CD Workflows
 
-oQtopus provides reusable GitHub Actions workflows that module repositories can use to standardize their CI/CD pipelines. These workflows handle common tasks like plugin packaging, datamodel dumps, project translations, and changelog validation.
+oQtopus provides reusable GitHub Actions workflows that module repositories can use to standardize their CI/CD pipelines. These workflows handle common tasks like datamodel dumps, project translations, and changelog validation.
 
 ## Available workflows
 
 All reusable workflows are defined in the [opengisch/oqtopus](https://github.com/opengisch/oqtopus) repository under `.github/workflows/`.
-
-### Plugin package and release
-
-**Workflow:** `reusable-plugin-package.yml`
-
-Packages a QGIS plugin using [qgis-plugin-ci](https://github.com/opengisch/qgis-plugin-ci), uploads build artifacts on PRs, posts a download comment, and optionally releases to GitHub and/or [plugins.qgis.org](https://plugins.qgis.org).
-
-```yaml
-jobs:
-  plugin-package:
-    uses: opengisch/oqtopus/.github/workflows/reusable-plugin-package.yml@main
-    with:
-      plugin_name: teksi_wastewater
-      release_tag: ${{ inputs.release_tag }}
-      pre_package_commands: |
-        ./plugin/scripts/package-pip-packages.sh
-        ./plugin/scripts/download-interlis-libs.sh
-      asset_paths: |
-        plugin/teksi_wastewater/libs
-        plugin/teksi_wastewater/interlis/bin
-    secrets: inherit
-```
-
-#### Inputs
-
-| Input | Required | Default | Description |
-|---|---|---|---|
-| `plugin_name` | yes | | Plugin directory/package name (e.g., `oqtopus`, `teksi_wastewater`) |
-| `release_tag` | no | `''` | Release tag version. Empty for dev builds (uses `0.0.0`) |
-| `pre_package_commands` | no | `''` | Shell commands to run before packaging (e.g., bundling dependencies) |
-| `asset_paths` | no | `''` | Newline-separated list of extra asset paths for `qgis-plugin-ci --asset-path` |
-| `release_to_qgis_org` | no | `false` | Whether to also release to plugins.qgis.org |
-| `upload_to_github_release` | no | `true` | Whether to upload the plugin zip to the GitHub Release |
-| `github_release_asset_label` | no | `oqtopus.plugin` | Label for the GitHub Release asset |
-
-#### Secrets
-
-| Secret | Required | Description |
-|---|---|---|
-| `TX_TOKEN` | no | Transifex API token for translations |
-| `QGIS_ORG_TOKEN` | no | Token for publishing to plugins.qgis.org |
-
-#### Behavior
-
-- On **pull requests**: packages with version `0.0.0` and posts a sticky comment with a download link.
-- On **push to main**: packages and pushes translation sources to Transifex.
-- On **release** (when `release_tag` is set): packages and uploads to GitHub Release and optionally to plugins.qgis.org.
-
----
 
 ### Datamodel dumps and documentation
 
@@ -195,12 +146,6 @@ jobs:
     with:
       release_tag: ${{ github.event.release.tag_name }}
 
-  plugin-package:
-    uses: ./.github/workflows/plugin-package.yml
-    with:
-      release_tag: ${{ github.event.release.tag_name }}
-    secrets: inherit
-
   project-translations:
     uses: ./.github/workflows/project-translation-package.yml
     with:
@@ -215,4 +160,4 @@ Each of these local wrapper workflows in turn calls the corresponding oqtopus re
 See these repositories for real-world usage:
 
 - [opengisch/signalo](https://github.com/opengisch/signalo/tree/main/.github/workflows) — datamodel dumps, project translations, version check
-- [teksi/wastewater](https://github.com/teksi/wastewater/tree/main/.github/workflows) — all four workflows
+- [teksi/wastewater](https://github.com/teksi/wastewater/tree/main/.github/workflows) — datamodel dumps, project translations, plugin package, version check
