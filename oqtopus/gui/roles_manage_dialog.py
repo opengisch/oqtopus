@@ -22,6 +22,7 @@ from qgis.PyQt.QtWidgets import (
     QVBoxLayout,
 )
 
+from ..libs.pgserviceparser.gui.message_bar import MessageBar
 from ..libs.pum.role_manager import RoleInventory, RoleManager
 from .database_access_dialog import DatabaseAccessDialog
 from .roles_create_dialog import RolesCreateDialog
