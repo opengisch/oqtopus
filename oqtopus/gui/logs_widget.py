@@ -98,9 +98,14 @@ class LogFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.level_filter = None
+        self.text_filter = ""
 
     def setLevelFilter(self, level):
         self.level_filter = level
+        self.invalidateFilter()
+
+    def setTextFilter(self, text):
+        self.text_filter = text
         self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row, source_parent):
@@ -119,11 +124,11 @@ class LogFilterProxyModel(QSortFilterProxyModel):
             except ValueError:
                 return False
         # Text filter (from QLineEdit)
-        filter_text = self.filterRegularExpression().pattern()
-        if filter_text:
+        if self.text_filter:
             msg = model.data(index_message, Qt.ItemDataRole.DisplayRole) or ""
             mod = model.data(index_module, Qt.ItemDataRole.DisplayRole) or ""
-            if filter_text.lower() not in msg.lower() and filter_text.lower() not in mod.lower():
+            text = self.text_filter.lower()
+            if text not in msg.lower() and text not in mod.lower():
                 return False
         return True
 
@@ -199,7 +204,7 @@ class LogsWidget(QWidget, DIALOG_UI):
         self.logs_openFile_toolButton.clicked.connect(self.__logsOpenFileClicked)
         self.logs_openFolder_toolButton.clicked.connect(self.__logsOpenFolderClicked)
         self.logs_clear_toolButton.clicked.connect(self.__logsClearClicked)
-        self.logs_filter_LineEdit.textChanged.connect(self.proxy_model.setFilterFixedString)
+        self.logs_filter_LineEdit.textChanged.connect(self.proxy_model.setTextFilter)
 
         # Add copy shortcut (Ctrl+C)
         self.copy_shortcut = QShortcut(QKeySequence.StandardKey.Copy, self.logs_treeView)
@@ -221,7 +226,7 @@ class LogsWidget(QWidget, DIALOG_UI):
             "Timestamp": timestamp,
             "Level": record.levelname,
             "Module": record.name,
-            "Message": record.msg,
+            "Message": record.getMessage(),
         }
 
         self.logs_model.add_log(log_entry)
