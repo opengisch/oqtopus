@@ -22,12 +22,8 @@ from qgis.PyQt.QtWidgets import (
     QVBoxLayout,
 )
 
-from ..libs.pgserviceparser.gui.message_bar import MessageBar
-from ..libs.pum.database import (
-    configure_database_connect_access,
-    get_database_connect_access,
-)
 from ..libs.pum.role_manager import RoleInventory, RoleManager
+from .database_access_dialog import DatabaseAccessDialog
 from .roles_create_dialog import RolesCreateDialog
 
 logger = logging.getLogger(__name__)
@@ -370,6 +366,23 @@ class RolesManageDialog(QDialog):
         except Exception as exc:
             self._connection.rollback()
             self._message_bar.pushError(self.tr("Failed to create user."), exception=exc)
+
+    def _on_configure_database_access(self):
+        """Open dialog to manage CONNECT privileges on the database."""
+        if not self._connection:
+            return
+
+        module_role_names = [rs.name for rs in self._last_inventory.configured_roles]
+
+        try:
+            dlg = DatabaseAccessDialog(
+                connection=self._connection,
+                module_role_names=module_role_names,
+                parent=self,
+            )
+            dlg.exec()
+        except Exception as exc:
+            self._message_bar.pushError(self.tr("Failed to query database access."), exception=exc)
 
     # ------------------------------------------------------------------
     # Helpers

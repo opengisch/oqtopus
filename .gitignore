@@ -4,7 +4,7 @@ oqtopus/logs
 plugin*.zip
 plugin*.tar.gz
 
-.orig
+*.orig
 .idea
 .pycache
 __pycache__
