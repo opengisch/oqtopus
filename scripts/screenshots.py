@@ -522,7 +522,7 @@ def step_10b_access_dialog(dialog: MainDialog):
 
     role_manager = cfg.role_manager()
     result = role_manager.roles_inventory(connection=conn, include_superusers=True)
-    module_role_names = [rs.role.name for rs in result.configured_roles]
+    module_role_names = [rs.name for rs in result.configured_roles]
     print(f"    opening access dialog ({len(module_role_names)} module roles)...")
 
     access_dlg = DatabaseAccessDialog(
