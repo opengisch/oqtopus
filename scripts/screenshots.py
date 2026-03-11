@@ -19,6 +19,7 @@ This script drives the full GUI workflow against a real database
 08. Upgrade parameters dialog
 09. Upgrade in progress
 10. Role management dialog
+10b. Database access dialog
 11. Uninstall (cleanup, no screenshot)
 
 Screenshots are saved to docs/docs/assets/images/screenshots/.
@@ -72,6 +73,7 @@ _app = QApplication.instance() or QApplication(sys.argv)
 
 from oqtopus.core.module_package import ModulePackage  # noqa: E402
 from oqtopus.core.settings import Settings  # noqa: E402
+from oqtopus.gui.database_access_dialog import DatabaseAccessDialog  # noqa: E402
 from oqtopus.gui.install_dialog import InstallDialog  # noqa: E402
 from oqtopus.gui.main_dialog import MainDialog  # noqa: E402
 from oqtopus.gui.roles_manage_dialog import RolesManageDialog  # noqa: E402
@@ -511,6 +513,30 @@ def step_10_roles_dialog(dialog: MainDialog):
     roles_dlg.close()
 
 
+def step_10b_access_dialog(dialog: MainDialog):
+    """Step 10b – Open the database access dialog and screenshot it."""
+    conn = _connection(dialog)
+    cfg = _pum_config(dialog)
+    if cfg is None:
+        raise RuntimeError("PUM config not loaded for access dialog")
+
+    role_manager = cfg.role_manager()
+    result = role_manager.roles_inventory(connection=conn, include_superusers=True)
+    module_role_names = [rs.role.name for rs in result.configured_roles]
+    print(f"    opening access dialog ({len(module_role_names)} module roles)...")
+
+    access_dlg = DatabaseAccessDialog(
+        connection=conn,
+        module_role_names=module_role_names,
+        parent=dialog,
+    )
+    access_dlg.show()
+    _app.processEvents()
+
+    _grab(access_dlg, "10b_access_dialog.png")
+    access_dlg.close()
+
+
 def step_11_uninstall(dialog: MainDialog):
     """Step 11 – Uninstall the module to leave the database clean (no screenshot)."""
     mw = _mod_widget(dialog)
@@ -562,7 +588,7 @@ def confirm_workflow():
     print(f"  Branch:   {DEV_BRANCH}")
     print(f"  Output:   {OUTPUT_DIR}")
     print()
-    print("  Steps: connect → install → upgrade → roles → uninstall")
+    print("  Steps: connect → install → upgrade → roles → access → uninstall")
     print()
     answer = input("  Proceed? [y/N] ").strip().lower()
     if answer != "y":
@@ -618,6 +644,9 @@ def main():
     # Roles
     print("  10 Roles dialog...")
     step_10_roles_dialog(dialog)
+
+    print("  10b Access dialog...")
+    step_10b_access_dialog(dialog)
 
     # Cleanup: uninstall the module so the database is left clean
     print("  11 Uninstall (cleanup)...")

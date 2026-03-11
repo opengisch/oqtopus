@@ -39,7 +39,7 @@ Roles that have access to the module's schemas but are not part of the module co
 
 - **Create and grant roles** — create all missing module roles (optionally with a suffix) and grant the configured schema permissions.
 - **Create user** — create a new PostgreSQL user (a role with LOGIN privilege) with an optional password.
-- **Configure database access** — opens a dialog to manage CONNECT privileges on the database. Shows checkboxes for PUBLIC (grants all users access), each existing module role, and any other roles that have explicit CONNECT. Use this to restrict which roles can connect to the database.
+- **Configure database access** — opens a dialog to manage `CONNECT` privileges on the database (see below).
 
 ### Context menu (right-click)
 
@@ -62,3 +62,25 @@ Right-click on a **user** to access:
     Roles can also be created automatically during module installation or upgrade
     by enabling the **Create and grant roles** option in the install/upgrade dialog.
     The role management dialog is useful for post-installation adjustments.
+
+## Configure database access
+
+The **Configure database access** button opens a dedicated dialog for managing
+`CONNECT` privileges on the current database.
+
+![Database access dialog](../../assets/images/screenshots/10b_access_dialog.png)
+
+By default, PostgreSQL grants `CONNECT` to the `PUBLIC` pseudo-role, meaning
+**any** user on the server can connect to every database.  This dialog lets you
+tighten that:
+
+- **PUBLIC** — a checkbox at the top controls whether all users can connect.
+  When checked, individual role checkboxes are disabled (greyed out) because
+  they are redundant — everyone already has access.
+- **Module roles** — when PUBLIC is unchecked, you can grant or revoke
+  `CONNECT` for each existing module role individually.
+- **Other roles** — any non-module roles that have an explicit `CONNECT` grant
+  are also listed so you can revoke them if needed.
+
+Click **Apply** to execute the changes.  The dialog stays open so you can make
+further adjustments.  Changes take effect immediately on the server.
