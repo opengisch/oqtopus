@@ -23,6 +23,10 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from ..libs.pgserviceparser.gui.message_bar import MessageBar
+from ..libs.pum.database import (
+    configure_database_connect_access,
+    get_database_connect_access,
+)
 from ..libs.pum.role_manager import RoleInventory, RoleManager
 from .roles_create_dialog import RolesCreateDialog
 
@@ -94,6 +98,16 @@ class RolesManageDialog(QDialog):
         create_login_role_button.clicked.connect(self._on_create_login_role)
         action_layout.addWidget(create_login_role_button)
 
+        self._configure_access_button = QPushButton(self.tr("Configure database access"), self)
+        self._configure_access_button.setToolTip(
+            self.tr(
+                "Manage CONNECT privileges on this database.\n"
+                "Control which roles are allowed to connect."
+            )
+        )
+        self._configure_access_button.clicked.connect(self._on_configure_database_access)
+        action_layout.addWidget(self._configure_access_button)
+
         action_layout.addStretch()
         layout.addLayout(action_layout)
 
@@ -110,6 +124,7 @@ class RolesManageDialog(QDialog):
 
     def _populate(self, result: RoleInventory):
         """Fill / refresh the summary label and tree from *result*."""
+        self._last_inventory = result
         # --- Summary ---
         parts: list[str] = []
         n_configured = len(result.configured_roles)

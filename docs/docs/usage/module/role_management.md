@@ -39,6 +39,7 @@ Roles that have access to the module's schemas but are not part of the module co
 
 - **Create and grant roles** — create all missing module roles (optionally with a suffix) and grant the configured schema permissions.
 - **Create user** — create a new PostgreSQL user (a role with LOGIN privilege) with an optional password.
+- **Configure database access** — opens a dialog to manage CONNECT privileges on the database. Shows checkboxes for PUBLIC (grants all users access), each existing module role, and any other roles that have explicit CONNECT. Use this to restrict which roles can connect to the database.
 
 ### Context menu (right-click)
 
