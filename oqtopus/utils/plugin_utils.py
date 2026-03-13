@@ -43,6 +43,7 @@ logger = logging.getLogger("oqtopus")
 class PluginUtils:
 
     PLUGIN_NAME = "oQtopus"
+    PLUGIN_ID = "oqtopus"
 
     logsDirectory = ""
 

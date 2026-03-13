@@ -1,5 +1,7 @@
 from qgis.PyQt.QtCore import QSettings
 
+from ..utils.plugin_utils import PluginUtils
+
 try:
     from qgis.core import (
         QgsSettingsEntryBool,
@@ -11,7 +13,7 @@ try:
 except ImportError:
     HAS_QGS_SETTINGS = False
 
-PLUGIN_NAME = "oqtopus"
+PLUGIN_NAME = PluginUtils.PLUGIN_ID
 
 
 # ---------------------------------------------------------------------------
