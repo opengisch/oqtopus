@@ -40,16 +40,7 @@ jobs:
         run: pip install qgis-plugin-ci>=2.8.6
 
       - name: Package PyPI Packages
-        run: |
-          while IFS= read -r line; do
-            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-            pip download "$line" --no-deps --only-binary :all: -d temp/
-          done < requirements-libs.txt
-          unzip -o "temp/*.whl" -d oqtopus/libs
-          touch oqtopus/libs/__init__.py
-          rm -r temp
-          # set write rights to group (because qgis-plugin-ci needs it)
-          chmod -R g+w oqtopus/libs
+        run: ./scripts/download-libs.sh
 
       - name: 🌍 Push translations
         if: ${{ github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') }}

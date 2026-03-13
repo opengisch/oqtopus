@@ -29,14 +29,7 @@ jobs:
         run: python -m pip install --upgrade build
 
       - name: Bundle PyPI dependencies
-        run: |
-          while IFS= read -r line; do
-            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-            pip download "$line" --no-deps --only-binary :all: -d temp/
-          done < requirements-libs.txt
-          unzip -o "temp/*.whl" -d oqtopus/libs
-          touch oqtopus/libs/__init__.py
-          rm -r temp
+        run: ./scripts/download-libs.sh
 
       - name: Build wheel
         run: python -m build
