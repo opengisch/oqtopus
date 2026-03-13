@@ -4,7 +4,7 @@ from qgis.core import QgsSettingsTree
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QApplication
 
-from .core.settings import PLUGIN_NAME, Settings
+from .core.settings import Settings
 from .gui.about_dialog import AboutDialog
 from .gui.main_dialog import MainDialog
 from .utils.plugin_utils import PluginUtils, logger
@@ -12,7 +12,9 @@ from .utils.plugin_utils import PluginUtils, logger
 
 class OqtopusPlugin:
 
-    def __init__(self, iface, modules_config_path=None, about_dialog_cls=None):
+    def __init__(
+        self, iface, modules_config_path=None, about_dialog_cls=None, settings_plugin_name=None
+    ):
         """Constructor.
 
         :param iface: An interface instance that will be passed to this class
@@ -25,6 +27,9 @@ class OqtopusPlugin:
         :param about_dialog_cls: Optional custom About dialog class.
             Defaults to the bundled ``AboutDialog``.
         :type about_dialog_cls: type | None
+        :param settings_plugin_name: Optional name for the QGIS settings tree node.
+            Defaults to ``"oqtopus"``.
+        :type settings_plugin_name: str | None
         """
         # Save reference to the QGIS interface
         self.iface = iface
@@ -33,6 +38,7 @@ class OqtopusPlugin:
             modules_config_path or Path(__file__).parent / "default_config.yaml"
         )
         self._about_dialog_cls = about_dialog_cls or AboutDialog
+        self._settings_plugin_name = settings_plugin_name
 
         self.__version__ = PluginUtils.get_plugin_version()
 
@@ -131,7 +137,7 @@ class OqtopusPlugin:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
         # Register settings tree node early
-        Settings()
+        Settings(plugin_name=self._settings_plugin_name)
 
         self.add_action(
             icon_path=PluginUtils.get_plugin_icon_path("oqtopus-logo.png"),
@@ -173,7 +179,7 @@ class OqtopusPlugin:
             self.iface.removeToolBarIcon(action)
 
         # Unregister the plugin settings tree node
-        QgsSettingsTree.unregisterPluginTreeNode(PLUGIN_NAME)
+        QgsSettingsTree.unregisterPluginTreeNode(Settings._plugin_name)
         Settings.instance = None
 
         # Remove pum modules from sys.modules to allow proper reloading

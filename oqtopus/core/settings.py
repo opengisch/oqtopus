@@ -70,18 +70,24 @@ class Settings:
         Settings().installed_project_path.setValue(
             path, dynamicKeyPartList=[module_id, version]
         )
+
+    A custom *plugin_name* can be passed on first instantiation to
+    register settings under a different tree node (e.g. ``"tmmt"``).
+    Subsequent calls ignore the argument and return the existing
+    singleton.
     """
 
     instance = None
 
-    def __new__(cls):
+    def __new__(cls, plugin_name=None):
         if cls.instance is not None:
             return cls.instance
 
         cls.instance = super().__new__(cls)
+        cls._plugin_name = plugin_name or PLUGIN_NAME
 
         if HAS_QGS_SETTINGS:
-            settings_node = QgsSettingsTree.createPluginTreeNode(pluginName=PLUGIN_NAME)
+            settings_node = QgsSettingsTree.createPluginTreeNode(pluginName=cls._plugin_name)
 
             cls.github_token = QgsSettingsEntryString(
                 "github-token",
