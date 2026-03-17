@@ -197,12 +197,15 @@ class OqtopusPlugin:
         QgsSettingsTree.unregisterPluginTreeNode(plugin_name)
         Settings.instance = None
 
-        # Remove pum modules from sys.modules to allow proper reloading
-        # This is necessary because pum is in the libs folder and imported at module level
+        # Remove plugin and bundled-lib modules from sys.modules so that:
+        # 1. The plugin can be cleanly reloaded after an upgrade.
+        # 2. On Windows, Python releases its file handles on .pyc files,
+        #    allowing QGIS to delete the plugin folder on uninstall.
         import sys
 
-        pum_modules = [mod for mod in sys.modules.keys() if mod.startswith("pum")]
-        for mod in pum_modules:
+        prefixes = ("oqtopus", "pum", "pgserviceparser")
+        stale = [mod for mod in sys.modules if mod.startswith(prefixes)]
+        for mod in stale:
             del sys.modules[mod]
             logger.debug(f"Removed {mod} from sys.modules for clean reload")
 

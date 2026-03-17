@@ -59,14 +59,18 @@ markdown_extensions:
 nav:
   - About: index.md
   - Installation: installation.md
-  - Usage:
-      - Module:
+  - Module Usage:
+      - Datamodel::
           - Installation: usage/module/installation.md
           - Upgrade: usage/module/upgrade.md
           - Role Management: usage/module/role_management.md
       - Project: usage/project.md
       - Plugin: usage/plugin.md
-  - Adding Modules: adding_modules.md
+  - Module Development:
+      - Adding Modules: module_development/adding_modules.md
+      - Datamodel: module_development/datamodel.md
+      - QGIS Projects: module_development/qgis_projects.md
+      - Plugin: module_development/plugin.md
 
 extra:
   # Remove "Made with Material for MkDocs" from footer
