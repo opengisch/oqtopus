@@ -2,8 +2,8 @@ import os
 import sys
 
 import psycopg
-from qgis.PyQt.QtCore import pyqtSignal
-from qgis.PyQt.QtGui import QAction
+from qgis.PyQt.QtCore import QRect, Qt, pyqtSignal
+from qgis.PyQt.QtGui import QAction, QBrush, QColor, QFont, QPainter, QPixmap
 from qgis.PyQt.QtWidgets import (
     QDialog,
     QLabel,
@@ -107,6 +107,12 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         self.__installed_module_ids = []
         self.__installed_module_versions: dict[str, str] = {}
 
+        # Setup info icon (hidden by default) — white "i" in blue circle
+        self.__db_info_pixmap = self.__createInfoPixmap(16)
+        self.db_info_icon_label.setFixedSize(16, 16)
+        self.db_info_icon_label.setPixmap(self.__db_info_pixmap)
+        self.db_info_icon_label.setVisible(False)
+
         try:
             self.__serviceChanged()
         except Exception:
@@ -168,6 +174,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             self.__actionRestoreDb.setDisabled(True)
             self.__actionSetBaseline.setDisabled(True)
 
+            self.db_info_icon_label.setVisible(False)
             self.__set_connection(None)
             return
 
@@ -187,6 +194,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             self.__actionDumpDb.setDisabled(True)
             self.__actionRestoreDb.setDisabled(True)
             self.__actionSetBaseline.setDisabled(True)
+            self.db_info_icon_label.setVisible(False)
             return
 
         self.db_database_label.setText(service_database)
@@ -209,6 +217,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             self.__actionSetBaseline.setDisabled(True)
             self.db_moduleInfo_label.setText("Can't connect to service.")
             QtUtils.setForegroundColor(self.db_moduleInfo_label, PluginUtils.COLOR_WARNING)
+            self.db_info_icon_label.setVisible(False)
             errorText = self.tr(f"Can't connect to service '{service_name}':\n{exception}.")
             logger.error(errorText)
             return
@@ -224,7 +233,69 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         logger.info(f"Connected to service '{service_name}'.")
         QtUtils.resetForegroundColor(self.db_moduleInfo_label)
 
+        self.__updateDatabaseInfoTooltip()
+
         self.refreshInstalledModules()
+
+    def __updateDatabaseInfoTooltip(self):
+        """Query PG version and installed extensions, show info icon with tooltip."""
+        if self.__database_connection is None:
+            self.db_info_icon_label.setVisible(False)
+            self.db_moduleInfo_label.setToolTip("")
+            return
+
+        tooltip_lines = []
+        try:
+            with self.__database_connection.cursor() as cur:
+                cur.execute("SELECT version()")
+                pg_version = cur.fetchone()[0]
+                tooltip_lines.append(f"<b>PostgreSQL:</b> {pg_version}")
+
+                cur.execute(
+                    "SELECT name, default_version, installed_version "
+                    "FROM pg_available_extensions "
+                    "WHERE installed_version IS NOT NULL "
+                    "ORDER BY name"
+                )
+                extensions = cur.fetchall()
+                if extensions:
+                    tooltip_lines.append("<br><b>Installed extensions:</b>")
+                    for name, default_version, installed_version in extensions:
+                        tooltip_lines.append(f"&nbsp;&nbsp;\u2022 {name} ({installed_version})")
+        except Exception as e:
+            logger.warning(f"Could not retrieve database info: {e}")
+            self.db_info_icon_label.setVisible(False)
+            return
+
+        tooltip_html = "<p style='font-size:11pt'>" + "<br>".join(tooltip_lines) + "</p>"
+        self.db_info_icon_label.setToolTip(tooltip_html)
+        self.db_moduleInfo_label.setToolTip(tooltip_html)
+        self.db_info_icon_label.setVisible(True)
+
+    @staticmethod
+    def __createInfoPixmap(size: int) -> QPixmap:
+        """Return a *size*×*size* pixmap with a white 'i' inside a blue circle."""
+        pixmap = QPixmap(size, size)
+        pixmap.fill(QColor(0, 0, 0, 0))  # transparent background
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Blue circle
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(QColor(30, 115, 190)))
+        painter.drawEllipse(0, 0, size, size)
+
+        # White "i"
+        painter.setPen(QColor(255, 255, 255))
+        font = QFont()
+        font.setPixelSize(int(size * 0.7))
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(QRect(0, 0, size, size), Qt.AlignmentFlag.AlignCenter, "i")
+
+        painter.end()
+        return pixmap
 
     def __managePgServicesClicked(self):
         from ..libs.pgserviceparser.gui.service_widget import PGServiceParserWidget
