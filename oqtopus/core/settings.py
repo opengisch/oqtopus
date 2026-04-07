@@ -1,9 +1,15 @@
+import logging
+
 from qgis.PyQt.QtCore import QSettings
 
 from ..utils.plugin_utils import PluginUtils
 
+logger = logging.getLogger(__name__)
+
 try:
     from qgis.core import (
+        QgsApplication,
+        QgsAuthMethodConfig,
         QgsSettingsEntryBool,
         QgsSettingsEntryString,
         QgsSettingsTree,
@@ -63,8 +69,8 @@ class Settings:
 
         from oqtopus.core.settings import Settings
 
-        token = Settings().github_token.value()
-        Settings().github_token.setValue("ghp_…")
+        token = Settings.get_github_token()
+        Settings.store_github_token("ghp_…")
 
     The QGIS-only ``installed_project_path`` setting is ``None`` in
     standalone mode.  It requires a ``dynamicKeyPartList``::
@@ -91,11 +97,18 @@ class Settings:
         if HAS_QGS_SETTINGS:
             settings_node = QgsSettingsTree.createPluginTreeNode(pluginName=cls._plugin_name)
 
-            cls.github_token = QgsSettingsEntryString(
+            cls.github_auth_cfg_id = QgsSettingsEntryString(
+                "github-auth-cfg-id",
+                settings_node,
+                "",
+                "QGIS auth-db config ID that holds the GitHub token",
+            )
+            # Legacy setting kept for one-time migration
+            cls._github_token_legacy = QgsSettingsEntryString(
                 "github-token",
                 settings_node,
                 "",
-                "GitHub personal access token for API authentication",
+                "(deprecated) plain-text GitHub token – migrated to auth DB",
             )
             cls.allow_multiple_modules = QgsSettingsEntryBool(
                 "allow-multiple-modules",
@@ -155,7 +168,8 @@ class Settings:
             )
         else:
             # Standalone fallback using QSettings wrappers
-            cls.github_token = _QSettingsEntryString("github-token", "")
+            cls.github_auth_cfg_id = _QSettingsEntryString("github-auth-cfg-id", "")
+            cls._github_token_legacy = _QSettingsEntryString("github-token", "")
             cls.allow_multiple_modules = _QSettingsEntryBool("allow-multiple-modules", False)
             cls.show_experimental_modules = _QSettingsEntryBool("show-experimental-modules", False)
             cls.log_show_datetime = _QSettingsEntryBool("log-show-datetime", True)
@@ -172,10 +186,87 @@ class Settings:
 
         return cls.instance
 
+    # ------------------------------------------------------------------
+    # GitHub token helpers  (QGIS auth-db in QGIS mode, plain QSettings
+    # fallback in standalone mode)
+    # ------------------------------------------------------------------
+    _AUTH_CFG_NAME = "oqtopus-github"
+
+    @staticmethod
+    def has_github_token() -> bool:
+        """Return True if a GitHub token is configured.
+
+        This only checks whether an auth-config ID (or a legacy
+        plain-text value) exists.  It does **not** access the
+        encrypted auth DB, so it will never trigger a master-password
+        prompt.
+        """
+        if Settings().github_auth_cfg_id.value():
+            return True
+        return bool(Settings()._github_token_legacy.value())
+
+    @staticmethod
+    def store_github_token(token: str) -> None:
+        """Store *token* in the QGIS auth DB (or QSettings in standalone)."""
+        if not HAS_QGS_SETTINGS:
+            # Standalone – no auth DB available, fall back to plain text
+            Settings()._github_token_legacy.setValue(token)
+            return
+
+        auth_mgr = QgsApplication.authManager()
+        cfg_id = Settings().github_auth_cfg_id.value()
+
+        cfg = QgsAuthMethodConfig()
+        if cfg_id and auth_mgr.loadAuthenticationConfig(cfg_id, cfg, True):
+            # Update existing entry
+            cfg.setConfigMap({"token": token})
+            auth_mgr.updateAuthenticationConfig(cfg)
+        else:
+            # Create a new entry
+            cfg.setName(Settings._AUTH_CFG_NAME)
+            cfg.setMethod("Basic")
+            cfg.setConfigMap({"token": token})
+            auth_mgr.storeAuthenticationConfig(cfg)
+            Settings().github_auth_cfg_id.setValue(cfg.id())
+
+    @staticmethod
+    def get_github_token() -> str:
+        """Retrieve the GitHub token from the auth DB (or QSettings fallback)."""
+        if not HAS_QGS_SETTINGS:
+            return Settings()._github_token_legacy.value()
+
+        # Migrate plain-text token on first access if needed
+        Settings._migrate_github_token()
+
+        cfg_id = Settings().github_auth_cfg_id.value()
+        if not cfg_id:
+            return ""
+
+        auth_mgr = QgsApplication.authManager()
+        cfg = QgsAuthMethodConfig()
+        if auth_mgr.loadAuthenticationConfig(cfg_id, cfg, True):
+            return cfg.configMap().get("token", "")
+        return ""
+
+    @staticmethod
+    def _migrate_github_token() -> None:
+        """One-time migration: move a legacy plain-text token into the auth DB."""
+        legacy = Settings()._github_token_legacy.value()
+        if not legacy:
+            return
+        # Already migrated?
+        if Settings().github_auth_cfg_id.value():
+            # Just clear the leftover plain-text value
+            Settings()._github_token_legacy.setValue("")
+            return
+        logger.info("Migrating GitHub token from plain-text settings to QGIS auth DB")
+        Settings.store_github_token(legacy)
+        Settings()._github_token_legacy.setValue("")
+
     @staticmethod
     def get_github_headers():
         """Return HTTP headers dict with GitHub auth token if configured."""
-        token = Settings().github_token.value()
+        token = Settings.get_github_token()
         headers = {}
         if token:
             headers["Authorization"] = f"Bearer {token}"

@@ -13,7 +13,14 @@ class SettingsDialog(QDialog, DIALOG_UI):
         self.setupUi(self)
 
         self.githubToken_lineEdit.setEchoMode(QLineEdit.EchoMode.Password)
-        self.githubToken_lineEdit.setText(Settings().github_token.value())
+
+        # Show a placeholder if a token exists, without accessing the
+        # encrypted auth DB (avoids a master-password prompt on dialog open).
+        self._token_loaded = False
+        self._token_dirty = False
+        if Settings.has_github_token():
+            self.githubToken_lineEdit.setPlaceholderText(self.tr("Token stored in auth database"))
+        self.githubToken_lineEdit.textEdited.connect(self.__on_token_edited)
 
         # Toggle visibility action inside the line edit
         self._toggle_token_action = self.githubToken_lineEdit.addAction(
@@ -41,7 +48,8 @@ class SettingsDialog(QDialog, DIALOG_UI):
         self.helpButton.clicked.connect(self.__show_github_token_help)
 
     def accept(self):
-        Settings().github_token.setValue(self.githubToken_lineEdit.text())
+        if self._token_dirty:
+            Settings.store_github_token(self.githubToken_lineEdit.text())
         Settings().allow_multiple_modules.setValue(
             self.allow_multiple_modules_checkBox.isChecked()
         )
@@ -56,8 +64,17 @@ class SettingsDialog(QDialog, DIALOG_UI):
         )
         super().accept()
 
+    def __on_token_edited(self):
+        self._token_dirty = True
+
     def __toggle_token_visibility(self):
         if self.githubToken_lineEdit.echoMode() == QLineEdit.EchoMode.Password:
+            # Fetch the real token from the auth DB on first reveal
+            if not self._token_loaded and not self._token_dirty:
+                token = Settings.get_github_token()
+                if token:
+                    self.githubToken_lineEdit.setText(token)
+                self._token_loaded = True
             self.githubToken_lineEdit.setEchoMode(QLineEdit.EchoMode.Normal)
         else:
             self.githubToken_lineEdit.setEchoMode(QLineEdit.EchoMode.Password)
