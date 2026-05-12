@@ -12,15 +12,13 @@ oQtopus can be installed either as a **QGIS plugin** or as a **standalone** Pyth
     Open the **OSGeo4W Shell** and run:
 
     ```
-    pip install --upgrade pum pydantic psycopg
+    pip install --upgrade pydantic psycopg
     ```
 
 Make sure the following Python packages are available in your QGIS environment:
 
 - `psycopg` (PostgreSQL driver)
 - `pydantic`
-- `pum`
-- `pirogue`
 
 ### Install the plugin
 
@@ -33,7 +31,6 @@ Make sure the following Python packages are available in your QGIS environment:
 ### Install
 
 ```bash
-pip install pyqt6          # PyQt5 is not supported in standalone mode
 pip install oqtopus
 ```
 

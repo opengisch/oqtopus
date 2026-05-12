@@ -14,9 +14,9 @@ It can be installed either as a QGIS plugin or as a standalone Python executable
 
 #### 🔧 Prerequisites (Mainly python packages)
 
-> [!WARNING]
-> On Windows, QGIS installation doesn't provide the necessary Python libraries yet.
-> You need to install psycopg and pydantic using pip.
+!!! warning
+    On Windows, QGIS installation doesn't provide the necessary Python libraries yet.
+    You need to install psycopg and pydantic using pip.
 
 Before anything, you should check for these python packages to be available in your QGIS environment :
 
@@ -107,7 +107,7 @@ pip install oqtopus
 python3 -m oqtopus.oqtopus
 ```
 
-> [!WARNING]
-> At the moment the path to `default_config.yaml`is hard coded in Oqtopus, if you need
-> to change the config, for example for adding new modules, you will have to find
-> the installation directory of the pip package to locate the file.
+!!! warning
+    At the moment the path to `default_config.yaml` is hard coded in Oqtopus, if you need
+    to change the config, for example for adding new modules, you will have to find
+    the installation directory of the pip package to locate the file.
