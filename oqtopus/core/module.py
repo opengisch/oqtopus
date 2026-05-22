@@ -6,11 +6,18 @@ import time
 from qgis.PyQt.QtCore import (
     QByteArray,
     QObject,
+    Qt,
     QTimer,
     QUrl,
     pyqtSignal,
 )
 from qgis.PyQt.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
+
+try:
+    # PyQt5 sip lives at top level in QGIS
+    from qgis.PyQt import sip  # type: ignore
+except ImportError:  # pragma: no cover - defensive
+    sip = None  # type: ignore
 
 from ..core.settings import Settings
 from ..utils.plugin_utils import PluginUtils, logger
@@ -18,6 +25,16 @@ from .module_package import ModulePackage
 
 # Cache duration in seconds (1 hour)
 CACHE_DURATION = 3600
+
+
+def _is_deleted(qobject) -> bool:
+    """Return True if the C++ side of *qobject* has been destroyed."""
+    if sip is None:
+        return False
+    try:
+        return bool(sip.isdeleted(qobject))
+    except (TypeError, RuntimeError):
+        return True
 
 
 class Module(QObject):
@@ -115,9 +132,24 @@ class Module(QObject):
         for key, value in headers.items():
             request.setRawHeader(QByteArray(key.encode()), QByteArray(value.encode()))
         reply = self.network_manager.get(request)
-        reply.finished.connect(lambda: self._on_versions_reply(reply))
+        # Use a queued connection so the slot runs in a fresh event-loop
+        # iteration, after Qt's internal network/auth bookkeeping has
+        # finished. Combined with sender() lookup this avoids access
+        # violations when the reply is re-tried or destroyed internally
+        # (e.g. on HTTP 401 / authenticationRequired). See TMMT issue #94.
+        reply.finished.connect(self._on_versions_reply, Qt.ConnectionType.QueuedConnection)
 
-    def _on_versions_reply(self, reply):
+    def _on_versions_reply(self, reply=None):
+        if _is_deleted(self):
+            return
+        if reply is None:
+            reply = self.sender()
+        if reply is None or _is_deleted(reply):
+            return
+        try:
+            reply.finished.disconnect(self._on_versions_reply)
+        except (TypeError, RuntimeError):
+            pass
         if reply.error() != QNetworkReply.NetworkError.NoError:
             self.signal_versionsLoaded.emit(reply.errorString())
             reply.deleteLater()
@@ -212,7 +244,9 @@ class Module(QObject):
         for key, value in headers.items():
             request.setRawHeader(QByteArray(key.encode()), QByteArray(value.encode()))
         reply = self.network_manager.get(request)
-        reply.finished.connect(lambda: self._on_development_versions_reply(reply))
+        reply.finished.connect(
+            self._on_development_versions_reply, Qt.ConnectionType.QueuedConnection
+        )
 
     def _process_cached_pulls(self, cached_data):
         """Process cached pull requests data asynchronously."""
@@ -229,9 +263,21 @@ class Module(QObject):
             for key, value in headers.items():
                 request.setRawHeader(QByteArray(key.encode()), QByteArray(value.encode()))
             reply = self.network_manager.get(request)
-            reply.finished.connect(lambda: self._on_development_versions_reply(reply))
+            reply.finished.connect(
+                self._on_development_versions_reply, Qt.ConnectionType.QueuedConnection
+            )
 
-    def _on_development_versions_reply(self, reply):
+    def _on_development_versions_reply(self, reply=None):
+        if _is_deleted(self):
+            return
+        if reply is None:
+            reply = self.sender()
+        if reply is None or _is_deleted(reply):
+            return
+        try:
+            reply.finished.disconnect(self._on_development_versions_reply)
+        except (TypeError, RuntimeError):
+            pass
         if reply.error() != QNetworkReply.NetworkError.NoError:
             self.signal_developmentVersionsLoaded.emit(reply.errorString())
             reply.deleteLater()
