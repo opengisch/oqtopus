@@ -439,6 +439,27 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                 )
                 return
 
+            if "host requires authentication" in error.lower():
+                has_token = Settings.has_github_token()
+                if has_token:
+                    hint = self.tr(
+                        "GitHub returned 401 Unauthorized for this repository. "
+                        "Your GitHub token is missing access to it, or has expired \u2013 "
+                        "check/update it in the Settings dialog."
+                    )
+                else:
+                    hint = self.tr(
+                        "GitHub returned 401 Unauthorized for this repository. "
+                        "It looks like a private repository \u2013 please configure a GitHub "
+                        "personal access token with access to it in the Settings dialog."
+                    )
+                MessageBar.pushErrorToBar(self, hint)
+                self.module_information_label.setText(hint)
+                QtUtils.setForegroundColor(
+                    self.module_information_label, PluginUtils.COLOR_WARNING
+                )
+                return
+
             error_text = self.tr(f"Can't load module versions: {error}")
             MessageBar.pushErrorToBar(self, error_text)
             self.module_information_label.setText(error_text)
@@ -532,6 +553,27 @@ class ModuleSelectionWidget(QWidget, DIALOG_UI):
                         "Please create a free GitHub personal access token and enter it in the Settings dialog "
                         "to increase your request limit."
                     ),
+                )
+                return
+
+            if "host requires authentication" in error.lower():
+                has_token = Settings.has_github_token()
+                if has_token:
+                    hint = self.tr(
+                        "GitHub returned 401 Unauthorized for this repository. "
+                        "Your GitHub token is missing access to it, or has expired \u2013 "
+                        "check/update it in the Settings dialog."
+                    )
+                else:
+                    hint = self.tr(
+                        "GitHub returned 401 Unauthorized for this repository. "
+                        "It looks like a private repository \u2013 please configure a GitHub "
+                        "personal access token with access to it in the Settings dialog."
+                    )
+                MessageBar.pushErrorToBar(self, hint)
+                self.module_information_label.setText(hint)
+                QtUtils.setForegroundColor(
+                    self.module_information_label, PluginUtils.COLOR_WARNING
                 )
                 return
 
