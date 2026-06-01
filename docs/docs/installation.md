@@ -6,6 +6,12 @@ oQtopus can be installed either as a **QGIS plugin** or as a **standalone** Pyth
 
 ### Prerequisites
 
+Make sure the following Python packages are available in your QGIS environment:
+
+- `pip` (package manager for Python packages)
+- `psycopg` (PostgreSQL driver)
+- `pydantic`
+
 !!! warning "Windows"
 
     On Windows, the QGIS installation does not ship all required Python libraries.
@@ -14,11 +20,6 @@ oQtopus can be installed either as a **QGIS plugin** or as a **standalone** Pyth
     ```
     pip install --upgrade pydantic psycopg
     ```
-
-Make sure the following Python packages are available in your QGIS environment:
-
-- `psycopg` (PostgreSQL driver)
-- `pydantic`
 
 ### Install the plugin
 
