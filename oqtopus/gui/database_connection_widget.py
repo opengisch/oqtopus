@@ -104,6 +104,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         self.__actionSetBaseline.setDisabled(True)
 
         self.__database_connection = None
+        self.__reloading = False
         self.__installed_module_ids = []
         self.__installed_module_versions: dict[str, str] = {}
 
@@ -557,5 +558,26 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             except Exception:
                 pass
         self.__database_connection = connection
+        if self.__reloading:
+            return
+        self.refreshInstalledModules()
+        self.signal_connectionChanged.emit()
+
+    def reloadConnection(self):
+        """Globally invalidate and re-open the current database connection.
+
+        A new session is needed to pick up what the previous one cannot see any
+        more, such as the permissions and the object identifiers of a schema
+        that was dropped and recreated.
+        """
+        # __serviceChanged() does not set a connection on every path, so the
+        # notification is emitted here to happen exactly once.
+        self.__reloading = True
+        try:
+            self.__set_connection(None)
+            self.__serviceChanged()
+        finally:
+            self.__reloading = False
+
         self.refreshInstalledModules()
         self.signal_connectionChanged.emit()

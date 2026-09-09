@@ -154,7 +154,7 @@ class MainDialog(QDialog, DIALOG_UI):
             self.__databaseConnectionWidget_connectionChanged
         )
         self.__moduleWidget.signal_operationFinished.connect(
-            self.__databaseConnectionWidget.refreshInstalledModules
+            self.__databaseConnectionWidget.reloadConnection
         )
         self.__databaseConnectionWidget_connectionChanged()
 

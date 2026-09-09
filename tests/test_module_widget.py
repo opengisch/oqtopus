@@ -1,4 +1,4 @@
-"""Integration tests for the ModuleWidget.
+"""Integration tests for the ModuleWidget and the DatabaseConnectionWidget.
 
 These tests exercise the oqtopus GUI by programmatically driving the
 ModuleWidget: setting a module package (from a local directory), connecting
@@ -630,3 +630,29 @@ class TestModuleWidgetUninstallDisabled:
         # Verify tooltip indicates uninstall is not available
         tooltip = module_widget.uninstall_button_maintain.toolTip()
         assert "not available" in tooltip.lower()
+
+
+class TestDatabaseConnectionWidgetReload:
+    """Test reopening the database connection."""
+
+    def test_reload_connection_notifies_once(self, pg_service, clean_db):
+        """Reloading should reopen the connection and notify listeners once."""
+        from oqtopus.gui.database_connection_widget import DatabaseConnectionWidget
+
+        widget = DatabaseConnectionWidget()
+        try:
+            combo = widget.db_services_comboBox
+            index = combo.findText(pg_service)
+            assert index >= 0, f"pg_service '{pg_service}' not listed"
+            combo.setCurrentIndex(index)
+            assert widget.getConnection() is not None
+
+            emitted = []
+            widget.signal_connectionChanged.connect(lambda: emitted.append(1))
+
+            widget.reloadConnection()
+
+            assert len(emitted) == 1, f"expected a single notification, got {len(emitted)}"
+            assert widget.getConnection() is not None, "connection should have been reopened"
+        finally:
+            widget.close()
