@@ -91,8 +91,12 @@ def _clean_database(service: str):
         # Drop pum migration table
         cur.execute("DROP TABLE IF EXISTS public.pum_migrations CASCADE;")
 
-        # Drop test roles
-        for role in ("oqtopus_test_viewer", "oqtopus_test_editor"):
-            cur.execute(f"DROP ROLE IF EXISTS {role};")
+        # Drop test roles, including the DB-specific (suffixed) variants
+        cur.execute(
+            "SELECT rolname FROM pg_roles WHERE rolname LIKE 'oqtopus_test_viewer%' "
+            "OR rolname LIKE 'oqtopus_test_editor%'"
+        )
+        for (role,) in cur.fetchall():
+            cur.execute(f'DROP ROLE IF EXISTS "{role}";')
 
         conn.commit()

@@ -9,6 +9,7 @@ roles:
       - type: read
         schemas:
           - oqtopus_test_roles
+          - oqtopus_test_roles_app
     description: Viewer role with read permissions.
 
   - name: oqtopus_test_editor
@@ -17,3 +18,9 @@ roles:
         schemas:
           - oqtopus_test_roles
     description: Editor role with write permissions.
+
+application:
+  drop:
+    - code: DROP SCHEMA IF EXISTS oqtopus_test_roles_app CASCADE;
+  create:
+    - file: app/create_app.sql

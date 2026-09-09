@@ -586,7 +586,11 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Get installed parameter values to preset in the dialog
         installed_parameters = self.__get_installed_parameters() or None
 
-        dialog = RecreateAppDialog(standard_params, app_only_params, installed_parameters, self)
+        suffixes = self.__installedRoleSuffixes()
+
+        dialog = RecreateAppDialog(
+            standard_params, app_only_params, installed_parameters, suffixes, self
+        )
         if dialog.exec() != RecreateAppDialog.DialogCode.Accepted:
             return
 
@@ -594,11 +598,24 @@ class ModuleWidget(QWidget, DIALOG_UI):
             parameters = dialog.parameters()
 
             # Start background recreate app operation
-            self.__startOperation("recreate_app", parameters, {})
+            self.__startOperation("recreate_app", parameters, dialog.grant_options())
 
         except Exception as exception:
             MessageBar.pushErrorToBar(self, self.tr("Can't recreate app:"), exception)
             return
+
+    def __installedRoleSuffixes(self) -> list[str]:
+        """Return the suffixes of the DB-specific roles found in the database."""
+        try:
+            role_manager = self.__pum_config.role_manager()
+            if not role_manager.roles:
+                return []
+            inventory = role_manager.roles_inventory(connection=self.__database_connection)
+            return sorted({role.suffix for role in inventory.configured_roles if role.is_suffixed})
+        except Exception as exception:
+            # A broken inventory must not prevent recreating the app.
+            logger.warning(f"Can't list roles: {exception}")
+            return []
 
     def __get_installed_parameters(self) -> dict:
         """Get parameter values from the installed module in the database."""

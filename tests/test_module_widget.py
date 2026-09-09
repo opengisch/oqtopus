@@ -97,14 +97,26 @@ def _make_module_package(source_dir: str, module: _FakeModule) -> ModulePackage:
     return pkg
 
 
-def _wait_for_operation(widget: ModuleWidget, timeout_ms: int = 10000):
-    """Block until ModuleWidget.signal_operationFinished is emitted (or timeout)."""
+def _wait_for_operation(
+    widget: ModuleWidget, timeout_ms: int = 10000, *, expect_success: bool = True
+):
+    """Block until ModuleWidget.signal_operationFinished is emitted (or timeout).
+
+    The signal is only emitted when the operation succeeds, so a timeout means
+    the operation failed or hung. Without this assertion a failing operation is
+    rolled back and leaves the database in its previous state, which silently
+    satisfies the tests asserting that state.
+    """
     if not widget.isOperationRunning():
         return
+    finished = []
     loop = QEventLoop()
+    widget.signal_operationFinished.connect(lambda: finished.append(True))
     widget.signal_operationFinished.connect(loop.quit)
     QTimer.singleShot(timeout_ms, loop.quit)
     loop.exec()
+    if expect_success:
+        assert finished, "operation did not complete successfully"
 
 
 def _configure_mock_dialog(cls_mock, *, roles: bool = False, suffix: str | None = None):
@@ -458,6 +470,137 @@ class TestModuleWidgetRoles:
                 ");"
             )
             assert cur.fetchone()[0], "Viewer should have SELECT on items"
+
+
+class TestModuleWidgetRecreateApp:
+    """Test the (Re)create app button re-granting permissions."""
+
+    @staticmethod
+    def _install_with_roles(module_widget, roles_module_package, db_connection, mock_dialog_cls):
+        _configure_mock_dialog(mock_dialog_cls, roles=True)
+        module_widget.setModulePackage(roles_module_package)
+        module_widget.setDatabaseConnection(db_connection)
+        module_widget.moduleInfo_install_pushButton.click()
+        _wait_for_operation(module_widget)
+
+    @staticmethod
+    def _configure_recreate_dialog(cls_mock, *, grant=True, suffixes=None):
+        dialog = MagicMock()
+        dialog.exec.return_value = 1
+        dialog.parameters.return_value = {}
+        dialog.grant_options.return_value = {"grant": grant, "suffixes": suffixes or []}
+        cls_mock.return_value = dialog
+        cls_mock.DialogCode = MagicMock()
+        cls_mock.DialogCode.Accepted = 1
+        return dialog
+
+    @patch("oqtopus.gui.module_widget.RecreateAppDialog")
+    @patch("oqtopus.gui.module_widget.InstallDialog")
+    def test_recreate_app_regrants_permissions(
+        self,
+        mock_install_dialog_cls,
+        mock_recreate_dialog_cls,
+        module_widget,
+        roles_module_package,
+        db_connection,
+        pg_service,
+    ):
+        """(Re)create app should restore the permissions its drop handler discarded."""
+        self._install_with_roles(
+            module_widget, roles_module_package, db_connection, mock_install_dialog_cls
+        )
+        self._configure_recreate_dialog(mock_recreate_dialog_cls)
+
+        with psycopg.connect(f"service={pg_service}") as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT has_table_privilege("
+                "  'oqtopus_test_viewer', 'oqtopus_test_roles_app.items_view', 'SELECT'"
+                ");"
+            )
+            assert cur.fetchone()[0], "Viewer should have SELECT after install"
+
+        module_widget.moduleInfo_recreate_app_pushButton.click()
+        _wait_for_operation(module_widget)
+
+        with psycopg.connect(f"service={pg_service}") as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT has_schema_privilege("
+                "  'oqtopus_test_viewer', 'oqtopus_test_roles_app', 'USAGE'"
+                ");"
+            )
+            assert cur.fetchone()[0], "Viewer should have USAGE after recreate"
+            cur.execute(
+                "SELECT has_table_privilege("
+                "  'oqtopus_test_viewer', 'oqtopus_test_roles_app.items_view', 'SELECT'"
+                ");"
+            )
+            assert cur.fetchone()[0], "Viewer should have SELECT after recreate"
+
+    @patch("oqtopus.gui.module_widget.RecreateAppDialog")
+    @patch("oqtopus.gui.module_widget.InstallDialog")
+    def test_recreate_app_without_grant(
+        self,
+        mock_install_dialog_cls,
+        mock_recreate_dialog_cls,
+        module_widget,
+        roles_module_package,
+        db_connection,
+        pg_service,
+    ):
+        """Declining the re-grant should leave the recreated schema without permissions."""
+        self._install_with_roles(
+            module_widget, roles_module_package, db_connection, mock_install_dialog_cls
+        )
+        self._configure_recreate_dialog(mock_recreate_dialog_cls, grant=False)
+
+        module_widget.moduleInfo_recreate_app_pushButton.click()
+        _wait_for_operation(module_widget)
+
+        with psycopg.connect(f"service={pg_service}") as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT has_table_privilege("
+                "  'oqtopus_test_viewer', 'oqtopus_test_roles_app.items_view', 'SELECT'"
+                ");"
+            )
+            assert not cur.fetchone()[0], "Dropping the schema discards its grants"
+
+    @patch("oqtopus.gui.module_widget.RecreateAppDialog")
+    @patch("oqtopus.gui.module_widget.InstallDialog")
+    def test_recreate_app_regrants_suffixed_roles(
+        self,
+        mock_install_dialog_cls,
+        mock_recreate_dialog_cls,
+        module_widget,
+        roles_module_package,
+        db_connection,
+        pg_service,
+    ):
+        """Suffixed roles should be detected and re-granted when confirmed."""
+        _configure_mock_dialog(mock_install_dialog_cls, roles=True, suffix="lausanne")
+        module_widget.setModulePackage(roles_module_package)
+        module_widget.setDatabaseConnection(db_connection)
+        module_widget.moduleInfo_install_pushButton.click()
+        _wait_for_operation(module_widget)
+
+        self._configure_recreate_dialog(mock_recreate_dialog_cls, suffixes=["lausanne"])
+
+        module_widget.moduleInfo_recreate_app_pushButton.click()
+        _wait_for_operation(module_widget)
+
+        # The dialog must have been offered the discovered suffix
+        assert mock_recreate_dialog_cls.call_args.args[3] == ["lausanne"]
+
+        with psycopg.connect(f"service={pg_service}") as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT has_table_privilege("
+                "  'oqtopus_test_viewer_lausanne', 'oqtopus_test_roles_app.items_view', 'SELECT'"
+                ");"
+            )
+            assert cur.fetchone()[0], "Suffixed viewer should have SELECT after recreate"
 
 
 class TestModuleWidgetUninstallDisabled:

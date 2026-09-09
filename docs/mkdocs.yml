@@ -65,6 +65,7 @@ nav:
       - Datamodel::
           - Installation: usage/module/installation.md
           - Upgrade: usage/module/upgrade.md
+          - Application: usage/module/app.md
           - Role Management: usage/module/role_management.md
       - Project: usage/project.md
       - Plugin: usage/plugin.md
