@@ -104,6 +104,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         self.__actionSetBaseline.setDisabled(True)
 
         self.__database_connection = None
+        self.__reloading = False
         self.__installed_module_ids = []
         self.__installed_module_versions: dict[str, str] = {}
 
@@ -238,7 +239,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         self.refreshInstalledModules()
 
     def __updateDatabaseInfoTooltip(self):
-        """Query PG version and installed extensions, show info icon with tooltip."""
+        """Query PG version, schemas and installed extensions, show info icon with tooltip."""
         if self.__database_connection is None:
             self.db_info_icon_label.setVisible(False)
             self.db_moduleInfo_label.setToolTip("")
@@ -255,6 +256,17 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
                 cur.execute("SELECT version()")
                 pg_version = cur.fetchone()[0]
                 tooltip_lines.append(f"<br><b>Version:</b> {pg_version}")
+
+                cur.execute(
+                    "SELECT nspname FROM pg_namespace "
+                    "WHERE nspname NOT LIKE 'pg\\_%' AND nspname <> 'information_schema' "
+                    "ORDER BY nspname"
+                )
+                schemas = [row[0] for row in cur.fetchall()]
+                if schemas:
+                    tooltip_lines.append("<br><b>Schemas:</b>")
+                    for schema in schemas:
+                        tooltip_lines.append(f"&nbsp;&nbsp;\u2022 {schema}")
 
                 cur.execute(
                     "SELECT name, default_version, installed_version "
@@ -557,5 +569,26 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
             except Exception:
                 pass
         self.__database_connection = connection
+        if self.__reloading:
+            return
+        self.refreshInstalledModules()
+        self.signal_connectionChanged.emit()
+
+    def reloadConnection(self):
+        """Globally invalidate and re-open the current database connection.
+
+        A new session is needed to pick up what the previous one cannot see any
+        more, such as the permissions and the object identifiers of a schema
+        that was dropped and recreated.
+        """
+        # __serviceChanged() does not set a connection on every path, so the
+        # notification is emitted here to happen exactly once.
+        self.__reloading = True
+        try:
+            self.__set_connection(None)
+            self.__serviceChanged()
+        finally:
+            self.__reloading = False
+
         self.refreshInstalledModules()
         self.signal_connectionChanged.emit()

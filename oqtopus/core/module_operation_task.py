@@ -289,14 +289,38 @@ class ModuleOperationTask(QThread):
         logger.debug(f"Parameters: {self.__parameters}")
         logger.debug(f"Options: {self.__options}")
 
+        # The app handlers drop the schemas they own, discarding their grants.
+        # Granting is done below rather than by the upgrader, to be able to
+        # target the DB-specific roles.
         upgrader.recreate_app(
             connection=self.__connection,
             parameters=self.__parameters,
             feedback=self.__feedback,
             commit=False,
+            grant=False,
         )
 
+        if self.__options.get("grant", True):
+            self._grant_permissions(self.__options.get("suffixes") or [])
+
         logger.info("Recreate app operation completed")
+
+    def _grant_permissions(self, suffixes: list[str | None]):
+        """Grant permissions to the given roles, `None` being the generic ones."""
+        role_manager = self.__pum_config.role_manager()
+        if not role_manager.roles:
+            return
+
+        # Nothing selected means the generic roles, which is what a caller
+        # passing no options expects.
+        for suffix in suffixes or [None]:
+            logger.info(f"Granting permissions (suffix={suffix})")
+            role_manager.grant_permissions(
+                connection=self.__connection,
+                suffix=suffix,
+                feedback=self.__feedback,
+                commit=False,
+            )
 
     def _create_feedback(self):
         """Create a Feedback instance that emits Qt signals."""

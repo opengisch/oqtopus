@@ -1,4 +1,4 @@
-"""Integration tests for the ModuleWidget.
+"""Integration tests for the ModuleWidget and the DatabaseConnectionWidget.
 
 These tests exercise the oqtopus GUI by programmatically driving the
 ModuleWidget: setting a module package (from a local directory), connecting
@@ -62,6 +62,7 @@ from qgis.PyQt.QtWidgets import QMessageBox  # noqa: E402
 
 from oqtopus.core.module_package import ModulePackage  # noqa: E402
 from oqtopus.gui.module_widget import ModuleWidget  # noqa: E402
+from oqtopus.gui.recreate_app_dialog import RecreateAppDialog  # noqa: E402
 from oqtopus.libs.pum.pum_config import PumConfig  # noqa: E402
 from oqtopus.libs.pum.schema_migrations import SchemaMigrations  # noqa: E402
 from oqtopus.libs.pum.upgrader import Upgrader  # noqa: E402
@@ -97,14 +98,26 @@ def _make_module_package(source_dir: str, module: _FakeModule) -> ModulePackage:
     return pkg
 
 
-def _wait_for_operation(widget: ModuleWidget, timeout_ms: int = 10000):
-    """Block until ModuleWidget.signal_operationFinished is emitted (or timeout)."""
+def _wait_for_operation(
+    widget: ModuleWidget, timeout_ms: int = 10000, *, expect_success: bool = True
+):
+    """Block until ModuleWidget.signal_operationFinished is emitted (or timeout).
+
+    The signal is only emitted when the operation succeeds, so a timeout means
+    the operation failed or hung. Without this assertion a failing operation is
+    rolled back and leaves the database in its previous state, which silently
+    satisfies the tests asserting that state.
+    """
     if not widget.isOperationRunning():
         return
+    finished = []
     loop = QEventLoop()
+    widget.signal_operationFinished.connect(lambda: finished.append(True))
     widget.signal_operationFinished.connect(loop.quit)
     QTimer.singleShot(timeout_ms, loop.quit)
     loop.exec()
+    if expect_success:
+        assert finished, "operation did not complete successfully"
 
 
 def _configure_mock_dialog(cls_mock, *, roles: bool = False, suffix: str | None = None):
@@ -460,6 +473,193 @@ class TestModuleWidgetRoles:
             assert cur.fetchone()[0], "Viewer should have SELECT on items"
 
 
+class TestModuleWidgetRecreateApp:
+    """Test the (Re)create app button re-granting permissions."""
+
+    @staticmethod
+    def _install_with_roles(module_widget, roles_module_package, db_connection, mock_dialog_cls):
+        _configure_mock_dialog(mock_dialog_cls, roles=True)
+        module_widget.setModulePackage(roles_module_package)
+        module_widget.setDatabaseConnection(db_connection)
+        module_widget.moduleInfo_install_pushButton.click()
+        _wait_for_operation(module_widget)
+
+    @staticmethod
+    def _configure_recreate_dialog(cls_mock, *, grant=True, suffixes=None):
+        dialog = MagicMock()
+        dialog.exec.return_value = 1
+        dialog.parameters.return_value = {}
+        dialog.grant_options.return_value = {"grant": grant, "suffixes": suffixes or []}
+        cls_mock.return_value = dialog
+        cls_mock.DialogCode = MagicMock()
+        cls_mock.DialogCode.Accepted = 1
+        return dialog
+
+    @patch("oqtopus.gui.module_widget.RecreateAppDialog")
+    @patch("oqtopus.gui.module_widget.InstallDialog")
+    def test_recreate_app_regrants_permissions(
+        self,
+        mock_install_dialog_cls,
+        mock_recreate_dialog_cls,
+        module_widget,
+        roles_module_package,
+        db_connection,
+        pg_service,
+    ):
+        """(Re)create app should restore the permissions its drop handler discarded."""
+        self._install_with_roles(
+            module_widget, roles_module_package, db_connection, mock_install_dialog_cls
+        )
+        self._configure_recreate_dialog(mock_recreate_dialog_cls)
+
+        with psycopg.connect(f"service={pg_service}") as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT has_table_privilege("
+                "  'oqtopus_test_viewer', 'oqtopus_test_roles_app.items_view', 'SELECT'"
+                ");"
+            )
+            assert cur.fetchone()[0], "Viewer should have SELECT after install"
+
+        module_widget.moduleInfo_recreate_app_pushButton.click()
+        _wait_for_operation(module_widget)
+
+        # Without suffixed roles, the generic ones are the ones holding permissions
+        assert mock_recreate_dialog_cls.call_args.args[3] == {None: True}
+
+        with psycopg.connect(f"service={pg_service}") as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT has_schema_privilege("
+                "  'oqtopus_test_viewer', 'oqtopus_test_roles_app', 'USAGE'"
+                ");"
+            )
+            assert cur.fetchone()[0], "Viewer should have USAGE after recreate"
+            cur.execute(
+                "SELECT has_table_privilege("
+                "  'oqtopus_test_viewer', 'oqtopus_test_roles_app.items_view', 'SELECT'"
+                ");"
+            )
+            assert cur.fetchone()[0], "Viewer should have SELECT after recreate"
+
+    @patch("oqtopus.gui.module_widget.RecreateAppDialog")
+    @patch("oqtopus.gui.module_widget.InstallDialog")
+    def test_recreate_app_without_grant(
+        self,
+        mock_install_dialog_cls,
+        mock_recreate_dialog_cls,
+        module_widget,
+        roles_module_package,
+        db_connection,
+        pg_service,
+    ):
+        """Declining the re-grant should leave the recreated schema without permissions."""
+        self._install_with_roles(
+            module_widget, roles_module_package, db_connection, mock_install_dialog_cls
+        )
+        self._configure_recreate_dialog(mock_recreate_dialog_cls, grant=False)
+
+        module_widget.moduleInfo_recreate_app_pushButton.click()
+        _wait_for_operation(module_widget)
+
+        with psycopg.connect(f"service={pg_service}") as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT has_table_privilege("
+                "  'oqtopus_test_viewer', 'oqtopus_test_roles_app.items_view', 'SELECT'"
+                ");"
+            )
+            assert not cur.fetchone()[0], "Dropping the schema discards its grants"
+
+    @patch("oqtopus.gui.module_widget.RecreateAppDialog")
+    @patch("oqtopus.gui.module_widget.InstallDialog")
+    def test_recreate_app_regrants_suffixed_roles(
+        self,
+        mock_install_dialog_cls,
+        mock_recreate_dialog_cls,
+        module_widget,
+        roles_module_package,
+        db_connection,
+        pg_service,
+    ):
+        """Suffixed roles should be detected and re-granted when confirmed."""
+        _configure_mock_dialog(mock_install_dialog_cls, roles=True, suffix="lausanne")
+        module_widget.setModulePackage(roles_module_package)
+        module_widget.setDatabaseConnection(db_connection)
+        module_widget.moduleInfo_install_pushButton.click()
+        _wait_for_operation(module_widget)
+
+        self._configure_recreate_dialog(mock_recreate_dialog_cls, suffixes=["lausanne"])
+
+        module_widget.moduleInfo_recreate_app_pushButton.click()
+        _wait_for_operation(module_widget)
+
+        # The dialog must have been offered both roles, with only the suffixed
+        # one holding permissions.
+        assert mock_recreate_dialog_cls.call_args.args[3] == {None: False, "lausanne": True}
+
+        with psycopg.connect(f"service={pg_service}") as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT has_table_privilege("
+                "  'oqtopus_test_viewer_lausanne', 'oqtopus_test_roles_app.items_view', 'SELECT'"
+                ");"
+            )
+            assert cur.fetchone()[0], "Suffixed viewer should have SELECT after recreate"
+
+
+class TestRecreateAppDialogPermissions:
+    """The re-grant groupbox lists every role, the generic ones included."""
+
+    @staticmethod
+    def _dialog(roles):
+        return RecreateAppDialog([], [], None, roles)
+
+    @staticmethod
+    def _checkboxes(dialog):
+        from qgis.PyQt.QtWidgets import QCheckBox
+
+        return {cb.text(): cb for cb in dialog.findChildren(QCheckBox)}
+
+    def test_generic_roles_get_a_checkbox(self):
+        dialog = self._dialog({None: True})
+        assert list(self._checkboxes(dialog)) == ["Generic roles"]
+        assert dialog.grant_options() == {"grant": True, "suffixes": [None]}
+
+    def test_roles_without_permissions_start_unchecked(self):
+        """The usual suffixed setup: the generic roles are left without grants."""
+        dialog = self._dialog({None: False, "lausanne": True})
+        checkboxes = self._checkboxes(dialog)
+        assert sorted(checkboxes) == ["Generic roles", "lausanne"]
+        assert not checkboxes["Generic roles"].isChecked()
+        assert checkboxes["lausanne"].isChecked()
+        assert dialog.grant_options() == {"grant": True, "suffixes": ["lausanne"]}
+
+    def test_generic_checked_when_it_holds_permissions(self):
+        """A database granted generically before a suffixed role was added."""
+        dialog = self._dialog({None: True, "lausanne": True})
+        checkboxes = self._checkboxes(dialog)
+        assert checkboxes["Generic roles"].isChecked()
+        assert dialog.grant_options() == {"grant": True, "suffixes": [None, "lausanne"]}
+
+    def test_all_checked_when_no_role_holds_permissions(self):
+        """Nothing to observe (the app is already dropped), so offer them all."""
+        dialog = self._dialog({None: False, "lausanne": False})
+        assert all(cb.isChecked() for cb in self._checkboxes(dialog).values())
+        assert dialog.grant_options() == {"grant": True, "suffixes": [None, "lausanne"]}
+
+    def test_unchecking_every_role_declines_the_grant(self):
+        dialog = self._dialog({None: False, "lausanne": True})
+        for checkbox in self._checkboxes(dialog).values():
+            checkbox.setChecked(False)
+        assert dialog.grant_options() == {"grant": False, "suffixes": []}
+
+    def test_no_roles_leaves_the_groupbox_out(self):
+        dialog = self._dialog({})
+        assert self._checkboxes(dialog) == {}
+        assert dialog.grant_options() == {"grant": True, "suffixes": []}
+
+
 class TestModuleWidgetUninstallDisabled:
     """Test uninstall button behavior for modules without uninstall functionality."""
 
@@ -487,3 +687,29 @@ class TestModuleWidgetUninstallDisabled:
         # Verify tooltip indicates uninstall is not available
         tooltip = module_widget.uninstall_button_maintain.toolTip()
         assert "not available" in tooltip.lower()
+
+
+class TestDatabaseConnectionWidgetReload:
+    """Test reopening the database connection."""
+
+    def test_reload_connection_notifies_once(self, pg_service, clean_db):
+        """Reloading should reopen the connection and notify listeners once."""
+        from oqtopus.gui.database_connection_widget import DatabaseConnectionWidget
+
+        widget = DatabaseConnectionWidget()
+        try:
+            combo = widget.db_services_comboBox
+            index = combo.findText(pg_service)
+            assert index >= 0, f"pg_service '{pg_service}' not listed"
+            combo.setCurrentIndex(index)
+            assert widget.getConnection() is not None
+
+            emitted = []
+            widget.signal_connectionChanged.connect(lambda: emitted.append(1))
+
+            widget.reloadConnection()
+
+            assert len(emitted) == 1, f"expected a single notification, got {len(emitted)}"
+            assert widget.getConnection() is not None, "connection should have been reopened"
+        finally:
+            widget.close()

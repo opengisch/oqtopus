@@ -1,8 +1,10 @@
 import logging
 
 from qgis.PyQt.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
+    QGroupBox,
     QLabel,
     QVBoxLayout,
 )
@@ -21,6 +23,7 @@ class RecreateAppDialog(QDialog):
         standard_params: list[ParameterDefinition],
         app_only_params: list[ParameterDefinition],
         installed_parameters: dict | None = None,
+        roles: dict[str | None, bool] | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -64,6 +67,35 @@ class RecreateAppDialog(QDialog):
             self.__app_only_groupbox.setParameterValues(installed_parameters)
         layout.addWidget(self.__app_only_groupbox)
 
+        # Every role found in the database gets a checkbox, the generic ones
+        # included, so that the user confirms which ones to re-grant.
+        self.__suffix_checkboxes = {}
+        if roles:
+            self.__roles_groupbox = QGroupBox(self.tr("Re-grant permissions"), self)
+            self.__roles_groupbox.setCheckable(True)
+            self.__roles_groupbox.setChecked(True)
+            roles_layout = QVBoxLayout(self.__roles_groupbox)
+            roles_layout.setContentsMargins(6, 6, 6, 6)
+            # Default to the roles that hold permissions today: re-granting is
+            # there to restore what dropping the schemas discards. When none can
+            # be seen, the app is already dropped, so offer them all.
+            any_granted = any(roles.values())
+            for suffix, has_permissions in roles.items():
+                is_generic = suffix is None
+                checkbox = QCheckBox(
+                    self.tr("Generic roles") if is_generic else suffix, self.__roles_groupbox
+                )
+                checkbox.setChecked(has_permissions or not any_granted)
+                if not has_permissions and any_granted:
+                    checkbox.setToolTip(
+                        self.tr("This role currently has no permission on the module schemas.")
+                    )
+                roles_layout.addWidget(checkbox)
+                self.__suffix_checkboxes[suffix] = checkbox
+            layout.addWidget(self.__roles_groupbox)
+        else:
+            self.__roles_groupbox = None
+
         # Add stretch to push buttons to the bottom
         layout.addStretch()
 
@@ -82,3 +114,22 @@ class RecreateAppDialog(QDialog):
         values.update(self.__standard_groupbox.parameters_values())
         values.update(self.__app_only_groupbox.parameters_values())
         return values
+
+    def grant_options(self) -> dict:
+        """Return a dict suitable for the recreate app operation options.
+
+        Keys:
+            grant (bool): Whether permissions should be re-granted.
+            suffixes (list[str | None]): Roles to re-grant, `None` being the
+                generic ones. Empty means the generic roles.
+        """
+        if self.__roles_groupbox is None:
+            return {"grant": True, "suffixes": []}
+
+        if not self.__roles_groupbox.isChecked():
+            return {"grant": False, "suffixes": []}
+
+        suffixes = [
+            suffix for suffix, checkbox in self.__suffix_checkboxes.items() if checkbox.isChecked()
+        ]
+        return {"grant": bool(suffixes), "suffixes": suffixes}

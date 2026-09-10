@@ -586,7 +586,11 @@ class ModuleWidget(QWidget, DIALOG_UI):
         # Get installed parameter values to preset in the dialog
         installed_parameters = self.__get_installed_parameters() or None
 
-        dialog = RecreateAppDialog(standard_params, app_only_params, installed_parameters, self)
+        roles = self.__installedRoles()
+
+        dialog = RecreateAppDialog(
+            standard_params, app_only_params, installed_parameters, roles, self
+        )
         if dialog.exec() != RecreateAppDialog.DialogCode.Accepted:
             return
 
@@ -594,11 +598,39 @@ class ModuleWidget(QWidget, DIALOG_UI):
             parameters = dialog.parameters()
 
             # Start background recreate app operation
-            self.__startOperation("recreate_app", parameters, {})
+            self.__startOperation("recreate_app", parameters, dialog.grant_options())
 
         except Exception as exception:
             MessageBar.pushErrorToBar(self, self.tr("Can't recreate app:"), exception)
             return
+
+    def __installedRoles(self) -> dict[str | None, bool]:
+        """Return the roles found in the database and whether they hold permissions.
+
+        Keys are the DB-specific suffixes, `None` being the generic roles. The
+        value tells whether the role currently has a privilege on one of the
+        module schemas, which is what the re-grant has to restore.
+        """
+        try:
+            role_manager = self.__pum_config.role_manager()
+            if not role_manager.roles:
+                return {}
+            inventory = role_manager.roles_inventory(connection=self.__database_connection)
+            granted: dict[str | None, bool] = {}
+            for role in inventory.configured_roles:
+                suffix = role.suffix or None
+                has_permissions = any(
+                    sp.has_read or sp.has_write for sp in role.schema_permissions
+                )
+                granted[suffix] = granted.get(suffix, False) or has_permissions
+            # Generic roles first, then the suffixed ones alphabetically.
+            return dict(
+                sorted(granted.items(), key=lambda item: (item[0] is not None, item[0] or ""))
+            )
+        except Exception as exception:
+            # A broken inventory must not prevent recreating the app.
+            logger.warning(f"Can't list roles: {exception}")
+            return {}
 
     def __get_installed_parameters(self) -> dict:
         """Get parameter values from the installed module in the database."""

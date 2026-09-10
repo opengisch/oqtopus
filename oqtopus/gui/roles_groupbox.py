@@ -22,9 +22,10 @@ class RolesWidget(QWidget):
 
         [ ] Create specific role(s) with suffix [________]
 
-    Generic roles are always created and granted.  When the checkbox is
-    ticked, specific roles are also created (suffixed) and the generic
-    roles receive membership of the specific ones.
+    When the checkbox is ticked, DB-specific (suffixed) roles are created and
+    granted instead of the generic ones, which are created without permission.
+    No membership is granted between the generic and the specific roles, so
+    that each database keeps its permissions isolated.
     """
 
     selectionChanged = pyqtSignal(bool)  # emitted with has_selection()
@@ -41,9 +42,9 @@ class RolesWidget(QWidget):
         self._specific_checkbox.setChecked(False)
         self._specific_checkbox.setToolTip(
             self.tr(
-                "Generic roles are always created and granted.\n"
-                "Check this to also create specific (suffixed) roles\n"
-                "and grant them to the generic roles."
+                "Check this to create DB-specific (suffixed) roles.\n"
+                "They are granted the permissions instead of the generic\n"
+                "roles, keeping each database's permissions isolated."
             )
         )
         specific_layout.addWidget(self._specific_checkbox)

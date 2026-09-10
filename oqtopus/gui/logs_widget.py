@@ -41,9 +41,15 @@ class LogModel(QAbstractItemModel):
         return None
 
     def rowCount(self, parent=None):
+        # Flat model: only the root has rows. Returning the log count for any
+        # parent would make every row claim to have as many children again.
+        if parent is not None and parent.isValid():
+            return 0
         return len(self.logs)
 
     def columnCount(self, parent=None):
+        if parent is not None and parent.isValid():
+            return 0
         return len(COLUMNS)
 
     def data(self, index: QModelIndex, role: Qt.ItemDataRole = None):
@@ -70,6 +76,8 @@ class LogModel(QAbstractItemModel):
         return None
 
     def index(self, row: int, column: int, parent=None):
+        if parent is not None and parent.isValid():
+            return QModelIndex()
         if row < 0 or row >= len(self.logs) or column < 0 or column >= len(COLUMNS):
             return QModelIndex()
         return self.createIndex(row, column)
@@ -80,6 +88,8 @@ class LogModel(QAbstractItemModel):
         return QModelIndex()
 
     def flags(self, index: QModelIndex):
+        if not index.isValid():
+            return Qt.ItemFlag.NoItemFlags
         return (
             Qt.ItemFlag.ItemIsEnabled
             | Qt.ItemFlag.ItemIsSelectable
