@@ -120,6 +120,20 @@ class PluginUtils:
         if os.path.exists(temp_path):
             paths.append(temp_path)
 
+        # Python dependencies pum installed for the modules. They live outside
+        # the plugin cache, so without this a cleanup leaves them untouched --
+        # and they are what needs resetting after an interrupted install.
+        # Guarded: the helper only exists in recent pum, and requirements-libs.txt
+        # still allows older ones. Drop the guard once its floor is raised.
+        try:
+            from ..libs.pum.pum_config import dependency_cache_dir
+        except ImportError:
+            pass
+        else:
+            dependency_cache = str(dependency_cache_dir())
+            if os.path.exists(dependency_cache):
+                paths.append(dependency_cache)
+
         return paths
 
     @staticmethod

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import psycopg
 import yaml
-from qgis.PyQt.QtCore import QSize, QTimer, pyqtSignal
+from qgis.PyQt.QtCore import QSize, Qt, QTimer, pyqtSignal
 from qgis.PyQt.QtWidgets import QMessageBox, QSizePolicy, QTextBrowser, QWidget
 
 from ..core.module import Module
@@ -13,7 +13,7 @@ from ..libs.pgserviceparser.gui.message_bar import MessageBar
 from ..libs.pum.pum_config import PumConfig
 from ..libs.pum.schema_migrations import SchemaMigrations
 from ..utils.plugin_utils import PluginUtils, logger
-from ..utils.qt_utils import QtUtils
+from ..utils.qt_utils import OverrideCursor, QtUtils
 from .install_dialog import InstallDialog
 from .recreate_app_dialog import RecreateAppDialog
 from .roles_manage_dialog import RolesManageDialog
@@ -240,9 +240,13 @@ class ModuleWidget(QWidget, DIALOG_UI):
                 if "module" not in config_data["pum"]:
                     config_data["pum"]["module"] = self.__current_module_package.module.id
                 base_path = Path(pumConfigFilename).parent
-            self.__pum_config = PumConfig(
-                base_path=base_path, install_dependencies=True, **config_data
-            )
+            # The first load of a module installs its Python dependencies, which
+            # downloads from PyPI on this thread. Cached afterwards, so this is
+            # slow once per module and dependency set rather than every time.
+            with OverrideCursor(Qt.CursorShape.WaitCursor):
+                self.__pum_config = PumConfig(
+                    base_path=base_path, install_dependencies=True, **config_data
+                )
         except Exception as exception:
             MessageBar.pushErrorToBar(
                 self, self.tr(f"Can't load PUM config from '{pumConfigFilename}':"), exception
