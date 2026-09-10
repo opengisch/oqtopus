@@ -230,7 +230,10 @@ class MainDialog(QDialog, DIALOG_UI):
             self.tr("Cleanup Cache"),
             self.tr(
                 f"This will delete all cached data from:\n{paths_display}\n\n"
-                "Downloaded module packages and API cache will need to be re-fetched.\n\n"
+                "Downloaded module packages, API cache and the Python dependencies "
+                "installed for the modules will need to be fetched again.\n\n"
+                "Restart QGIS afterwards: a module loaded in this session keeps "
+                "using the dependencies it already imported.\n\n"
                 "Are you sure you want to continue?"
             ),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
