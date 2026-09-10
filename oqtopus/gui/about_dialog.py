@@ -42,7 +42,9 @@ def _git_version(path: str) -> str | None:
     if git_executable is None:
         return None
     try:
-        result = subprocess.run(
+        # nosec B603: fixed argv, no shell, and the executable is resolved from PATH
+        # by shutil.which above; only ``cwd`` varies and it is never part of the command.
+        result = subprocess.run(  # nosec B603
             [git_executable, "describe", "--tags"],
             cwd=path,
             capture_output=True,
