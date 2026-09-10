@@ -8,18 +8,23 @@ oQtopus can be installed either as a **QGIS plugin** or as a **standalone** Pyth
 
 Make sure the following Python packages are available in your QGIS environment:
 
-- `pip` (package manager for Python packages)
 - `psycopg` (PostgreSQL driver)
 - `pydantic`
 
+`pip` must be available in that same environment too. Besides installing the packages
+above, it might be used by PUM, which calls `python -m pip` the first time a module is
+loaded in order to install the Python dependencies that a module declares. Module
+initialization fails when pip is missing. 
+
 !!! warning "Windows"
 
-    On Windows, the QGIS installation does not ship all required Python libraries.
-    Open the **OSGeo4W Shell** and run:
+    Note that pip is shipped neither by the QGIS installer nor by OSGeo4W installer.
+    
+    In OSGeo4W installer, it can be installed by selecting the `python3-pip` package or
+    in the OSGeo4W Shell with: `python -m ensurepip --upgrade`
 
-    ```
-    pip install --upgrade pydantic psycopg
-    ```
+    On 3.x installation of QGIS, pydantic or psycopg might be missing. You can install them
+    from the OSGeo4W Shell with `pip install --upgrade pydantic psycopg`
 
 ### Install the plugin
 
