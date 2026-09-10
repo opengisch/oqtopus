@@ -116,9 +116,9 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
 
         try:
             self.__serviceChanged()
-        except Exception:
+        except Exception as e:
             # Silence errors during widget initialization
-            pass
+            logger.debug(f"Error while selecting the initial service: {e}")
 
     def close(self):
         """Close the database connection."""
@@ -566,8 +566,8 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         if self.__database_connection is not None:
             try:
                 self.__database_connection.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Error while closing the previous database connection: {e}")
         self.__database_connection = connection
         if self.__reloading:
             return

@@ -53,8 +53,9 @@ class ServiceCreateDialog(QDialog, DIALOG_UI):
                     self.tr(f"Service name '{service_name}' already exists."),
                 )
                 return
-        except Exception:
-            pass  # If config file doesn't exist yet, that's fine
+        except Exception as e:
+            # If config file doesn't exist yet, that's fine
+            logger.debug(f"Could not read the existing pg_service configuration: {e}")
 
         settings = {}
         if self.host_lineEdit.text().strip():
