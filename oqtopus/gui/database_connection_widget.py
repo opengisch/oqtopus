@@ -239,7 +239,7 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
         self.refreshInstalledModules()
 
     def __updateDatabaseInfoTooltip(self):
-        """Query PG version and installed extensions, show info icon with tooltip."""
+        """Query PG version, schemas and installed extensions, show info icon with tooltip."""
         if self.__database_connection is None:
             self.db_info_icon_label.setVisible(False)
             self.db_moduleInfo_label.setToolTip("")
@@ -256,6 +256,17 @@ class DatabaseConnectionWidget(QWidget, DIALOG_UI):
                 cur.execute("SELECT version()")
                 pg_version = cur.fetchone()[0]
                 tooltip_lines.append(f"<br><b>Version:</b> {pg_version}")
+
+                cur.execute(
+                    "SELECT nspname FROM pg_namespace "
+                    "WHERE nspname NOT LIKE 'pg\\_%' AND nspname <> 'information_schema' "
+                    "ORDER BY nspname"
+                )
+                schemas = [row[0] for row in cur.fetchall()]
+                if schemas:
+                    tooltip_lines.append("<br><b>Schemas:</b>")
+                    for schema in schemas:
+                        tooltip_lines.append(f"&nbsp;&nbsp;\u2022 {schema}")
 
                 cur.execute(
                     "SELECT name, default_version, installed_version "
