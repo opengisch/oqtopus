@@ -23,7 +23,7 @@ class RecreateAppDialog(QDialog):
         standard_params: list[ParameterDefinition],
         app_only_params: list[ParameterDefinition],
         installed_parameters: dict | None = None,
-        suffixes: list[str] | None = None,
+        roles: dict[str | None, bool] | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -67,18 +67,29 @@ class RecreateAppDialog(QDialog):
             self.__app_only_groupbox.setParameterValues(installed_parameters)
         layout.addWidget(self.__app_only_groupbox)
 
-        # Generic roles are re-granted silently. Suffixed roles are DB-specific,
-        # so let the user confirm which ones to re-grant.
+        # Every role found in the database gets a checkbox, the generic ones
+        # included, so that the user confirms which ones to re-grant.
         self.__suffix_checkboxes = {}
-        if suffixes:
+        if roles:
             self.__roles_groupbox = QGroupBox(self.tr("Re-grant permissions"), self)
             self.__roles_groupbox.setCheckable(True)
             self.__roles_groupbox.setChecked(True)
             roles_layout = QVBoxLayout(self.__roles_groupbox)
             roles_layout.setContentsMargins(6, 6, 6, 6)
-            for suffix in suffixes:
-                checkbox = QCheckBox(suffix, self.__roles_groupbox)
-                checkbox.setChecked(True)
+            # Default to the roles that hold permissions today: re-granting is
+            # there to restore what dropping the schemas discards. When none can
+            # be seen, the app is already dropped, so offer them all.
+            any_granted = any(roles.values())
+            for suffix, has_permissions in roles.items():
+                is_generic = suffix is None
+                checkbox = QCheckBox(
+                    self.tr("Generic roles") if is_generic else suffix, self.__roles_groupbox
+                )
+                checkbox.setChecked(has_permissions or not any_granted)
+                if not has_permissions and any_granted:
+                    checkbox.setToolTip(
+                        self.tr("This role currently has no permission on the module schemas.")
+                    )
                 roles_layout.addWidget(checkbox)
                 self.__suffix_checkboxes[suffix] = checkbox
             layout.addWidget(self.__roles_groupbox)
@@ -109,8 +120,8 @@ class RecreateAppDialog(QDialog):
 
         Keys:
             grant (bool): Whether permissions should be re-granted.
-            suffixes (list[str]): Suffixes of the DB-specific roles to re-grant.
-                Empty means the generic roles.
+            suffixes (list[str | None]): Roles to re-grant, `None` being the
+                generic ones. Empty means the generic roles.
         """
         if self.__roles_groupbox is None:
             return {"grant": True, "suffixes": []}

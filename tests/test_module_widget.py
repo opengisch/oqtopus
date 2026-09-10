@@ -62,6 +62,7 @@ from qgis.PyQt.QtWidgets import QMessageBox  # noqa: E402
 
 from oqtopus.core.module_package import ModulePackage  # noqa: E402
 from oqtopus.gui.module_widget import ModuleWidget  # noqa: E402
+from oqtopus.gui.recreate_app_dialog import RecreateAppDialog  # noqa: E402
 from oqtopus.libs.pum.pum_config import PumConfig  # noqa: E402
 from oqtopus.libs.pum.schema_migrations import SchemaMigrations  # noqa: E402
 from oqtopus.libs.pum.upgrader import Upgrader  # noqa: E402
@@ -523,6 +524,9 @@ class TestModuleWidgetRecreateApp:
         module_widget.moduleInfo_recreate_app_pushButton.click()
         _wait_for_operation(module_widget)
 
+        # Without suffixed roles, the generic ones are the ones holding permissions
+        assert mock_recreate_dialog_cls.call_args.args[3] == {None: True}
+
         with psycopg.connect(f"service={pg_service}") as conn:
             cur = conn.cursor()
             cur.execute(
@@ -590,8 +594,9 @@ class TestModuleWidgetRecreateApp:
         module_widget.moduleInfo_recreate_app_pushButton.click()
         _wait_for_operation(module_widget)
 
-        # The dialog must have been offered the discovered suffix
-        assert mock_recreate_dialog_cls.call_args.args[3] == ["lausanne"]
+        # The dialog must have been offered both roles, with only the suffixed
+        # one holding permissions.
+        assert mock_recreate_dialog_cls.call_args.args[3] == {None: False, "lausanne": True}
 
         with psycopg.connect(f"service={pg_service}") as conn:
             cur = conn.cursor()
@@ -601,6 +606,58 @@ class TestModuleWidgetRecreateApp:
                 ");"
             )
             assert cur.fetchone()[0], "Suffixed viewer should have SELECT after recreate"
+
+
+class TestRecreateAppDialogPermissions:
+    """The re-grant groupbox lists every role, the generic ones included."""
+
+    @staticmethod
+    def _dialog(roles):
+        return RecreateAppDialog([], [], None, roles)
+
+    @staticmethod
+    def _checkboxes(dialog):
+        from qgis.PyQt.QtWidgets import QCheckBox
+
+        return {cb.text(): cb for cb in dialog.findChildren(QCheckBox)}
+
+    def test_generic_roles_get_a_checkbox(self):
+        dialog = self._dialog({None: True})
+        assert list(self._checkboxes(dialog)) == ["Generic roles"]
+        assert dialog.grant_options() == {"grant": True, "suffixes": [None]}
+
+    def test_roles_without_permissions_start_unchecked(self):
+        """The usual suffixed setup: the generic roles are left without grants."""
+        dialog = self._dialog({None: False, "lausanne": True})
+        checkboxes = self._checkboxes(dialog)
+        assert sorted(checkboxes) == ["Generic roles", "lausanne"]
+        assert not checkboxes["Generic roles"].isChecked()
+        assert checkboxes["lausanne"].isChecked()
+        assert dialog.grant_options() == {"grant": True, "suffixes": ["lausanne"]}
+
+    def test_generic_checked_when_it_holds_permissions(self):
+        """A database granted generically before a suffixed role was added."""
+        dialog = self._dialog({None: True, "lausanne": True})
+        checkboxes = self._checkboxes(dialog)
+        assert checkboxes["Generic roles"].isChecked()
+        assert dialog.grant_options() == {"grant": True, "suffixes": [None, "lausanne"]}
+
+    def test_all_checked_when_no_role_holds_permissions(self):
+        """Nothing to observe (the app is already dropped), so offer them all."""
+        dialog = self._dialog({None: False, "lausanne": False})
+        assert all(cb.isChecked() for cb in self._checkboxes(dialog).values())
+        assert dialog.grant_options() == {"grant": True, "suffixes": [None, "lausanne"]}
+
+    def test_unchecking_every_role_declines_the_grant(self):
+        dialog = self._dialog({None: False, "lausanne": True})
+        for checkbox in self._checkboxes(dialog).values():
+            checkbox.setChecked(False)
+        assert dialog.grant_options() == {"grant": False, "suffixes": []}
+
+    def test_no_roles_leaves_the_groupbox_out(self):
+        dialog = self._dialog({})
+        assert self._checkboxes(dialog) == {}
+        assert dialog.grant_options() == {"grant": True, "suffixes": []}
 
 
 class TestModuleWidgetUninstallDisabled:

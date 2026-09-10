@@ -30,13 +30,20 @@ default privileges configured for it. The application schemas are therefore
 granted the [configured permissions](role_management.md) again once they have
 been recreated.
 
-This happens silently for the generic roles. When the database uses
-DB-specific (suffixed) roles, they are discovered in the database and listed in
-the dialog under **Re-grant permissions**, so you can confirm which ones to
-grant before the operation starts.
+The roles found in the database are listed in the dialog under **Re-grant
+permissions**, each with its own checkbox, so you can confirm which ones to
+grant before the operation starts. The generic roles appear as **Generic
+roles**, next to the DB-specific (suffixed) ones.
 
-Uncheck the group to leave the permissions alone — the recreated schemas will
-then have no privilege until you grant them from
+A role is checked when it currently holds a privilege on one of the module
+schemas, since re-granting is there to restore what dropping them discards. In
+the usual DB-specific setup the generic roles are deliberately created without
+permissions, so they start unchecked — tick them to grant those too. If no role
+holds any permission, because the application was already dropped, they are all
+offered checked.
+
+Uncheck the group, or every role in it, to leave the permissions alone — the
+recreated schemas will then have no privilege until you grant them from
 **Manage roles and users → Create and grant roles**.
 
 !!! warning

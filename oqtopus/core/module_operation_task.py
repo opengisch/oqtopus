@@ -305,14 +305,14 @@ class ModuleOperationTask(QThread):
 
         logger.info("Recreate app operation completed")
 
-    def _grant_permissions(self, suffixes: list[str]):
-        """Grant permissions to the generic roles, or to the given suffixed ones."""
+    def _grant_permissions(self, suffixes: list[str | None]):
+        """Grant permissions to the given roles, `None` being the generic ones."""
         role_manager = self.__pum_config.role_manager()
         if not role_manager.roles:
             return
 
-        # Suffixed roles are isolated: when they exist the generic roles are
-        # deliberately left without permissions.
+        # Nothing selected means the generic roles, which is what a caller
+        # passing no options expects.
         for suffix in suffixes or [None]:
             logger.info(f"Granting permissions (suffix={suffix})")
             role_manager.grant_permissions(
