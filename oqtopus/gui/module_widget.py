@@ -100,9 +100,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
         if self.__pum_config is not None:
             try:
                 self.__pum_config.cleanup_hook_imports()
-            except Exception:
+            except Exception as e:
                 # Ignore errors during cleanup
-                pass
+                logger.debug(f"Error while cleaning up hook imports: {e}")
 
         self.__current_module_package = module_package
         self.__packagePrepareGetPUMConfig()
@@ -124,9 +124,9 @@ class ModuleWidget(QWidget, DIALOG_UI):
         if self.__pum_config is not None:
             try:
                 self.__pum_config.cleanup_hook_imports()
-            except Exception:
+            except Exception as e:
                 # Ignore errors during cleanup
-                pass
+                logger.debug(f"Error while cleaning up hook imports: {e}")
 
         self.__current_module_package = None
         self.__pum_config = None
@@ -144,8 +144,8 @@ class ModuleWidget(QWidget, DIALOG_UI):
         if self.__pum_config is not None:
             try:
                 self.__pum_config.cleanup_hook_imports()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Error while cleaning up hook imports: {e}")
 
     def isOperationRunning(self) -> bool:
         """Return True if an operation is currently running."""

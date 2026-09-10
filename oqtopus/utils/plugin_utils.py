@@ -17,6 +17,7 @@
  ***************************************************************************/
 """
 
+import contextlib
 import glob
 import logging
 import os
@@ -215,11 +216,11 @@ class PluginUtils:
         # Remove the specific handler we registered
         handler = PluginUtils._file_handler
         if handler is not None:
-            try:
+            # Deliberately silent: this runs while logging is being torn down,
+            # so there is no handler left to report a failure to.
+            with contextlib.suppress(Exception):
                 root_logger.removeHandler(handler)
                 handler.close()
-            except Exception:
-                pass
             PluginUtils._file_handler = None
 
     @staticmethod

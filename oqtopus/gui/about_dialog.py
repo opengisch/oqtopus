@@ -24,22 +24,26 @@
 
 
 import os
+import shutil
 import subprocess
 
 from qgis.PyQt.QtCore import QSettings, Qt
 from qgis.PyQt.QtGui import QFont, QPixmap
 from qgis.PyQt.QtWidgets import QDialog, QLabel
 
-from ..utils.plugin_utils import PluginUtils
+from ..utils.plugin_utils import PluginUtils, logger
 
 DIALOG_UI = PluginUtils.get_ui_class("about_dialog.ui")
 
 
 def _git_version(path: str) -> str | None:
     """If *path* lives inside a git repo, return ``git describe --tags``."""
+    git_executable = shutil.which("git")
+    if git_executable is None:
+        return None
     try:
         result = subprocess.run(
-            ["git", "describe", "--tags"],
+            [git_executable, "describe", "--tags"],
             cwd=path,
             capture_output=True,
             text=True,
@@ -47,8 +51,8 @@ def _git_version(path: str) -> str | None:
         )
         if result.returncode == 0:
             return result.stdout.strip()
-    except Exception:
-        pass
+    except (OSError, subprocess.SubprocessError) as e:
+        logger.debug(f"Could not read the git version of '{path}': {e}")
     return None
 
 
