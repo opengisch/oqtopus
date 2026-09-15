@@ -18,6 +18,10 @@ authors = [
 
 [tool.setuptools.packages.find]
 where = ["."]
+# only ship the package itself: auto-discovery would otherwise also pick up
+# tests/ (a regular package) and scripts/ (a PEP 420 namespace package)
+include = ["oqtopus*"]
+namespaces = false
 
 [tool.setuptools-git-versioning]
 enabled = true
