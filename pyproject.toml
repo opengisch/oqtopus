@@ -28,7 +28,7 @@ enabled = true
 starting_version = "0.0.1"
 
 [tool.setuptools.package-data]
-"oqtopus" = ["**/*.ui", "libs/*.dist-info/**"]
+"oqtopus" = ["**/*.ui", "icons/*", "libs/*.dist-info/**"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
